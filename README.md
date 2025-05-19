@@ -1,3 +1,3 @@
 # Arizona Helper
-Хелпер для игроков Arizona Online (Arizona Role Play)
+РҐРµР»РїРµСЂ РґР»СЏ РёРіСЂРѕРєРѕРІ Arizona Online (Arizona Role Play)
 

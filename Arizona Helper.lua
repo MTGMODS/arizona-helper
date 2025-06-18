@@ -3,7 +3,7 @@
 script_name("Arizona Helper")
 script_description('This is a Cross-platform Lua script-helper for Arizona Online players work in fractions')
 script_author("MTG MODS")
-script_version("BETA 3 Free")
+script_version("BETA 3.1")
 
 print('[Arizona Helper] Скрипт успешно запущен. Версия: ' .. thisScript().version)
 
@@ -6303,7 +6303,7 @@ imgui.OnFrame(
 				tag1 = tag1:gsub("[%[%]]", "")
 				tag2 = tag2:gsub("[%[%]]", "")
 			end
-			local preview_text = u8('/d ' .. tag1 .. ' ' .. fm .. ' ' .. tag2 .. ': ' .. text)
+			local preview_text = ('/d ' .. tag1 .. ' ' .. fm .. ' ' .. tag2 .. ': ' .. text)
 			imgui.CenterText(preview_text)
             imgui.Separator()
             if imgui.Checkbox(u8(' Отключить использование символов [] (скобок) в тегах организаций'), checkbox_dep_anti_skobki) then

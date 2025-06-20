@@ -4814,12 +4814,10 @@ function renderSmartSystem(title, icon, downloadPath, editPopupTitle, data, save
 												isValid = value ~= '' and not value:find('%D') and tonumber(value) >= 1 and tonumber(value) <= 10 and text ~= '' and reason ~= ''
 											end
 											if isValid then
-												local temp = { 
-													text = text, 
-													[title:find('умного') and 'lvl' or 'amount'] = value,
-													reason = reason 
-												}
-												table.insert(chapter.item, temp)
+												item.text = text
+												item[title:find('умного') and 'lvl' or 'amount'] = value
+												item.reason = reason
+												saveFunction()
 												saveFunction()
 												imgui.CloseCurrentPopup()
 											else
@@ -6531,7 +6529,7 @@ imgui.OnFrame(
 		end
 		imgui.SetNextWindowPos(imgui.ImVec2(sizeX / 2, sizeY / 2), imgui.Cond.FirstUseEver, imgui.ImVec2(0.5, 0.5))
 		imgui.SetNextWindowSize(imgui.ImVec2(730 * settings.general.custom_dpi, sizeYY * settings.general.custom_dpi), imgui.Cond.FirstUseEver)
-		imgui.Begin(getHelperIcon() .. " " ..  u8(members_info.fraction) .. " - " .. #members .. u8' сотрудников онлайн ' .. getHelperIcon(), _, imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoResize)
+		imgui.Begin(getHelperIcon() .. " " ..  u8(members_info.fraction) .. " - " .. #members .. u8' сотрудников онлайн ' .. getHelperIcon(), MembersWindow, imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoResize)
 		change_dpi()
 		imgui.Columns(4)
 		imgui.CenterColumnText(getUserIcon() .. u8(" Cотрудник"))
@@ -6592,7 +6590,7 @@ imgui.OnFrame(
     function() return WantedWindow[0] end,
     function(player)
 		imgui.SetNextWindowPos(imgui.ImVec2(settings.windows_pos.wanteds_menu.x, settings.windows_pos.wanteds_menu.y), imgui.Cond.FirstUseEver)
-		imgui.Begin(fa.STAR .. u8" Список преступников (всего " .. #wanted .. u8') ' .. fa.STAR, _, imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoResize + imgui.WindowFlags.AlwaysAutoResize + imgui.WindowFlags.NoScrollbar)
+		imgui.Begin(fa.STAR .. u8" Список преступников (всего " .. #wanted .. u8') ' .. fa.STAR, WantedWindow, imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoResize + imgui.WindowFlags.AlwaysAutoResize + imgui.WindowFlags.NoScrollbar)
 		change_dpi()
 		
 		if tonumber(#wanted) == 0 then 

@@ -3,7 +3,7 @@
 script_name("Arizona Helper")
 script_description('This is a Cross-platform Lua script-helper for Arizona Online players work in fractions')
 script_author("MTG MODS")
-script_version("BETA 3.1")
+script_version("BETA 3.2")
 
 print('[Arizona Helper] Скрипт успешно запущен. Версия: ' .. thisScript().version)
 

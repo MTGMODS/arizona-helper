@@ -9487,25 +9487,7 @@ function main()
 		if (isMode('police') or isMode('fbi') or isMode('army') or isMode('prison')) then
 			if patrool.active then
 				patrool.time = os.difftime(os.time(), patrool.start_time)
-				if (settings.general.auto_doklad_patrool) and (tonumber(patrool.time) ~= 0 and patrool.time % 600 == 0) then
-					commands.isActive = true
-					if isMode('police') or isMode('fbi') then
-						sampSendChat('/r ' .. binderTags.my_doklad_nick() .. ' на CONTROL.')
-						wait(1500)
-						sampSendChat('/r Продолжаю патруль, нахожусь в районе ' .. binderTags.get_area() .. " (" .. binderTags.get_square() .. ').')
-						wait(1500)
-						if binderTags.get_car_units() ~= 'Нету' then
-							sampSendChat('/r Патрулирую уже ' .. binderTags.get_patrool_format_time() .. ' в составе юнита ' .. binderTags.get_car_units() .. ', состояние ' .. u8(binderTags.get_patrool.code()) .. '.')
-						else
-							sampSendChat('/r Патрулирую уже ' .. format_patrool_time(patrool.time) .. ', состояние ' .. u8(binderTags.get_patrool.code()) .. '.')
-						end
-					elseif isMode('army') or isMode('prison') then
-						sampSendChat('/r ' .. binderTags.my_doklad_nick() .. ' на CONTROL. Пост: ' .. binderTags.get_patrool_name() .. ', состояние ' .. binderTags.get_patrool_code())
-						wait(1500)
-						sampSendChat('/r Нахожусь на посту уже ' .. binderTags.get_patrool_format_time(), -1)
-					end
-					commands.isActive = false
-				end
+				
 			end
 			if patrool.active and isCharInAnyCar(PLAYER_PED) and settings.general.auto_change_code_siren then
 				local currentSirenState = isCarSirenOn(storeCarCharIsInNoSave(PLAYER_PED))
@@ -9528,58 +9510,7 @@ function main()
 			end
 		end
 
-		if (isMode('police') or isMode('fbi')) then
-			if (settings.mj.awanted and search_awanted) then
-				if #wanted ~= 0 then
-					for i, v in ipairs(wanted) do
-						local id = v.id
-						local _, ped = sampGetCharHandleBySampPlayerId(id)
-						if sampIsPlayerConnected(id) and _ then
-							search_awanted = false
-							sampAddChatMessage('[Arizona Helper - Ассистент] {ffffff}Недалеко от вас обнаружен(-а) ' .. v.nick .. " с " .. v.lvl .. '-м уровнем розыска!', message_color)
-							show_arz_notify('info', 'Arizona Helper', 'Обнаружен игрок в розыске недалеко от вас!', 2500)
-							playNotifySound()
-							sampSendChat("/pursuit " .. id)
-							wait(1000)
-							sampSendChat("/z "..id)
-							break
-						end
-					end
-				end
-			end
-			if (settings.mj.auto_update_wanteds and WantedWindow[0]) then
-				if (updwanteds.check) then
-					updwanteds.time = os.difftime(os.time(), updwanteds.last_time)
-					if tonumber(updwanteds.time) >= (isMode('fbi') and 8 or 9) then
-						updwanteds.check = false
-					end
-				else
-					wanted_new = {}
-					check_wanted = true
-					updwanteds.stop = false
-					for i = (isMode('fbi') and 7 or 6), 1, -1 do
-						if WantedWindow[0] then
-							updwanteds.time = os.difftime(os.time(), updwanteds.last_time)
-							sampSendChat('/wanted ' .. i)
-							wait(1000)
-						else
-							updwanteds.stop = true
-							sampProcessChatInput('/wanteds')
-							break
-						end
-					end
-					if not stop_checker then
-						check_wanted = false
-						updwanteds.time = 0
-						updwanteds.last_time = os.time()
-						WantedWindow[0] = false
-						wanted = wanted_new
-						WantedWindow[0] = true
-						updwanteds.check = true
-					end
-				end
-			end
-		end
+		
 
 		if (modules.rpgun.data.nowGun ~= getCurrentCharWeapon(PLAYER_PED)) then
             modules.rpgun.data.oldGun = modules.rpgun.data.nowGun
@@ -9592,53 +9523,6 @@ function main()
             processWeaponChange(modules.rpgun.data.oldGun, modules.rpgun.data.nowGun)
         end
 
-		if (clicked and (settings.mj.auto_clicker_situation or settings.mh.auto_clicker_situation)) then
-			if isMonetLoader() then
-				local bs = raknetNewBitStream()
-				raknetBitStreamWriteInt8(bs, 220)
-				raknetBitStreamWriteInt8(bs, 63)
-				raknetBitStreamWriteInt8(bs, 25)
-				raknetBitStreamWriteInt32(bs, 0)
-				raknetBitStreamWriteInt8(bs, 255)
-				raknetBitStreamWriteInt8(bs, 255)
-				raknetBitStreamWriteInt8(bs, 255)
-				raknetBitStreamWriteInt8(bs, 255)
-				raknetBitStreamWriteInt32(bs, 0)
-				raknetSendBitStream(bs)
-				raknetDeleteBitStream(bs)
-				wait(0)
-			else
-				emulationCEF("clickMinigame")
-
-				
-				-- local cmd = "clickMinigame"
-				-- local bs = raknetNewBitStream()
-				-- raknetBitStreamWriteInt8(bs, 220)
-				-- raknetBitStreamWriteInt8(bs, 18)
-				-- raknetBitStreamWriteInt16(bs, #cmd)
-				-- raknetBitStreamWriteString(bs, cmd)
-				-- raknetBitStreamWriteInt32(bs, 0)
-				-- raknetSendBitStream(bs)
-				-- raknetDeleteBitStream(bs)
-				wait(0)
-			end
-		end
-
-		if (settings.general.auto_update_members and members.menu[0]) then
-			if (members.upd.check) then
-				members.upd.time = os.difftime(os.time(), members.upd.last_time)
-				if tonumber(members.upd.time) > 8.5 then
-					members.upd.time = 0
-					members.upd.last_time = os.time()
-					members.upd.check = false
-				end
-			elseif (not members.upd.check) then 
-				members.new = {}
-				members.info.check = true
-				sampSendChat("/members")
-				members.upd.check = true
-			end
-		end
 
 		if (settings.general.auto_notify_payday) then
 			local currentMinute = os.date("%M", os.time())

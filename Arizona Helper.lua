@@ -1,23 +1,53 @@
----@diagnostic disable: undefined-global, need-check-nil, lowercase-global, cast-local-type, unused-local
+---@diagnostic disable: undefined-global, lowercase-global, need-check-nil, cast-local-type, unused-local
 
 script_name("Arizona Helper")
-script_description('This is a Cross-platform Lua script-helper for Arizona Online players work in fractions')
+script_description('Universal script for players Arizona Online')
 script_author("MTG MODS")
-script_version("BETA 3.2")
-
-print('[Arizona Helper] Скрипт успешно запущен. Версия: ' .. thisScript().version)
+script_version("BETA 5")
+----------------------------------------------- INIT ---------------------------------------------
+function isMonetLoader()
+	return MONET_VERSION ~= nil
+end
+print('Инициализация скрипта...')
+print('Версия: ' .. thisScript().version)
+print('Платформа: ' .. (isMonetLoader() and 'MOBILE' or 'PC'))
+------------------------------------------ INIT CRASH INFO ---------------------------------------
+if not doesFileExist(getWorkingDirectory():gsub('\\','/') .. "/.Arizona Helper Crash Message.lua") then
+	local file_path = getWorkingDirectory():gsub('\\','/') .. "/.Arizona Helper Crash Message.lua"
+	local content = [[
+function onSystemMessage(msg, type, script)
+    if type == 3 and script and script.name == 'Arizona Helper' and msg and not msg:find('Script died due to an error') then
+        local errorMessage = ('{ffffff}Произошла непредусмотренная ошибка в работе скрипта, из-за чего он был отключён!\n\n' ..
+		'Отправьте скриншот и log в {ff9900}тех.поддержку MTG MODS (Telegram/Discord/BlastHack){ffffff}.\n\n' ..
+		'Детали возникшей ошибки:\n{ff6666}' .. msg)
+        sampShowDialog(789789, '{009EFF}Arizona Helper [' .. script.version .. ']', errorMessage, '{009EFF}Закрыть', '', 0)
+    end
+end]]
+	local file, errstr = io.open(file_path, 'w')
+	if file then
+		file:write(content)
+		file:close()
+		if not isMonetLoader() then
+			os.execute('attrib +h "' .. file_path .. '"')
+		end
+	end
+end
+------------------------------------------ CONNECT LIBNARY ---------------------------------------
+print('Подключение нужных библиотек...')
 
 require('lib.moonloader')
 require('encoding').default = 'CP1251'
 local u8 = require('encoding').UTF8
-local ffi = require('ffi')
-local effil = require('effil')
+local sampev = require('samp.events')
 local imgui = require('mimgui')
 local fa = require('fAwesome6_solid')
-local sampev = require('samp.events')
+local ffi = require('ffi')
+local effil = require('effil')
+local monet_no_errors, moon_monet = pcall(require, 'MoonMonet')
+local hotkey_no_errors, hotkey = pcall(require, 'mimgui_hotkeys')
 local sizeX, sizeY = getScreenResolution()
-
--------------------------------------------- JSON SETTINGS -------------------------------------------
+print('Библиотеки успешно покдючены!')
+----------------------------------------- JSON SETTINGS -----------------------------------------
 local configDirectory = getWorkingDirectory():gsub('\\','/') .. "/Arizona Helper"
 local settings = {}
 local default_settings = {
@@ -25,32 +55,29 @@ local default_settings = {
 		version = thisScript().version,
         custom_dpi = 1.0,
 		autofind_dpi = false,
-        helper_theme = 1,
+        helper_theme = 0,
 		message_color = 40703,
 		moonmonet_theme_color = 40703,
 		fraction_mode = '',
-		mobile_fastmenu_button = true,
-		mobile_stop_button = true,
 		bind_mainmenu = '[113]',
 		bind_fastmenu = '[69]',
 		bind_leader_fastmenu = '[71]',
 		bind_action = '[13]',
 		bind_command_stop = '[123]',
-        rp_gun = true,
-		auto_uval = false,
-		anti_trivoga = true,
-		use_taser_menu = true,
+		ping = false,
+		mobile_fastmenu_button = true,
+		mobile_stop_button = true,
 		auto_notify_payday = true,
-		auto_clicker_situation = true,
-		auto_update_members = true,
-		auto_accept_docs = true,
+		auto_update_members = false,
+		auto_accept_docs = false,
+		auto_uval = false,
 		probiv_api_key = ''
 	},
 	player_info = {
 		name_surname = '',
 		fraction = 'none',
-		fraction_tag = 'none',
-		fraction_rank = 'none',
+		fraction_tag = '',
+		fraction_rank = '',
 		fraction_rank_number = 0,
 		sex = 'Неизвестно',
 		accent_enable = true,
@@ -133,6 +160,7 @@ local default_settings = {
 			"[FD]",
 			'skip',
 			"[GOV]",
+			'[Governor]',
 			"[Prosecutor]",
 			"[Judge]",
 			"[LC]",
@@ -158,25 +186,29 @@ local default_settings = {
 		taser = {x = sizeX / 4.2, y = sizeY / 2.1},
 	},
     mj = {
-        auto_mask = true,
-		auto_time = true,
-		auto_doklad_patrool = true,
-		auto_doklad_damage = true,
-		auto_doklad_arrest = true,
-		auto_change_code_siren = true,
-		auto_update_wanteds = true,
 		awanted = false,
-		auto_documentation = true,
+        auto_mask = false,
+		auto_time = false,
+		auto_doklad_patrool = false,
+		auto_doklad_damage = false,
+		auto_doklad_arrest = false,
+		auto_change_code_siren = false,
+		auto_clicker_situation = true,
+		auto_update_wanteds = false,
+		auto_case_documentation = false,
 		mobile_meg_button = true,
-		use_info_menu = true, 
+		mobile_taser_button = true,
     },
 	md = {
-		auto_doklad_patrool = true,
-		auto_doklad_damage = true,
+		auto_doklad_patrool = false,
+		auto_doklad_damage = false,
 	},
 	mh = {
-		heal_in_chat = true,
-		auto_heal = false,
+		auto_clicker_situation = false,
+		heal_in_chat = {
+			enable = true,
+			auto_heal = false -- нажать клавишу или автоматически
+		},
 		price = {
 			ant = 50000,
 			recept = 50000,
@@ -194,42 +226,45 @@ local default_settings = {
 		},
 	},
 	lc = {
-		auto_clicker = true,
-		auto_repair = true,
+		auto_lic = false,
+		auto_repair = false,
+		auto_find_clorest_repair = true,
 		price = {
-			avto1 = 200000,  
-			avto2 = 360000,  
-			avto3 = 410000,  
-			moto1 = 300000,  
-			moto2 = 350000,  
-			moto3 = 450000,  
-			fish1 = 500000,  
-			fish2 = 550000,  
-			fish3 = 590000,  
-			swim1 = 500000,  
-			swim2 = 550000,  
-			swim3 = 590000,  
-			gun1 = 1000000,  
-			gun2 = 1090000,  
-			gun3 = 1150000,  
-			hunt1 = 1000000,  
-			hunt2 = 1100000,  
-			hunt3 = 1190000,  
-			klad1 = 1100000,  
-			klad2 = 1200000,  
-			klad3 = 1250000,  
-			taxi1 = 800000,  
-			taxi2 = 1150000,  
-			taxi3 = 1250000,  
-			mexa1 = 800000,  
-			mexa2 = 1150000,  
-			mexa3 = 1250000,  
-			fly1 = 1200000,  
-			fly2 = 1200000,  
-			fly3 = 1200000,  
+			avto1 = 200000,
+			avto2 = 360000,
+			avto3 = 410000,
+			moto1 = 300000,
+			moto2 = 350000,
+			moto3 = 450000,
+			fish1 = 500000,
+			fish2 = 550000,
+			fish3 = 590000,
+			swim1 = 500000,
+			swim2 = 550000,
+			swim3 = 590000,
+			gun1 = 1000000,
+			gun2 = 1090000,
+			gun3 = 1150000,
+			hunt1 = 1000000,
+			hunt2 = 1100000,
+			hunt3 = 1190000,
+			klad1 = 1100000,
+			klad2 = 1200000,
+			klad3 = 1250000,
+			taxi1 = 800000,
+			taxi2 = 1150000,
+			taxi3 = 1250000,
+			mexa1 = 800000,
+			mexa2 = 1150000,
+			mexa3 = 1250000,
+			fly1 = 1200000,
+			fly2 = 1200000,
+			fly3 = 1200000,
 		},
 	},
-
+	gov = {
+		anti_trivoga = true,
+	}
 }
 function load_settings()
     if not doesDirectoryExist(configDirectory) then
@@ -237,7 +272,7 @@ function load_settings()
     end
     if not doesFileExist(configDirectory .. "/Settings.json") then
         settings = default_settings
-		print('[Arizona Helper] Файл с настройками не найден, использую стандартные настройки!')
+		print('Файл с настройками не найден, использую стандартные настройки!')
     else
         local file = io.open(configDirectory .. "/Settings.json", 'r')
         if file then
@@ -248,23 +283,25 @@ function load_settings()
 				if result then
 					settings = loaded
 					if settings.general.version ~= thisScript().version then
-						print('[Arizona Helper] Новая версия, сброс настроек!')
+						print('Новая версия, сброс настроек!')
+						local fraction = settings.general.fraction_mode
 						settings = default_settings
+						settings.general.fraction_mode = fraction
 						save_settings()
 						reload_script = true
 					else
-						print('[Arizona Helper] Настройки успешно загружены!')
+						print('Настройки успешно загружены!')
 					end
 				else
-					print('[Arizona Helper] Не удалось открыть файл с настройками, использую стандартные настройки!')
+					print('Не удалось открыть файл с настройками, использую стандартные настройки!')
 				end
 			else
                 settings = default_settings
-				print('[Arizona Helper] Не удалось открыть файл с настройками, использую стандартные настройки!')
+				print('Не удалось открыть файл с настройками, использую стандартные настройки!')
 			end
         else
             settings = default_settings
-			print('[Arizona Helper] Не удалось открыть файл с настройками, использую стандартные настройки!')
+			print('Не удалось открыть файл с настройками, использую стандартные настройки!')
         end
     end
 end
@@ -283,13 +320,13 @@ function save_settings()
 		local content = looklike(settings)
 		if content and #content ~= 0 then
 			file:write(content)
-			print('[Arizona Helper] Настройки хелпера сохранены!')
+			print('Настройки хелпера сохранены!')
 		else
-			print('[Arizona Helper] Не удалось сохранить настройки хелпера! Ошибка кодировки json')
+			print('Не удалось сохранить настройки хелпера! Ошибка кодировки json')
 		end
 		file:close()
     else
-        print('[Arizona Helper] Не удалось сохранить настройки хелпера, ошибка: ', errstr)
+        print('Не удалось сохранить настройки хелпера, ошибка: ', errstr)
     end
 end
 load_settings()
@@ -301,187 +338,195 @@ local modules = {
 		data = {
 			commands = {
 				my = {
-					{ cmd = 'time' , description = 'Посмотреть время' ,  text = '/me взглянул{sex} на свои часы с гравировкой Arizona Helper и посмотрел{sex} время&/time&/do На часах видно время {get_time}.' , arg = '' , enable = true, waiting = '1.5' , bind = "{}" },
-					{ cmd = 'cure' , description = 'Поднять игрока из стадии' ,  text = '/me наклоняется над человеком, и прощупывает его пульс на сонной артерии&/cure {arg_id}&/do Пульс отсутствует.&/me начинает делать человеку непрямой массаж сердца, время от времени проверяя пульс&/do Спустя несколько минут сердце человека начало биться.&/do Человек пришел в сознание.&/todo Отлично*улыбаясь' , arg = '{arg_id}' , enable = true , waiting = '1.5' , bind = "{}"},
+					{cmd = 'time' , description = 'Посмотреть время' ,  text = '/me взглянул{sex} на часы с гравировкой Arizona Helper и посмотрел{sex} время&/time&/do На часах видно время {get_time}.' , arg = '' , enable = true, waiting = '1.5', bind = "{}"},
+					{cmd = 'cure' , description = 'Поднять игрока из стадии' ,  text = '/me наклоняется над человеком, и прощупывает его пульс на сонной артерии&/cure {arg_id}&/do Пульс отсутствует.&/me начинает делать человеку непрямой массаж сердца, время от времени проверяя пульс&/do Спустя несколько минут сердце человека начало биться.&/do Человек пришел в сознание.&/todo Отлично*улыбаясь' , arg = '{arg_id}' , enable = true , waiting = '1.5', bind = "{}"},
 					},
 				police = {
-					{ cmd = '55', description = 'Проведение 10-55', text = '/r {my_doklad_nick} на CONTROL. Провожу 10-55 в районе {get_area} ({get_square}), СODE 4.&/m Водитель{get_storecar_model}, внимание!&/m Немедленно снизьте скорость и прижмитесь к обочине!&/m После остановки заглушите двигатель, держите руки на руле и не выходите из транспорта.&/m В случае неподчинения вы будете обьявлены в розыск, и по вам будет открыт огонь!', arg = '', enable = true, waiting = '1.5', bind = "[101]" },
-					{ cmd = '66', description = 'Проведение 10-66', text = '/r {my_doklad_nick} на CONTROL. Провожу 10-66 в районе {get_area} ({get_square}), СODE 3!&/m Водитель{get_storecar_model}, внимание!&/m Немедленно снизьте скорость и прижмитесь к обочине!&/m В случае неподчинения вы будете обьявлены в розыск, и по вам будет открыт огонь!', arg = '', enable = true, waiting = '1.5', bind = "[102]" },
-					{ cmd = 'zd' , description = 'Приветствие игрока' , text = 'Здраствуйте {get_ru_nick({arg_id})}&Я {my_ru_nick} - {fraction_rank} {fraction_tag}&Чем я могу Вам помочь?', arg = '{arg_id}' , enable = true , waiting = '1.5', bind = "{}"},
-					{ cmd = 'bk' , description = 'Запрос помощи с координатами' , text = '/r {my_doklad_nick} на CONTROL. Срочно нужна помощь, высылаю свои координаты. CODE 1&/me достаёт свой КПК и отправляет координаты в базу данных {fraction_tag}&/bk 10-20', arg = '' , enable = true , waiting = '1.5', bind = "{}" },
-					{ cmd = 'siren' , description = 'Вкл/выкл мигалок в т/с' , text = '{switchCarSiren}', arg = '' , enable = true , waiting = '1.5', bind = "{}" },
-					{ cmd = 'fara' , description = 'Оставить отпечаток на фаре' , text = '/me легким движеним руки ', arg = '' , enable = true , waiting = '1.5', bind = "{}" },
-					{ cmd = 'pas' , description = 'Запросить документы' ,  text = 'Здраствуйте, управление {fraction_tag}, я {fraction_rank} {my_ru_nick}&/do Cлева на груди жетон полицейского, справа именная нашивка с именем.&/me  достаёт своё удостоверение из кармана&/showbadge {arg_id}&Прошу предъявить документ, удостоверяющий вашу личность.&/n {get_nick({arg_id})}, введите /showpass {my_id}' , arg = '{arg_id}' , enable = true , waiting = '1.5' , bind = "{}", in_fastmenu = true},
-					{ cmd = 'ts' , description = 'Выписать штраф' ,  text = '/do Бланк протокола и ручка находяться в нагрудном кармане.&/me достаёт из нагрудного кармана бланк протокола и ручку.&/me вписывает в бланк данные нарушителя&/writeticket {arg_id} {arg2}&/do Бланк протокола заполнен.&/me передаёт бланк со штрафом нарушителю для дальнейшей оплаты' , arg = '{arg_id} {arg2}' , enable = true, waiting = '1.5' , bind = "{}"  },
-					{ cmd = 'pr' , description = 'Погоня за игроком' ,  text = '/me достаёт свой КПК и заходит в базу данных {fraction_tag}&/me открывает дело гражданина N-{arg_id} и нажимает на кнопку отслеживание местоположения&/pursuit {arg_id}&/me выходит с базы данных {fraction_tag} и выключив КПК убирает его на поясной держатель' , arg = '{arg_id}' , enable = true, waiting = '1.5' , bind = "{}"  },
-					{ cmd = 'find' , description = 'Поиск игрока' ,  text = '/do КПК висит на поясном держателе.&/me достаёт свой КПК и включает его&/me заходит в базу данных {fraction_tag} и открывает дело гражданина N-{arg_id}&/do Данные успешно получены.&/me устанавливает в свой навигатор координаты гражданина N-{arg_id}&/do Навигатор получил координаты и построил ближайший путь.&/find {arg_id}&/me выходит с базы данных {fraction_tag} и выключив КПК убирает его на поясной держатель' , arg = '{arg_id}' , enable = true, waiting = '1.5' , bind = "{}"  },
-					{ cmd = 'su' , description = 'Выдать розыск' ,  text = '/me достаёт свой КПК и открывает базу данных преступников&/me вносит изменения в базу данных преступников&/do Преступник занесён в базу данных преступников.&/su {arg_id} {arg2} {arg3}&/z {arg_id}' , arg = '{arg_id} {arg2} {arg3}' , enable = true, waiting = '1.5' , bind = "{}" },
-					{ cmd = 'fsu' , description = 'Запросить выдачу розыска' ,  text = '/do Рация на тактическом поясе.&/me достаёт рацию и связавается с диспетчером&/me передаёт диспетчеру запрос на внесение человека в базу данных преступников&/r {my_doklad_nick} на CONTROL.&/r Прошу обьявить в розыск {arg2} степени дело N{arg_id}. Причина: {arg3}' , arg = '{arg_id} {arg2} {arg3}' , enable = true, waiting = '1.5' , bind = "{}"  },
-					{ cmd = 'givefsu' , description = 'Выдача розыска по запросу офицера' ,  text = '/do Рация на тактическом поясе.&/me достаёт рацию и связавается с офицером для уточнения данных&/r 10-4, выдаю розыск по запросу офицера {get_rp_nick({arg_id})}!&/me достаёт свой КПК и открывает базу данных преступников&/me вносит изменения в базу данных преступников&/do Преступник занесён в базу данных преступиков.&/su {get_form_su} (по запросу офицера {get_rp_nick({arg_id})})&' , arg = '{arg_id}' , enable = true, waiting = '1.5' , bind = "{}"  },
-					{ cmd = 'unsu' , description = 'Понизить розыск' ,  text = '/me достаёт свой КПК и открывает базу данных преступников&/me ищёт дело N{arg_id} и вносит изменения в базу данных преступников&/unsu {arg_id} {arg2} {arg3}&/do Преступику понижен степень розыска.' , arg = '{arg_id} {arg2} {arg3}' , enable = true, waiting = '1.5' , bind = "{}"  },
-					{ cmd = 'clear' , description = 'Снять розыск' ,  text = '/me достаёт свой КПК и открывает базу данных преступников&/me ищёт дело N{arg_id} и вносит изменения в базу данных преступников&/clear {arg_id}&/do Дело N{arg_id} больше не находится в списке разыскиваемых преступников.' , arg = '{arg_id}' , enable = true, waiting = '1.5' , bind = "{}"  },
-					{ cmd = 'cuff' , description = 'Надеть наручники' ,  text = '/do Наручники на тактическом поясе.&/me снимает наручники с пояса и надевает их на задержанного&/cuff {arg_id}&/do Задержанный в наручниках.' , arg = '{arg_id}' , enable = true , waiting = '1.5', bind = "{}" , in_fastmenu = true},
-					{ cmd = 'uncuff' , description = 'Снять наручники' ,  text = '/do На тактическом поясе прикреплены ключи от наручников.&/me снимает с пояса ключ от наручников и вставляет их в наручники задержанного&/me прокручивает ключ в наручниках и снимает их с задержанного&/uncuff {arg_id}&/do Наручники сняты с задержанного&/me кладёт ключ и наручники обратно на тактический пояс', arg = '{arg_id}', enable = true, waiting = '1.5', bind = "{}", in_fastmenu = true },
-					{ cmd = 'gtm' , description = 'Повести за собой' ,  text = '/me схватывает задержанного за руки и ведёт его за собой&/gotome {arg_id}&/do Задержанный идёт в конвое.', arg = '{arg_id}', enable = true, waiting = '1.5', bind = "{}", in_fastmenu = true },
-					{ cmd = 'ungtm' , description = 'Перестать вести за собой' ,  text = '/me отпускает руки задержанного и перестаёт вести его за собой&/ungotome {arg_id}', arg = '{arg_id}', enable = true, waiting = '1.5', bind = "{}", in_fastmenu = true },
-					{ cmd = 'gcuff' , description = 'Надеть наручники и вести за собой' ,  text = '/do Наручники на тактическом поясе.&/me снимает наручники с пояса и надевает их на задержанного&/cuff {arg_id}&/do Задержанный в наручниках.&/me схватывает задержанного за руки и ведёт его за собой&/do Задержанный идёт в конвое.&/gotome {arg_id}' , arg = '{arg_id}' , enable = true , waiting = '1.5', bind = "{}" },
-					{ cmd = 'bot' , description = 'Изьять скрепки у игрока (взлом наручников)' ,  text = '/me увидел что задержанный использует скрепки для взлома наручников&/todo Вы что себе позволяете?!*изымая скрепки у {get_rp_nick({arg_id})}&/bot {arg_id}' , arg = '{arg_id}' , enable = true , waiting = '1.5', bind = "{}", in_fastmenu = true },
-					{ cmd = 'ss' , description = 'Кричалка' ,  text = '/s Всем поднять руки вверх, работает {fraction_tag}!', arg = '', enable = true, waiting = '1.5', bind = "{}" },
-					{ cmd = 't' , description = 'Достать тазер' ,  text = '/taser', arg = '', enable = true, waiting = '1.5', bind = "[18,49]" },
-					{ cmd = 'frl' , description = 'Первичный обыск' ,  text = 'Сейчас я проверю у вас наличие оружия или других острых предметов, не двигайтесь.&/me прощупывает тело задержанного человека&/me прощупывает карманы задержанного человека', arg = '', enable = true, waiting = '1.5', bind = "{}" },
-					{ cmd = 'fr' , description = 'Полный обыск' ,  text = '/do Резиновые перчатки на тактическом поясе.&/todo Сейчас я полностю обыщу вас, на наличие запрещенных предметов*надевая резиновые перчатки&/me прощупывает тело и карманы задержанного человека&/me достаёт из карманов задержанного все его вещи для изучения&/me внимательно осматривает все найденные вещи у задержанного человека&/frisk {arg_id}&/me снимает резиновые перчатки и убирает их на тактический пояск&/do Блокнот с ручкой в нагрудном кармане.&/me берет в руки блокнот с ручкой, и записывает всю информацию про обыск&/me сделав пометки, убирает блокнот с ручкой в нагрудный карман', arg = '{arg_id}', enable = true, waiting = '1.5', bind = "{}", in_fastmenu = true },
-					{ cmd = 'take' , description = 'Изьятие предметов игрока' , text = '/do В подсумке находиться небольшой зип-пакет.&/me достаёт из подсумка зип-пакет и отрывает его&/me кладёт в зип-пакет изьятые предметы задержанного человека&/take {arg_id}&/do Изьятые предметы в зип-пакете.&/todo Отлично*убирая зип-пакет в подсумок', arg = '{arg_id}' , enable = true , waiting = '1.5', bind = "{}", in_fastmenu = true  },
-					{ cmd = 'camon' , description = 'Включить cкрытую боди камеру' ,  text = '/do К форме прикреплена скрытая боди камера.&/me незаметным движением руки включил{sex} боди камеру.&/do Скрытая боди камера включена и снимает всё происходящее.', arg = '', enable = true, waiting = '1.5', bind = "{}" },
-					{ cmd = 'camoff' , description = 'Выключить cкрытую боди камеру' ,  text = '/do К форме прикреплена скрытая боди камера.&/me незаметным движением руки выключил{sex} боди камеру.&/do Скрытая боди камера выключена и больше не снимает всё происходящее.', arg = '', enable = true, waiting = '1.5', bind = "{}" },
-					{ cmd = 'inc' , description = 'Затащить в транспорт' ,  text = '/me открывает заднюю дверь транспорта&/todo Наклоните голову, здесь дверь*затаскивая задержанного в транспортное средство&/incar {arg_id} {arg2}&/me закрывает заднюю дверь транспорта&/do Задержанный в транспортном средстве.', arg = '{arg_id} {arg2}', enable = true, waiting = '1.5', bind = "{}" },
-					{ cmd = 'ej' , description = 'Выбросить из транспорта',  text = '/me открывает дверь транспорта&/me помогает человеку выйти из транспорта&/eject {arg_id}&/me закрывает дверь транспорта', arg = '{arg_id}', enable = true, waiting = '1.5', bind = "{}", in_fastmenu = true },	
-					{ cmd = 'pl' , description = 'Выбросить игрока из его транспорта',  text = '/me резким ударом дубинки разбивает стело транспорта задержанного&/pull {arg_id}&/me выбрасывает задержанного из его транспорта и ударом дубинки оглушает его', arg = '{arg_id}', enable = true, waiting = '1.5', bind = "{}", in_fastmenu = true },	
-					{ cmd = 'mr' , description = 'Зачитать правило Миранды',  text = 'Вы имеете право хранить молчание.&Всё, что вы скажете, может и будет использовано против вас в суде.&Вы имеете право на 1 телефонный звонок, например для вызова частного адвоката.&Ваш адвокат может присутствовать при допросе.&Если вы не можете оплатить услуги адвоката, он будет предоставлен вам государством.&Вам ясны Ваши права?', arg = '', enable = true, waiting = '1.5', bind = "{}" },	
-					{ cmd = 'unmask' , description = 'Снять балаклаву с игрока',  text = '/do Задержанный в балаклаве.&/me стягивает балаклаву с головы задеражнного&/unmask {arg_id}', arg = '{arg_id}', enable = true, waiting = '1.5', bind = "{}" , in_fastmenu = true},
-					{ cmd = 'arr' , description = 'Арестовать (в участке)',  text = '/me включает свой бортовой компютер и вводит код доступа сотрудника&/me заходит в раздел оформления протоколов задержаний и указывает данные&/do Протокол задержания заполнен.&/me вызывает по рации дежурный наряд участка и передаёт им задержанного человека&/arrest', arg = '', enable = true, waiting = '1.5', bind = "{}", in_fastmenu = true },
-					{ cmd = 'drugs' , description = 'Провести Drugs Test' ,  text = '/do На тактическом поясе прикреплён подсумок.&/me открывает подсумок и достаёт из него набор Drugs Test&/me берёт из набора пробирку с этиловым спиром&/me засыпает найденное вещество в пробирку&/me достаёт из подсумка тест Имуно-Хром-10 и добавляет его в пробирку&/do В пробирке с этиловым спиртом находится неизвестное вещество и Имуно-Хром-10.&/me акуратными движениями взбалтывает пробирку&/do От теста Имуно-Хром-10 содержимое пробирки сменило цвет.&/todo Да, это точно наркотики*увидев что содержимое пробирки сменило цвет&/me убирает пробирку обратно в подсумок и закрывает его', arg = '', enable = true, waiting = '1.5', bind = "{}"},
-					{ cmd = 'rbomb' , description = 'Деактивировать бомбу' ,  text = '/do На тактическом поясе прикреплён сапёрный набор.&/me снимает с пояса сапёрный набор и кладет его на землю, затем открывает его&/do Открытый сапёрный набор находится на земле.&/me достаёт из сапёрного набора пакет с жидким азотом и кладет его на землю&/me достаёт из сапёрного набора отвёртку&/do Отвертка в руках, а пакет с жидким азотом на земле.&/do На корпусе бомбы находится 2 болтика.&/me откручивает болтики с бомбы и убирает их вместе с отвёрткой в сторону&/me акуратным движением руки вскрывает крышку бомбы&/me внимательно осматривает бомбу&/do Внутри бомбы видна детонирующая часть.&/me достаёт из сапёрного набора кусачки&/do Кусачки в руках.&/me акуратным движением кусочок разрезает красный провод бомбы&/do Таймер остановился, тиканье со стороны бомбы не слышно.&/me берёт в руки охлаждающий пакет с жидким азотом и кладёт его детонирующую часть бомбы&/removebomb&/do Бомба обезврежена.&/me убирает кусачки и отвёртку обратно в саперный набор и закрывает его', arg = '', enable = true, waiting = '1.5', bind = "{}" },
-					{ cmd = 'delo' , description = 'Расследование убийства' ,  text = '/do Сотрудник прибыл на место убийства.&/todo Такс, что же здесь произошло*осматривая место убийства&/me осматривает и  изучает все улики&{pause}&/me достаёт из подсумка бланк для расследования и ручку&/me заполняет бланк расследования записывая все изученные улики&{pause}&/me записывает в бланк точную дату и время убийства&{pause}&/do Найдено орудие убийства.&/me записывает в бланк орудие убийства&{pause}&/do Бланк расследования убийства полностю заполнен.&/todo Отлично, расследование окончено*убирая бланк в карман', arg = '', enable = true, waiting = '1.5', bind = "{}" },
-					{ cmd = 'giveplate' , description = 'Выдача разрешений на номера' ,  text = '/do Бланк и ручка в нагрудном кармане.&/me достаёт ручку и бланк из нагрудного кармана&/me заполняет бланк для выдачу разрешения на номерной знак&/do Бланк полностю заполнен.&/todo Вот ваше разрешение, берите*убирая ручку в нагрудный карман&/giveplate {arg_id} {arg2}&/n {get_nick({arg_id})}, введите /offer и примите, чтобы получить разрешение на номерной знак.', arg = '{arg_id} {arg2}', enable = true, waiting = '1.5', bind = "{}" },
-					{ cmd = 'agenda' , description = 'Выдача повестки игроку' ,  text = '/do В папке с документами лежит ручка и пустой бланк с надписью Повестка.&/me достаёт из папки ручку с пустым бланком повестки&/me начинает заполнять все необходимые поля на бланке повестки&/do Все данные в повестке заполнены.&/me ставит на повестку штамп и печать {fraction_tag}&/do Готовый бланк повестки в руках.&/todo Не забудьте явиться в военкомат по указанному адресу и времени*передавая повестку&/agenda {arg_id}', arg = '{arg_id}', enable = true, waiting = '1.5', bind = "{}", in_fastmenu = true },
+					{cmd = '55', description = 'Проведение 10-55', text = '/r {my_doklad_nick} на CONTROL. Провожу 10-55 в районе {get_area} ({get_square}), СODE 4.&/m Водитель {get_storecar_model} внимание!&/m Говорит {fraction}! Снизьте скорость и прижмитесь к обочине.&/m После остановки заглушите двигатель, и не выходите из транспорта.&/m В случае неподчинения вы будете объявлены в розыск!', arg = '', enable = true, waiting = '0.5', bind = "[101]"},
+					{cmd = '66', description = 'Проведение 10-66', text = '/r {my_doklad_nick} на CONTROL. Провожу 10-66 в районе {get_area} ({get_square}), СODE 3!&/m Водитель {get_storecar_model} внимание!&/m Говорит {fraction}! Немедленно прижмитесь к обочине!&/m В случае неподчинения по вам будет открыт огонь!', arg = '', enable = true, waiting = '0.5', bind = "[102]"},
+					{cmd = 'zd' , description = 'Приветствие игрока (ПД)' , text = 'Здравствуйте {get_ru_nick({arg_id})}&Я {my_ru_nick} - {fraction_rank} {fraction_tag}&Чем я могу Вам помочь?', arg = '{arg_id}' , enable = true , waiting = '1.5', bind = "{}"},
+					{cmd = 'bk' , description = 'Запрос помощи с координатами' , text = '/me достал{sex} свой КПК и отправил{sex} координаты в базу данных {fraction_tag}&/bk 10-20&/r {my_doklad_nick} на CONTROL. Срочно нужна помощь, отправил{sex} свои координаты!', arg = '' , enable = true , waiting = '1.5', bind = "{}"},
+					{cmd = 'siren' , description = 'Вкл/выкл мигалок в т/с' , text = '{switchCarSiren}', arg = '' , enable = true , waiting = '1.5', bind = "{}"},
+					{cmd = 'fara' , description = 'Оставить отпечаток на фаре' , text = '/me подойдя к транспортному средству, протирает левую фару, оставляя отпечаток&/do Отпечаток успешно оставлен на левой фаре транспортного средства.', arg = '' , enable = true , waiting = '1.5', bind = "{}"},
+					{cmd = 'pas' , description = 'Запрос документов (ПД)' ,  text = 'Здравствуйте, управление {fraction_tag}, я {fraction_rank} {my_ru_nick}&/do Cлева на груди жетон полицейского, справа именная нашивка с именем.&/me достаёт своё удостоверение из кармана&/showbadge {arg_id}&Прошу предъявить документ, удостоверяющий вашу личность.&/n @{get_nick({arg_id})}, введите /showpass {my_id}' , arg = '{arg_id}' , enable = true , waiting = '1.5', bind = "{}", in_fastmenu = true},
+					{cmd = 'ts' , description = 'Выписать штраф' ,  text = '/do Мини-плантет находиться в кармане формы.&/writeticket {arg_id} {arg2}&/me вносит изменения в базу штрафов&/todo Оплатите штраф*убирая мини-планшет обратно в карман' , arg = '{arg_id} {arg2}' , enable = true, waiting = '1.5', bind = "{}"},
+					{cmd = 'find' , description = 'Поиск игрока' ,  text = '/me достал{sex} свой КПК и зайдя в базу данных {fraction_tag} открыл{sex} дело гражданина N{arg_id}&/me нажал{sex} на кнопку GPS отслеживания местоположения гражданина&/find {arg_id}' , arg = '{arg_id}' , enable = true, waiting = '1.5', bind = "{}"},
+					{cmd = 'pr' , description = 'Погоня за преступником' ,  text = '/me достал{sex} свой КПК и зайдя в базу данных {fraction_tag} открыл{sex} дело преступника N{arg_id}&/me нажал{sex} на кнопку GPS отслеживания местоположения гражданина&/pursuit {arg_id}' , arg = '{arg_id}' , enable = true, waiting = '1.5', bind = "{}"},
+					{cmd = 'su' , description = 'Выдать розыск' ,  text = '/me достал{sex} свой КПК и открыл{sex} базу данных преступников&/me вносит изменения в базу данных преступников&/su {arg_id} {arg2} {arg3}&/z {arg_id}&/todo Отлично, преступник в розыске*убирая КПК' , arg = '{arg_id} {arg2} {arg3}' , enable = true, waiting = '1.5', bind = "{}"},
+					{cmd = 'fsu' , description = 'Запросить выдачу розыска' ,  text = '/do Рация на тактическом поясе.&/me достал{sex} рацию c пояса, и связавашись с диспетчером, запросил{sex} обьявление человека в розыск&/r {my_doklad_nick} на CONTROL.&/r Прошу обьявить в розыск {arg2} степени дело N{arg_id}. Причина: {arg3}' , arg = '{arg_id} {arg2} {arg3}' , enable = true, waiting = '1.5', bind = "{}"},
+					{cmd = 'givefsu' , description = 'Выдача розыска по запросу офицера' ,  text = '/r 10-4, обьявляю гражданина в розыск по запросу офицера {get_rp_nick({arg_id})}!&/me достал{sex} свой КПК и открыл{sex} базу данных преступников&/me вносит изменения в базу данных преступников&/su {get_form_su} (по запросу офицера {get_rp_nick({arg_id})})&/todo Отлично, розыск по запросу офицера {get_rp_nick({arg_id})} выдан*убирая КПК' , arg = '{arg_id}' , enable = true, waiting = '1.5', bind = "{}"},
+					{cmd = 'unsu' , description = 'Понизить розыск' ,  text = '/me достал{sex} свой КПК и открыл{sex} базу данных преступников&/me найдя дело N{arg_id} вносит изменения в базу данных преступников&/unsu {arg_id} {arg2} {arg3}' , arg = '{arg_id} {arg2} {arg3}' , enable = true, waiting = '1.5', bind = "{}"},
+					{cmd = 'clear' , description = 'Снять розыск' ,  text = '/me достаёт свой КПК и открывает базу данных преступников&/me найдя дело N{arg_id} вносит изменения в базу данных преступников&/clear {arg_id}&/do Дело N{arg_id} больше не находится в списке разыскиваемых преступников.' , arg = '{arg_id}' , enable = true, waiting = '1.5', bind = "{}"},
+
+					{cmd = 'gcuff' , description = 'Надеть наручники и вести за собой' ,  text = '/do Наручники на тактическом поясе.&/todo Я надену на вас наручники*снимая наручники с тактического пояса&/cuff {arg_id}&/todo Не двигайтесь*надевая наручники на человека&/me схватывает задержанного за руки и ведёт его за собой&/gotome {arg_id}&/do Задержанный идёт в конвое.' , arg = '{arg_id}' , enable = true , waiting = '1.5', bind = "{}"},
+					
+					{cmd = 'cuff' , description = 'Надеть наручники' ,  text = '/do Наручники на тактическом поясе.&/todo Я надену на вас наручники*снимая наручники с тактического пояса&/cuff {arg_id}&/todo Не двигайтесь*надевая наручники на человека' , arg = '{arg_id}' , enable = true , waiting = '1.5', bind = "{}" , in_fastmenu = true},
+					{cmd = 'uncuff' , description = 'Снять наручники' ,  text = '/do На тактическом поясе прикреплены ключи от наручников.&/me взяв с пояса ключи от наручников прокрутил{sex} замок наручников задержанного&/uncuff {arg_id}&/todo Ваши руки свободны*убирая ключи от наручники обратно на пояс', arg = '{arg_id}', enable = true, waiting = '1.5', bind = "{}", in_fastmenu = true},
+					{cmd = 'gtm' , description = 'Повести за собой' ,  text = '/me крепко схватив задержанного, взял{sex} его за руки&/gotome {arg_id}&/do Задержанный идёт в конвое.', arg = '{arg_id}', enable = true, waiting = '1.5', bind = "{}", in_fastmenu = true},
+					{cmd = 'ungtm' , description = 'Перестать вести за собой' ,  text = '/me отпускает руки задержанного и перестаёт вести его за собой&/ungotome {arg_id}', arg = '{arg_id}', enable = true, waiting = '1.5', bind = "{}", in_fastmenu = true},
+
+					{cmd = 'bot' , description = 'Изьять скрепки у игрока (взлом наручников)' ,  text = '/me увидел{sex} что задержанный использует скрепки для взлома наручников&/todo Вы что себе позволяете?!*изымая скрепки у {get_rp_nick({arg_id})}&/bot {arg_id}' , arg = '{arg_id}' , enable = true , waiting = '1.5', bind = "{}", in_fastmenu = true},
+					{cmd = 'ss' , description = 'Кричалка' ,  text = '/s Всем поднять руки вверх, работает {fraction_tag}!', arg = '', enable = true, waiting = '1.5', bind = "{}"},
+					{cmd = 't' , description = 'Достать тазер' ,  text = '/taser', arg = '', enable = true, waiting = '1.5', bind = "[18,49]" },
+					{cmd = 'frl' , description = 'Первичный обыск' ,  text = 'Сейчас я проверю у вас наличие оружия или других острых предметов, не двигайтесь.&/me прощупывает тело задержанного человека&/me прощупывает карманы задержанного человека', arg = '', enable = true, waiting = '1.5', bind = "{}"},
+					{cmd = 'fr' , description = 'Полный обыск' ,  text = '/do Резиновые перчатки на тактическом поясе.&/todo Сейчас я полностью обыщу вас, на наличие запрещенных предметов*надевая резиновые перчатки&/me прощупывает тело и карманы задержанного человека&/me достаёт из карманов задержанного все его вещи для изучения&/me внимательно осматривает все найденные вещи у задержанного человека&/frisk {arg_id}&/me снимает резиновые перчатки и убирает их на тактический пояск&/do Блокнот с ручкой в нагрудном кармане.&/me берет в руки блокнот с ручкой, и записывает всю информацию про обыск&/me сделав пометки, убирает блокнот с ручкой в нагрудный карман', arg = '{arg_id}', enable = true, waiting = '1.5', bind = "{}", in_fastmenu = true},
+					{cmd = 'take' , description = 'Изьятие предметов игрока' , text = '/do В подсумке находиться небольшой зип-пакет.&/me достаёт из подсумка зип-пакет и отрывает его&/me кладёт в зип-пакет изъятые предметы задержанного человека&/take {arg_id}&/do изъятые предметы в зип-пакете.&/todo Отлично*убирая зип-пакет в подсумок', arg = '{arg_id}' , enable = true , waiting = '1.5', bind = "{}", in_fastmenu = true  },
+					{cmd = 'camon' , description = 'Включить cкрытую боди камеру' ,  text = '/do К форме прикреплена скрытая боди камера.&/me незаметным движением руки включил{sex} боди камеру.&/do Скрытая боди камера включена и снимает всё происходящее.', arg = '', enable = true, waiting = '1.5', bind = "{}"},
+					{cmd = 'camoff' , description = 'Выключить cкрытую боди камеру' ,  text = '/do К форме прикреплена скрытая боди камера.&/me незаметным движением руки выключил{sex} боди камеру.&/do Скрытая боди камера выключена и больше не снимает всё происходящее.', arg = '', enable = true, waiting = '1.5', bind = "{}"},
+					{cmd = 'inc' , description = 'Затащить в транспорт' ,  text = '/me открывает заднюю дверь транспорта&/todo Наклоните голову, здесь дверь*заталкивая задержанного в транспортное средство&/incar {arg_id} {arg2}&/me закрывает заднюю дверь транспорта&/do Задержанный в транспортном средстве.', arg = '{arg_id} {arg2}', enable = true, waiting = '1.5', bind = "{}"},
+					{cmd = 'ej' , description = 'Выбросить из транспорта',  text = '/me открывает дверь транспорта&/me помогает человеку выйти из транспорта&/eject {arg_id}&/me закрывает дверь транспорта', arg = '{arg_id}', enable = true, waiting = '1.5', bind = "{}", in_fastmenu = true},	
+					{cmd = 'pl' , description = 'Выбросить игрока из его транспорта',  text = '/me резким ударом дубинки разбивает стело транспорта задержанного&/pull {arg_id}&/me выбрасывает задержанного из его транспорта и ударом дубинки оглушает его', arg = '{arg_id}', enable = true, waiting = '1.5', bind = "{}", in_fastmenu = true},	
+					{cmd = 'mr' , description = 'Зачитать правило Миранды',  text = 'Вы имеете право хранить молчание.&Всё, что вы скажете, может и будет использовано против вас в суде.&Вы имеете право на 1 телефонный звонок, например для вызова частного адвоката.&Ваш адвокат может присутствовать при допросе.&Если вы не можете оплатить услуги адвоката, он будет предоставлен вам государством.&Вам ясны Ваши права?', arg = '', enable = true, waiting = '1.5', bind = "{}"},	
+					{cmd = 'unmask' , description = 'Снять балаклаву с игрока',  text = '/do Задержанный в балаклаве.&/me стягивает балаклаву с головы задеражнного&/unmask {arg_id}', arg = '{arg_id}', enable = true, waiting = '1.5', bind = "{}" , in_fastmenu = true},
+					{cmd = 'arr' , description = 'Арестовать (в участке)',  text = '/me включает свой бортовой компютер и вводит код доступа сотрудника&/me заходит в раздел оформления протоколов задержаний и указывает данные&/do Протокол задержания заполнен.&/me вызывает по рации дежурный наряд участка и передаёт им задержанного человека&/arrest', arg = '', enable = true, waiting = '1.5', bind = "{}", in_fastmenu = true},
+					{cmd = 'bribe' , description = 'Получение взятки от игрока' ,  text = '/do Гражданин сейчас ведёт запись через аудио-видео устройства?&/n @{get_nick({arg_id})}, отвечайте на РП, например /do Нет.&{pause}&/do Телефон в кармане.&/me достал{sex} телефон, открыл{sex} заметки, и что-то туда написал{sex}&/do В заметках телефона написан такой текст: {arg2}$&/todo Что скажете?*показав телефон преступнику возле себя&{pause}&/bribe {arg_id} {arg2} 1&/n @{get_nick({arg_id})}, используйте /offer для принятия предложения', arg = '{arg_id} {arg2}', enable = true, waiting = '1.5', bind = "{}"},
+					{cmd = 'drugs' , description = 'Провести Drugs Test' ,  text = '/do На тактическом поясе прикреплён подсумок.&/me открывает подсумок и достаёт из него набор Drugs Test&/me берёт из набора пробирку с этиловым спиром&/me засыпает найденное вещество в пробирку&/me достаёт из подсумка тест Имуно-Хром-10 и добавляет его в пробирку&/do В пробирке с этиловым спиртом находится неизвестное вещество и Имуно-Хром-10.&/me аккуратными движениями взбалтывает пробирку&/do От теста Имуно-Хром-10 содержимое пробирки изменило цвет.&/todo Да, это точно наркотики*увидев что содержимое пробирки изменило цвет&/me убирает пробирку обратно в подсумок и закрывает его', arg = '', enable = true, waiting = '1.5', bind = "{}"},
+					{cmd = 'rbomb' , description = 'Деактивировать бомбу' ,  text = '/do На тактическом поясе прикреплён сапёрный набор.&/me снимает с пояса сапёрный набор и кладет его на землю, затем открывает его&/do Открытый сапёрный набор находится на земле.&/me достаёт из сапёрного набора пакет с жидким азотом и кладет его на землю&/me достаёт из сапёрного набора отвёртку&/do Отвертка в руках, а пакет с жидким азотом на земле.&/do На корпусе бомбы находится 2 болтика.&/me откручивает болтики с бомбы и убирает их вместе с отвёрткой в сторону&/me аккуратным движением руки вскрывает крышку бомбы&/me внимательно осматривает бомбу&/do Внутри бомбы видна детонирующая часть.&/me достаёт из сапёрного набора кусачки&/do Кусачки в руках.&/me аккуратным движением кусочок разрезает красный провод бомбы&/do Таймер остановился, тиканье со стороны бомбы не слышно.&/me берёт в руки охлаждающий пакет с жидким азотом и кладёт его детонирующую часть бомбы&/removebomb&/do Бомба обезврежена.&/me убирает кусачки и отвёртку обратно в саперный набор и закрывает его', arg = '', enable = true, waiting = '1.5', bind = "{}"},
+					{cmd = 'delo' , description = 'Расследование убийства' ,  text = '/do Сотрудник прибыл на место убийства.&/todo Такс, что же здесь произошло*осматривая место убийства&/me осматривает и  изучает все улики&{pause}&/me достаёт из подсумка бланк для расследования и ручку&/me заполняет бланк расследования записывая все изученные улики&{pause}&/me записывает в бланк точную дату и время убийства&{pause}&/do Найдено орудие убийства.&/me записывает в бланк орудие убийства&{pause}&/do Бланк расследования убийства полностью заполнен.&/todo Отлично, расследование окончено*убирая бланк в карман', arg = '', enable = true, waiting = '1.5', bind = "{}"},
+					{cmd = 'giveplate' , description = 'Выдача разрешений на номера' ,  text = '/do Бланк и ручка в нагрудном кармане.&/me достаёт ручку и бланк из нагрудного кармана&/me заполняет бланк для выдачу разрешения на номерной знак&/do Бланк полностью заполнен.&/todo Вот ваше разрешение, берите*убирая ручку в нагрудный карман&/giveplate {arg_id} {arg2}&/n @{get_nick({arg_id})}, введите /offer и примите, чтобы получить разрешение на номерной знак.', arg = '{arg_id} {arg2}', enable = true, waiting = '1.5', bind = "{}"},
+					{cmd = 'agenda' , description = 'Выдача повестки игроку' ,  text = '/do В папке с документами лежит ручка и пустой бланк с надписью Повестка.&/me достаёт из папки ручку с пустым бланком повестки&/me начинает заполнять все необходимые поля на бланке повестки&/do Все данные в повестке заполнены.&/me ставит на повестку штамп и печать {fraction_tag}&/do Готовый бланк повестки в руках.&/todo Не забудьте явиться в военкомат по указанному адресу и времени*передавая повестку&/agenda {arg_id}', arg = '{arg_id}', enable = true, waiting = '1.5', bind = "{}", in_fastmenu = true},
 				},
-				fbi = { -- доп.команды для ФБР
-					{ cmd = 'doc', description = 'Запросить документы (FBI)' ,  text = 'Здраствуйте, я {fraction_rank} {fraction_tag}&/do Cлева на груди спец-жетон ФБР.&/me указывает пальцем на свой спец-жетон на груди&Прошу предъявить документ, удостоверяющий вашу личность.&/n {get_nick({arg_id})}, введите /showpass {my_id} или /showbadge {my_id}' , arg = '{arg_id}' , enable = false , waiting = '1.5' , bind = "{}"},
-					{ cmd = 'priton1', description = 'Обнаружен притон' ,  text = '/d ФБР - МЮ: В опасном районе найден наркопритон!&/d ФБР - МЮ: Желающие присоедениться к рейду - в гараж ЛСПД&/d ФБР - МЮ: Возьмите с собой оружие, бронижелет, и обязательно маску!' , arg = '' , enable = true , waiting = '1.5' , bind = "{}"},
-					{ cmd = 'priton2', description = 'Прибытие на притон' ,  text = '/d ФБР - МЮ: Мы прибыли на територию наркопритона! Я куратор спец-операции.&/d ФБР - МЮ: Оцепляйте територию, и никого не вступайте на територию наркопритона.&/d ФБР - МЮ: Кусты срезают только агенты, остальные защищают!' , arg = '' , enable = true , waiting = '1.5' , bind = "{}"},
-					{ cmd = 'priton3', description = 'Конец притона' ,  text = '/d ФБР - МЮ: Спец-операция "Притон" окончена!&/d ФБР - МЮ: Всем спасибо за участие, можете быть свободны!&/d ФБР - МЮ: Не забудьте убрать ограждения с территории.' , arg = '' , enable = true , waiting = '1.5' , bind = "{}"},
-					{ cmd = 'dismiss' , description = 'Уволить госслужащего (1-4)' ,  text = '/do КПК находиться на поясном держателе.&/me берёт в руки свой КПК и включает его&/me заходит в базу данных {fraction_tag} и переходит в раздел управление сотрудниками других организаций&/me открывает дело нужного сотрудника и вносит в него изменения&/do Изменения успешно сохранены.&/dismiss {arg_id} {arg2}&/me выходит с базы данных {fraction_tag} и выключив КПК убирает его на поясной держатель', arg = '{arg_id} {arg2}', enable = false, waiting = '1.5', bind = "{}"},
+				fbi = {
+					{cmd = 'doc', description = 'Запросить документы (FBI)' ,  text = 'Здравствуйте, я {fraction_rank} {fraction_tag}&/do Cлева на груди спец-жетон ФБР.&/me указывает пальцем на свой спец-жетон на груди&Прошу предъявить документ, удостоверяющий вашу личность.&/n @{get_nick({arg_id})}, введите /showpass {my_id} или /showbadge {my_id}' , arg = '{arg_id}' , enable = true, waiting = '1.5', bind = "{}"},
+					{cmd = 'priton1', description = 'Обнаружен притон' ,  text = '/d ФБР - МЮ: В опасном районе найден наркопритон!&/d ФБР - МЮ: Желающие присоедениться к рейду - в гараж ЛСПД&/d ФБР - МЮ: Возьмите с собой оружие, бронижелет, и обязательно маску!' , arg = '' , enable = true , waiting = '1.5', bind = "{}"},
+					{cmd = 'priton2', description = 'Прибытие на притон' ,  text = '/d ФБР - МЮ: Мы прибыли на територию наркопритона! Я куратор спец-операции.&/d ФБР - МЮ: Оцепляйте територию, и никого не вступайте на територию наркопритона.&/d ФБР - МЮ: Кусты срезают только агенты, остальные защищают!' , arg = '' , enable = true , waiting = '1.5', bind = "{}"},
+					{cmd = 'priton3', description = 'Конец притона' ,  text = '/d ФБР - МЮ: Спец-операция "Притон" окончена!&/d ФБР - МЮ: Всем спасибо за участие, можете быть свободны!&/d ФБР - МЮ: Не забудьте убрать ограждения с территории.' , arg = '' , enable = true , waiting = '1.5', bind = "{}"},
+					{cmd = 'gwarn' , description = 'Выдать спец-выговор' ,  text = '/do КПК находиться на поясном держателе.&/me берёт в руки свой КПК и включает его&/me открыв базу данных {fraction_tag} переходит в раздел управление сотрудниками других организаций&/me открывает дело нужного сотрудника и вносит в него изменения&/do Изменения успешно сохранены.&/gwarn {arg_id} {arg2}&/me выходит с базы данных {fraction_tag} и выключив КПК убирает его на поясной держатель', arg = '{arg_id} {arg2}', enable = true, waiting = '1.5', bind = "{}"},
+					{cmd = 'ungwarn' , description = 'Снять спец-выговор' ,  text = '/do КПК находиться на поясном держателе.&/me берёт в руки свой КПК и включает его&/me открыв базу данных {fraction_tag} переходит в раздел управление сотрудниками других организаций&/me открывает дело нужного сотрудника и вносит в него изменения&/do Изменения успешно сохранены.&/ungwarn {arg_id}&/me выходит с базы данных {fraction_tag} и выключив КПК убирает его на поясной держатель', arg = '{arg_id} {arg2}', enable = true, waiting = '1.5', bind = "{}"},
+					{cmd = 'dismiss' , description = 'Уволить госслужащего (1-4)' ,  text = '/do КПК находиться на поясном держателе.&/me берёт в руки свой КПК и включает его&/me открыв базу данных {fraction_tag} переходит в раздел управление сотрудниками других организаций&/me открывает дело нужного сотрудника и вносит в него изменения&/do Изменения успешно сохранены.&/dismiss {arg_id} {arg2}&/me выходит с базы данных {fraction_tag} и выключив КПК убирает его на поясной держатель', arg = '{arg_id} {arg2}', enable = true, waiting = '1.5', bind = "{}"},
+					{cmd = 'tie', description = 'Связать жертву', text = '/do В кармане бронежилета лежит шпагат.&/me легким движением руки достал{sex} из кармана шпагат&/me обвязывает руки жертвы веревкой и стягивает её&/tie {arg_id}', arg = '{arg_id}', enable = true, waiting = '1.5', bind = '{}' , in_fastmenu = true},
+					{cmd = 'untie', description = 'Развязать жертву', text = '/do На правом бедре закреплено тактическое крепление для ножа.&/me движением правой руки открепив нож, берёт его в руки&/do В правой руке держит нож.&/me подойдя к жертве со спины, отрезал{sex} верёвку&/untie {arg_id}', arg = '{arg_id}', enable = true, waiting = '1.5', bind = '{}' , in_fastmenu = true},
+					{cmd = 'lead', description = 'Вести жертву за собой', text = '/me движением руки схватив за шкирку жертвы, ведёт его за собой&/lead {arg_id}', arg = '{arg_id}', enable = true, waiting = '1.5', bind = '{}' , in_fastmenu = true},
+					{cmd = 'unlead', description = 'Прекратить вести жертву', text = '/me расслабив схватку, перестаёт контролировать жертву&/unlead {arg_id}', arg = '{arg_id}', enable = true, waiting = '1.5', bind = '{}' , in_fastmenu = true},
+					{cmd = 'gag', description = 'Заткнуть рот жертве тряпкой', text = '/do На поясе закреплена сумка.&/me правой рукой отстегнув молнию, открывает сумку&/do Внутри сумки лежит тряпка.&/me подходя к жертве, попутно достал{sex} из сумки тряпку&/do Тряпка в руках в развёрнутом виде.&/me обеими руками завернув тряпку, запихнул{sex} в рот жертвы&/gag {arg_id}', arg = '{arg_id}', enable = true, waiting = '1.5', bind = '{}', in_fastmenu = true},
+					{cmd = 'ungag', description = 'Вытащить тряпку изо рта жертвы', text = '/me подойдя ближе к жертве, движением правой руки потянул{sex} за тряпку и забрал{sex} себе&/ungag {arg_id}', arg = '{arg_id}', enable = true, waiting = '1.5', bind = '{}' , in_fastmenu = true},
+					{cmd = 'bag', description = 'Надеть пакет на голову жертвы', text = '/do В кармане куртки лежит мусорный пакет.&/me достал{sex} мусорный пакет из кармана, развернул{sex} его&/me надевает мусорный пакет на голову жертвы, не затягивая его&/bag {arg_id}', arg = '{arg_id}', enable = true, waiting = '1.5', bind = '{}' , in_fastmenu = true},
+					{cmd = 'unbag', description = 'Снять пакет с головы жертвы', text = '/me легким движением руки схватив за пакет, потянул{sex} его вверх, тем самым стянув пакет с головы жертвы&/unbag {arg_id}', arg = '{arg_id}', enable = true, waiting = '1.5', bind = '{}', in_fastmenu = true},
 				},
 				army = {
-					{ cmd = 'pas', description = 'Проверка документов (кпп)', text = 'Здравствуйте, я {fraction_rank} {fraction_tag} - {my_doklad_nick}.&/do Удостоверение находиться в левом кармане брюк.&/me достал{sex} удостоверение и раскрыл{sex} его перед человеком.&/do В удостоверении указано: {fraction} - {fraction_rank} {my_doklad_nick}.&Назовите причину прибытия на территорию на нашу базу.&И предоставьте мне свои документы для проверки!', arg = '', enable = true, waiting = '1.5', in_fastmenu = true  },
-					{ cmd = 'agenda' , description = 'Выдача повестки игроку' ,  text = '/do В папке с документами лежит ручка и пустой бланк с надписью Повестка.&/me достаёт из папки ручку с пустым бланком повестки&/me начинает заполнять все необходимые поля на бланке повестки&/do Все данные в повестке заполнены.&/me ставит на повестку штамп и печать {fraction_tag}&/do Готовый бланк повестки в руках.&/todo Не забудьте явиться в военкомат по указанному адресу и времени*передавая повестку&/agenda {arg_id}', arg = '{arg_id}', enable = true, waiting = '1.5', bind = "{}", in_fastmenu = true},
-					{ cmd = 'cure', description = 'Поднять игрока из стадии', text = '/me наклоняется над человеком, и прощупывает его пульс на сонной артерии&/cure {arg_id}&/do Пульс отсутствует.&/me начинает делать человеку непрямой массаж сердца, время от времени проверяя пульс&/do Спустя несколько минут сердце человека началось биться.&/do Человек пришел в сознание.&/todo Отлично*улыбаясь', arg = '{arg_id}', enable = true, waiting = '1.5' , in_fastmenu = true },
-					{ cmd = 'siren' , description = 'Вкл/выкл мигалок в т/с' , text = '{switchCarSiren}', arg = '' , enable = true , waiting = '1.5', bind = "{}" },
+					{cmd = 'pas', description = 'Проверка документов (кпп)', text = 'Здравствуйте, я {fraction_rank} {fraction_tag} - {my_doklad_nick}.&/do Удостоверение находиться в левом кармане брюк.&/me достал{sex} удостоверение и раскрыл{sex} его перед человеком.&/do В удостоверении указано: {fraction} - {fraction_rank} {my_doklad_nick}.&Назовите причину прибытия на территорию на нашу базу.&И предоставьте мне свои документы для проверки!', arg = '', enable = true, waiting = '1.5', in_fastmenu = true  },
+					{cmd = 'agenda' , description = 'Выдача повестки игроку' ,  text = '/do В папке с документами лежит ручка и пустой бланк с надписью Повестка.&/me достаёт из папки ручку с пустым бланком повестки&/me начинает заполнять все необходимые поля на бланке повестки&/do Все данные в повестке заполнены.&/me ставит на повестку штамп и печать {fraction_tag}&/do Готовый бланк повестки в руках.&/todo Не забудьте явиться в военкомат по указанному адресу и времени*передавая повестку&/agenda {arg_id}', arg = '{arg_id}', enable = true, waiting = '1.5', bind = "{}", in_fastmenu = true},
+					{cmd = 'siren' , description = 'Вкл/выкл мигалок в т/с' , text = '{switchCarSiren}', arg = '' , enable = true , waiting = '1.5', bind = "{}"},
 				},
 				prison = {
-					{ cmd = 't' , description = 'Достать тазер' ,  text = '/taser', arg = '', enable = true, waiting = '1.5', },
-					--  bind = "[18,49]"
-					{ cmd = 'cuff', description = 'Надеть наручники', text = '/do Наручники на тактическом поясе.&/me снимает наручники с пояса и надевает их на задержанного&/cuff {arg_id}&/do Задержанный в наручниках.', arg = '{arg_id}', enable = true, waiting = '1.5', in_fastmenu = true },
-					{ cmd = 'uncuff', description = 'Снять наручники', text = '/do На тактическом поясе прикреплены ключи от наручников.&/me снимает с пояса ключ от наручников и вставляет их в наручники задержанного&/me прокручивает ключ в наручниках и снимает их с задержанного&/uncuff {arg_id}&/do Наручники сняты с задержанного&/me кладёт ключ и наручники обратно на тактический пояс', arg = '{arg_id}', enable = true, waiting = '1.5' , in_fastmenu = true},
-					{ cmd = 'gotome', description = 'Повести за собой', text = '/me схватывает задержанного за руки и ведёт его за собой&/gotome {arg_id}&/do Задержанный идёт в конвое.', arg = '{arg_id}', enable = true, waiting = '1.5' , in_fastmenu = true},
-					{ cmd = 'ungotome', description = 'Перестать вести за собой', text = '/me отпускает руки задержанного и перестаёт вести его за собой&/ungotome {arg_id}', arg = '{arg_id}', enable = true, waiting = '1.5' , in_fastmenu = true},
-					{ cmd = 'take', description = 'Изьятие предметов игрока', text = '/do В подсумке находиться небольшой зип-пакет.&/me достаёт из подсумка зип-пакет и отрывает его&/me кладёт в зип-пакет изьятые предметы задержанного человека&/take {arg_id}&/do Изьятые предметы в зип-пакете.&/todo Отлично*убирая зип-пакет в подсумок', arg = '{arg_id}', enable = true, waiting = '1.5', in_fastmenu = true },
+					{cmd = 't' , description = 'Достать тазер' ,  text = '/taser', arg = '', enable = true, waiting = '1.5', },
+					{cmd = 'cuff', description = 'Надеть наручники', text = '/do Наручники на тактическом поясе.&/me снимает наручники с пояса и надевает их на задержанного&/cuff {arg_id}&/do Задержанный в наручниках.', arg = '{arg_id}', enable = true, waiting = '1.5', in_fastmenu = true},
+					{cmd = 'uncuff', description = 'Снять наручники', text = '/do На тактическом поясе прикреплены ключи от наручников.&/me снимает с пояса ключ от наручников и вставляет их в наручники задержанного&/me прокручивает ключ в наручниках и снимает их с задержанного&/uncuff {arg_id}&/do Наручники сняты с задержанного&/me кладёт ключ и наручники обратно на тактический пояс', arg = '{arg_id}', enable = true, waiting = '1.5', in_fastmenu = true},
+					{cmd = 'gotome', description = 'Повести за собой', text = '/me схватывает задержанного за руки и ведёт его за собой&/gotome {arg_id}&/do Задержанный идёт в конвое.', arg = '{arg_id}', enable = true, waiting = '1.5', in_fastmenu = true},
+					{cmd = 'ungotome', description = 'Перестать вести за собой', text = '/me отпускает руки задержанного и перестаёт вести его за собой&/ungotome {arg_id}', arg = '{arg_id}', enable = true, waiting = '1.5', in_fastmenu = true},
+					{cmd = 'take', description = 'Изьятие предметов игрока', text = '/do В подсумке находиться небольшой зип-пакет.&/me достаёт из подсумка зип-пакет и отрывает его&/me кладёт в зип-пакет изъятые предметы задержанного человека&/take {arg_id}&/do изъятые предметы в зип-пакете.&/todo Отлично*убирая зип-пакет в подсумок', arg = '{arg_id}', enable = true, waiting = '1.5', in_fastmenu = true},
 					{cmd = 'carcer', description = 'Посадка игрока в карцер',text = '/do На поясе висит связка ключей.&/me прислонив заключённого к стене, снял ключ со связки, открыл дверцу камеры&/me лёгкими движениями рук затолкнул заключённого в камеру, после чего закрыл её&/me лёгкими движениями рук закрепил ключ к связке&/carcer {arg_id} {arg2} {arg3} {arg4}',arg = '{arg_id} {arg2} {arg3} {arg4}', enable = true, waiting = '1.5'},
 					{cmd = 'setcarcer', description = 'Смена карцера игроку', text = '/do На поясе висит связка ключей.&/me лёгкими движениями рук снял ключ со связки, открыл свободную камеру и камеру заключённого&/me вытолкнул заключённого из первой камеры, затолкнул во вторую, закрыв двери обоих камер&/me лёгкими движениями рук закрепил ключ к связке&/setcarcer {arg_id} {arg2}', arg = '{arg_id}, {arg2}', enable = true, waiting = '1.5'},
-					{ cmd = 'uncarcer', description = 'Выпуск игрока из карцера', text = '/do На поясе висит связка ключей.&/me движениями рук снял ключ со связки, открыл камеру и вытолкнул из неё заключённого&/me закрыл дверцу камеры, закрепил ключ к связке&/uncarcer {arg_id}', arg = '{arg_id}', enable = true, waiting = '1.5' },
-					{ cmd = 'frisk', description = 'Обыск заключённого', text = '/do Перчатки на поясе.&/me схватил перчатки и одел&/do Перчатки одеты.&/me начал нащупывать человека напротив&/frisk {arg_id}', arg = '{arg_id}', enable = true, waiting = '1.5', in_fastmenu = true },
-					{ cmd = 'punishsu', description = 'Повысить уровень наказания.', text ='/me достаёт свой КПК и открывает базу данных тюрьмы&/me вносит изменения в базу данных тюрьмы&/do Изменения занесены в базу данных тюрьмы.&/punish {arg_id} {arg2} 2 {arg3}', arg = '{arg_id} {arg2} {arg3}', enable = true, waiting = '1.5'},
+					{cmd = 'uncarcer', description = 'Выпуск игрока из карцера', text = '/do На поясе висит связка ключей.&/me движениями рук снял ключ со связки, открыл камеру и вытолкнул из неё заключённого&/me закрыл дверцу камеры, закрепил ключ к связке&/uncarcer {arg_id}', arg = '{arg_id}', enable = true, waiting = '1.5' },
+					{cmd = 'frisk', description = 'Обыск заключённого', text = '/do Перчатки на поясе.&/me схватил перчатки и одел&/do Перчатки одеты.&/me начал нащупывать человека напротив&/frisk {arg_id}', arg = '{arg_id}', enable = true, waiting = '1.5', in_fastmenu = true},
+					{cmd = 'punishsu', description = 'Повысить уровень наказания.', text ='/me достаёт свой КПК и открывает базу данных тюрьмы&/me вносит изменения в базу данных тюрьмы&/do Изменения занесены в базу данных тюрьмы.&/punish {arg_id} {arg2} 2 {arg3}', arg = '{arg_id} {arg2} {arg3}', enable = true, waiting = '1.5'},
 					{cmd = 'punishclear', description = 'Понизить уровень наказания', text = '/me достаёт блокнот из нагрудного кармана&/do Блокнот в руке.&/me открывает его на странице с записями о поведении заключённых.&/do В блокноте видна запись: "{get_rp_nick({arg_id})}, примерное поведение...&/do ...участие в уборке территории, отсутствие нарушений."&/me берёт ручку и записывает новую информацию о заключённом.&/do В блокноте добавлена запись: "Рекомендация на сокращение срока...&/do ...на {arg2} года за добросовестное выполнение обязанностей."&/me закрывает блокнот и убирает его обратно в карман формы.&/do Данные о заключённом зафиксированы...&/do ...для последующего рассмотрения администрацией.', arg = '{arg_id} {arg2} {arg3}', enable = true, waiting = '1.5'},
 				},
 				hospital = {	
-					{ cmd = 'siren' , description = 'Вкл/выкл мигалок в т/с' , text = '{switchCarSiren}', arg = '' , enable = true , waiting = '1.5', bind = "{}" },
-					{ cmd = 'hme' , description = 'Лечение самого себя' ,  text = '/me достаёт из своего мед.кейса лекарство и принимает его&/heal {my_id} {price_heal}' , arg = '' , enable = true, waiting = '1.5', bind = "{}"},
-					{ cmd = 'zd' , description = 'Привествие игрока' , text = 'Здраствуйте {get_ru_nick({arg_id})}&Я {my_ru_nick} - {fraction_rank} {fraction_tag}&Чем я могу Вам помочь?', arg = '{arg_id}' , enable = true , waiting = '1.5', bind = "{}", in_fastmenu = true},
-					{ cmd = 'go' , description = 'Позвать игрока за собой' , text = 'Хорошо {get_ru_nick({arg_id})}, следуйте за мной.', arg = '{arg_id}' , enable = true, waiting = '1.5', bind = "{}", in_fastmenu = true},
-					{ cmd = 'hl' , description = 'Обычное лечение игрока' , text = '/me достаёт из своего мед.кейса нужное лекарство и передаёт его человеку напротив&/todo Принимайте это лекарство, оно вам поможет*улыбаясь&/heal {arg_id} {price_heal}&/n {get_nick({arg_id})}, примите предложение в /offer чтобы вылечиться!', arg = '{arg_id}' , enable = true, waiting = '1.5', bind = "{}", in_fastmenu = true},
-					{ cmd = 'hla' , description = 'Лечение охранника игрока' ,  text = '/me достаёт из своего мед.кейса лекарство и передаёт его человеку напротив&/todo Давайте своему охраннику это лекарство, оно ему поможет*улыбаясь&/healactor {arg_id} {price_actorheal}&/n {get_nick({arg_id})}, примите предложение в /offer чтобы вылечить охранника!' , arg = '{arg_id}' , enable = true , waiting = '1.5', bind = "{}", in_fastmenu = true},
-					{ cmd = 'hlb' , description = 'Лечение игрока от наркозависимости' ,  text = '/me достаёт из своего мед.кейса таблетки от наркозависимости и передаёт их пациенту напротив&/todo Принимайте эти таблетки, и в скором времени Вы излечитесь от наркозависимости*улыбаясь&/healbad {arg_id}&/n {get_nick({arg_id})}, примите предложение в /offer чтобы вылечиться!' , arg = '{arg_id}' , enable = true , waiting = '1.5', bind = "{}", in_fastmenu = true},	
-					{ cmd = 'cure' , description = 'Поднять игрока из стадии' ,  text = '/me наклоняется над человеком, и прощупывает его пульс на сонной артерии&/cure {arg_id}&/do Пульс отсутствует.&/me начинает делать человеку непрямой массаж сердца, время от времени проверяя пульс&/do Спустя несколько минут сердце человека началось биться.&/do Человек пришел в сознание.&/todo Отлично*улыбаясь' , arg = '{arg_id}' , enable = true , waiting = '1.5', bind = "{}", in_fastmenu = true},	
-					{ cmd = 'mt' , description = 'Мед.оcмотр для военного билета' ,  text = 'Хорошо, сейчас я проведу вам мед.осмотр для получения военного ... &... билета по стану здоровья, но шанс на успех всего 1 процент!&/mticket {arg_id} {price_mticket}&/n {get_nick({arg_id})}, примите предложение в /offer для начала мед.осмотра!' , arg = '{arg_id}' , enable = true, waiting = '1.5', bind = "{}"},
-					{ cmd = 'pilot' , description = 'Мед.осмотр для пилотов' ,  text = 'Хорошо, сейчас я проведу вам мед.осмотр для пилотов.&/medcheck {arg_id} {price_medosm}&/n {get_nick({arg_id})}, примите предложение в /offer для продолжения мед.осмотра!&/n Пока вы не примите предложение, мы не сможем начать!&{pause}&И так...&/me достаёт из мед.кейса стерильные перчатки и надевает их на руки&/do Перчатки на руках.&/todo Начнём мед.осмотр*улыбаясь.&Сейчас я проверю ваше горло, откройте рот и высуните язык.&/me достаёт из мед.кейса фонарик и включив его осматривает горло человека напротив&Хорошо, можете закрывать рот, сейчас я проверю ваши глаза.&/me проверяет реакцию человека на свет, посветив фонарик в глаза&/do Зрачки глаз обследуемого человека сузились.&/todo Отлично*выключая фонарик и убирая его в мед.кейс&Такс, сейчас я проверю ваше сердцебиение, поэтому приподнимите верхную одежду!&/me достаёт из мед.кейса стетоскоп и приложив его к груди человека проверяет сердцебиение&/do Сердцебиение в районе 65 ударов в минуту.&/todo С сердцебиением у вас все в порядке*убирая стетоскоп обратно в мед.кейс&/me снимает со своих рук использованные перчатки и выбрасывает их&Ну что-ж я могу вам сказать, со здоровьем у вас все в порядке, вы свободны!' , arg = '{arg_id}' , enable = true, waiting = '1.5' , bind = "{}", in_fastmenu = true},
-					{ cmd = 'medin' , description = 'Оформление игроку мед.страховки' ,  text = 'Для оформления мед.страховки Вам необходимо оплатить определнную cумму.&Стоимость зависит от срока действия будущей мед.страховки.&На 1 неделю - $4ОО.ООО. На 2 недели - $8ОО.ООО. На 3 недели - $1.2ОО.ООО.&И так, скажите, на какой срок Вам оформить мед.страховку?&{pause}&/me достаёт из своего мед.кейса пустой бланк мед.страховки, ручку и печать {fraction_tag}&/me открывает бланк мед.страховки и начинает его заполнять, затем ставит печать {fraction_tag}&/me полностю заполнив бланк мед.страховки убирает ручку и печать обратно в свой мед.кейс&/givemedinsurance {arg_id}&/todo Вот ваша мед.страховка, берите*протягивая бланк с мед.страховкой человеку напротив себя&/n {get_nick({arg_id})}, примите предложение в /offer для получения' , arg = '{arg_id}' , enable = true, waiting = '1.5' , bind = "{}", in_fastmenu = true},
-					{cmd = 'med' , description = 'Оформление игроку мед.карты' ,  text = 'Оформление мед. карты платное и зависит от её срока действия!&Мед. карта на 7 дней - ${price_med7}, на 14 дней - ${price_med14}.&Мед. карта на 30 дней - ${price_med30}, на 60 дней - ${price_med60}.&Скажите, вам на какой срок оформить мед. карту?&{show_medcard_menu}&Хорошо, тогда приступим к оформлению.&/me достаёт из своего мед.кейса пустую мед.карту, ручку и печать {fraction_tag}&/me открывает пустую мед.карту и начинает её заполнять, затем ставит печать {fraction_tag}&/me полностю заполнив мед.карту убирает ручку и печать обратно в свой мед.кейс&/todo Вот ваша мед.карта, берите*протягивая заполненную мед.карту человеку напротив себя&/medcard {arg_id} {get_medcard_status} {get_medcard_days} {get_medcard_price}&/n {get_nick({arg_id})}, примите предложение в /offer для получения медкарты' , arg = '{arg_id}' , enable = true, waiting = '1.5' , bind = "{}", in_fastmenu = true},
-					{ cmd = 'recept' , description = 'Выдача игроку рецептов' ,  text = 'Стоимость одного рецепта составляет ${price_recept}&Скажите сколько Вам требуется рецептов, после чего мы продолжим.&/n Внимание! В течении часа выдаётся максимум 5 рецептов!&{show_recept_menu}&Хорошо, сейчас я выдам вам рецепты.&/me достаёт из своего мед.кейса бланк для оформления рецептов и начает его заполнять&/me ставит на бланк рецепта печать {fraction_tag}&/do Бланк успешно заполнен.&/todo Вот, держите!*передавая бланк  рецепта человеку напротив&/recept {arg_id} {get_recepts}' , arg = '{arg_id}' , enable = true, waiting = '1.5' , bind = "{}", in_fastmenu = true},
-					{ cmd = 'ant' , description = 'Выдача игроку антибиотиков' ,  text = 'Стоимость одного антибиотика составляет ${price_ant}&Скажите сколько Вам требуется антибиотиков, после чего мы продолжим.&/n Внимание! Вы можете купить от 1 до 20 антибитиков за один раз!&{show_ant_menu}&Хорошо, сейчас я выдам вам антибиотики.&/me открывает свой мед.кейс и достаёт из него пачку антибиотиков, после чего закрывает мед.кейс&/do Антибиотики находятся в руках.&/todo Вот держите, употребляйте их строго по рецепту!*передавая антибиотики человеку напротив&/antibiotik {arg_id} {get_ants}' , arg = '{arg_id}' , enable = true, waiting = '1.5' , bind = "{}", in_fastmenu = true},
-					{cmd = 'osm' , description = 'Полный мед.осмотр игрока (РП)' ,  text = 'Хорошо, сейчас я проведу вам мед.осмотр.&Дайте мне вашу мед.карту для проверки.&/n {get_nick({arg_id})}, введите /showmc {my_id} чтобы показать мне мед.карту.&{pause}&/me достаёт из мед.кейса стерильные перчатки и надевает их на руки&/do Перчатки на руках.&/todo Начнём мед.осмотр*улыбаясь.&Сейчас я проверю ваше горло, откройте рот и высуните язык.&/n Используйте /me открыл(-а) рот чтоб мы продолжили&{pause}&/me достаёт из мед.кейса фонарик и включив его осматривает горло человека напротив&Хорошо, можете закрывать рот, сейчас я проверю ваши глаза.&/me проверяет реакцию человека на свет, посветив фонарик в глаза&/do Зрачки глаз обследуемого человека сузились.&/todo Отлично*выключая фонарик и убирая его в мед.кейс&Такс, сейчас я проверю ваше сердцебиение, поэтому приподнимите верхную одежду!&/n {get_nick({arg_id})}, введите /showtatu чтобы снять одежду по РП&{pause}&/me достаёт из мед.кейса стетоскоп и приложив его к груди человека проверяет сердцебиение&/do Сердцебиение в районе 65 ударов в минуту.&/todo С сердцебиением у вас все в порядке*убирая стетоскоп обратно в мед.кейс&/me снимает со своих рук использованные перчатки и выбрасывает их&Ну что-ж я могу вам сказать...&Со здоровьем у вас все в порядке, вы свободны!' , arg = '{arg_id}', enable = true, waiting = '1.5', bind = "{}"} , 
-					{ cmd = 'gd' , description = 'Экстренный вызов (/godeath)' ,  text = '/me достаёт из кармана свой телефон и заходит в базу данных {fraction_tag}&/me просматривает информацию и включает навигатор к выбранному месту экстренного вызова&/godeath {arg_id}' , arg = '{arg_id}' , enable = true, waiting = '1.5' , bind = "{}"  },
-					{ cmd = 'exp' , description = 'Выгнать игрока из больницы' ,  text = 'Вы больше не можете здесь находиться, я выгоняю вас из больницы!&/me схватив человека ведёт к выходу из больницы и закрывает за ним дверь&/expel {arg_id} Н.П.Б.' , arg = '{arg_id}' , enable = true , waiting = '1.5' , bind = "{}", in_fastmenu = true},
+					{cmd = 'siren' , description = 'Вкл/выкл мигалок в т/с' , text = '{switchCarSiren}', arg = '' , enable = true , waiting = '1.5', bind = "{}"},
+					{cmd = 'hme' , description = 'Лечение самого себя' ,  text = '/me достаёт из своего мед.кейса лекарство и принимает его&/heal {my_id} {get_price_heal}' , arg = '' , enable = true, waiting = '1.5', bind = "{}"},
+					{cmd = 'zd' , description = 'Привествие игрока' , text = 'Здравствуйте {get_ru_nick({arg_id})}&Я {my_ru_nick} - {fraction_rank} {fraction_tag}&Чем я могу Вам помочь?', arg = '{arg_id}' , enable = true , waiting = '1.5', bind = "{}", in_fastmenu = true},
+					{cmd = 'go' , description = 'Позвать игрока за собой' , text = 'Хорошо {get_ru_nick({arg_id})}, следуйте за мной.', arg = '{arg_id}' , enable = true, waiting = '1.5', bind = "{}", in_fastmenu = true},
+					{cmd = 'hl' , description = 'Обычное лечение игрока' , text = '/me достаёт из своего мед.кейса нужное лекарство и передаёт его человеку напротив&/todo Принимайте это лекарство, оно вам поможет*улыбаясь&/heal {arg_id} {get_price_heal}&/n @{get_nick({arg_id})}, примите предложение в /offer чтобы вылечиться!', arg = '{arg_id}' , enable = true, waiting = '1.5', bind = "{}", in_fastmenu = true},
+					{cmd = 'hla' , description = 'Лечение охранника игрока' ,  text = '/me достаёт из своего мед.кейса лекарство и передаёт его человеку напротив&/todo Давайте своему охраннику это лекарство, оно ему поможет*улыбаясь&/healactor {arg_id} {get_price_actorheal}&/n @{get_nick({arg_id})}, примите предложение в /offer чтобы вылечить охранника!' , arg = '{arg_id}' , enable = true , waiting = '1.5', bind = "{}", in_fastmenu = true},
+					{cmd = 'hlb' , description = 'Лечение игрока от наркозависимости' ,  text = '/me достаёт из своего мед.кейса таблетки от наркозависимости и передаёт их пациенту напротив&/todo Принимайте эти таблетки, и в скором времени Вы излечитесь от наркозависимости*улыбаясь&/healbad {arg_id}&/n @{get_nick({arg_id})}, примите предложение в /offer чтобы вылечиться!' , arg = '{arg_id}' , enable = true , waiting = '1.5', bind = "{}", in_fastmenu = true},	
+					{cmd = 'mt' , description = 'Мед.оcмотр для военного билета' ,  text = 'Хорошо, сейчас я проведу вам мед.осмотр для получения военного ... &... билета по стану здоровья, но шанс на успех всего 1 процент!&/mticket {arg_id} {get_price_mticket}&/n @{get_nick({arg_id})}, примите предложение в /offer для начала мед.осмотра!' , arg = '{arg_id}' , enable = true, waiting = '1.5', bind = "{}"},
+					{cmd = 'pilot' , description = 'Мед.осмотр для пилотов' ,  text = 'Хорошо, сейчас я проведу вам мед.осмотр для пилотов.&/medcheck {arg_id} {get_price_medosm}&/n @{get_nick({arg_id})}, примите предложение в /offer для продолжения мед.осмотра!&/n Пока вы не примите предложение, мы не сможем начать!&{pause}&И так...&/me достаёт из мед.кейса стерильные перчатки и надевает их на руки&/do Перчатки на руках.&/todo Начнём мед.осмотр*улыбаясь.&Сейчас я проверю ваше горло, откройте рот и высуните язык.&/me достаёт из мед.кейса фонарик и включив его осматривает горло человека напротив&Хорошо, можете закрывать рот, сейчас я проверю ваши глаза.&/me проверяет реакцию человека на свет, посветив фонарик в глаза&/do Зрачки глаз обследуемого человека сузились.&/todo Отлично*выключая фонарик и убирая его в мед.кейс&Такс, сейчас я проверю ваше сердцебиение, поэтому приподнимите верхную одежду!&/me достаёт из мед.кейса стетоскоп и приложив его к груди человека проверяет сердцебиение&/do Сердцебиение в районе 65 ударов в минуту.&/todo С сердцебиением у вас все в порядке*убирая стетоскоп обратно в мед.кейс&/me снимает со своих рук использованные перчатки и выбрасывает их&Ну что-ж я могу вам сказать, со здоровьем у вас все в порядке, вы свободны!' , arg = '{arg_id}' , enable = true, waiting = '1.5', bind = "{}", in_fastmenu = true},
+					{cmd = 'medin' , description = 'Оформление игроку мед.страховки' ,  text = 'Для оформления мед.страховки Вам необходимо оплатить определнную cумму.&Стоимость зависит от срока действия будущей мед.страховки.&На 1 неделю - $4ОО.ООО. На 2 недели - $8ОО.ООО. На 3 недели - $1.2ОО.ООО.&И так, скажите, на какой срок Вам оформить мед.страховку?&{pause}&/me достаёт из своего мед.кейса пустой бланк мед.страховки, ручку и печать {fraction_tag}&/me открывает бланк мед.страховки и начинает его заполнять, затем ставит печать {fraction_tag}&/me полностью заполнив бланк мед.страховки убирает ручку и печать обратно в свой мед.кейс&/givemedinsurance {arg_id}&/todo Вот ваша мед.страховка, берите*протягивая бланк с мед.страховкой человеку напротив себя&/n @{get_nick({arg_id})}, примите предложение в /offer для получения' , arg = '{arg_id}' , enable = true, waiting = '1.5', bind = "{}", in_fastmenu = true},
+					{cmd = 'med' , description = 'Оформление игроку мед.карты' ,  text = 'Оформление мед. карты платное и зависит от её срока действия!&Мед. карта на 7 дней - ${get_price_med7}, на 14 дней - ${get_price_med14}.&Мед. карта на 30 дней - ${get_price_med30}, на 60 дней - ${get_price_med60}.&Скажите, вам на какой срок оформить мед. карту?&{show_medcard_menu}&Хорошо, тогда приступим к оформлению.&/me достаёт из своего мед.кейса пустую мед.карту, ручку и печать {fraction_tag}&/me открывает пустую мед.карту и начинает её заполнять, затем ставит печать {fraction_tag}&/me полностью заполнив мед.карту убирает ручку и печать обратно в свой мед.кейс&/todo Вот ваша мед.карта, берите*протягивая заполненную мед.карту человеку напротив себя&/medcard {arg_id} {get_medcard_status} {get_medcard_days} {get_medcard_price}&/n @{get_nick({arg_id})}, примите предложение в /offer для получения медкарты' , arg = '{arg_id}' , enable = true, waiting = '1.5', bind = "{}", in_fastmenu = true},
+					{cmd = 'recept' , description = 'Выдача игроку рецептов' ,  text = 'Стоимость одного рецепта составляет ${get_price_recept}&Скажите сколько Вам требуется рецептов, после чего мы продолжим.&/n Внимание! В течении часа выдаётся максимум 5 рецептов!&{show_recept_menu}&Хорошо, сейчас я выдам вам рецепты.&/me достаёт из своего мед.кейса бланк для оформления рецептов и начает его заполнять&/me ставит на бланк рецепта печать {fraction_tag}&/do Бланк успешно заполнен.&/todo Вот, держите!*передавая бланк  рецепта человеку напротив&/recept {arg_id} {get_recepts}' , arg = '{arg_id}' , enable = true, waiting = '1.5', bind = "{}", in_fastmenu = true},
+					{cmd = 'ant' , description = 'Выдача игроку антибиотиков' ,  text = 'Стоимость одного антибиотика составляет ${get_price_ant}&Скажите сколько Вам требуется антибиотиков, после чего мы продолжим.&/n Внимание! Вы можете купить от 1 до 20 антибитиков за один раз!&{show_ant_menu}&Хорошо, сейчас я выдам вам антибиотики.&/me открывает свой мед.кейс и достаёт из него пачку антибиотиков, после чего закрывает мед.кейс&/do Антибиотики находятся в руках.&/todo Вот держите, употребляйте их строго по рецепту!*передавая антибиотики человеку напротив&/antibiotik {arg_id} {get_ants}' , arg = '{arg_id}' , enable = true, waiting = '1.5', bind = "{}", in_fastmenu = true},
+					{cmd = 'osm' , description = 'Полный мед.осмотр игрока (РП)' ,  text = 'Хорошо, сейчас я проведу вам мед.осмотр.&Дайте мне вашу мед.карту для проверки.&/n @{get_nick({arg_id})}, введите /showmc {my_id} чтобы показать мне мед.карту.&{pause}&/me достаёт из мед.кейса стерильные перчатки и надевает их на руки&/do Перчатки на руках.&/todo Начнём мед.осмотр*улыбаясь.&Сейчас я проверю ваше горло, откройте рот и высуните язык.&/n Используйте /me открыл(-а) рот чтоб мы продолжили&{pause}&/me достаёт из мед.кейса фонарик и включив его осматривает горло человека напротив&Хорошо, можете закрывать рот, сейчас я проверю ваши глаза.&/me проверяет реакцию человека на свет, посветив фонарик в глаза&/do Зрачки глаз обследуемого человека сузились.&/todo Отлично*выключая фонарик и убирая его в мед.кейс&Такс, сейчас я проверю ваше сердцебиение, поэтому приподнимите верхную одежду!&/n @{get_nick({arg_id})}, введите /showtatu чтобы снять одежду по РП&{pause}&/me достаёт из мед.кейса стетоскоп и приложив его к груди человека проверяет сердцебиение&/do Сердцебиение в районе 65 ударов в минуту.&/todo С сердцебиением у вас все в порядке*убирая стетоскоп обратно в мед.кейс&/me снимает со своих рук использованные перчатки и выбрасывает их&Ну что-ж я могу вам сказать...&Со здоровьем у вас все в порядке, вы свободны!' , arg = '{arg_id}', enable = true, waiting = '1.5', bind = "{}"} , 
+					{cmd = 'gd' , description = 'Экстренный вызов (/godeath)' ,  text = '/me достаёт из кармана свой телефон и заходит в базу данных {fraction_tag}&/me просматривает информацию и включает навигатор к выбранному месту экстренного вызова&/godeath {arg_id}' , arg = '{arg_id}' , enable = true, waiting = '1.5', bind = "{}"},
+					{cmd = 'exp' , description = 'Выгнать игрока из больницы' ,  text = 'Вы больше не можете здесь находиться, я выгоняю вас из больницы!&/me схватив человека ведёт к выходу из больницы и закрывает за ним дверь&/expel {arg_id} Н.П.Б.' , arg = '{arg_id}' , enable = true , waiting = '1.5', bind = "{}", in_fastmenu = true},
 				},
 				smi = {
-					{cmd = 'zd', description = 'Привествие игрока' , text = 'Здраствуйте {get_ru_nick({arg_id})}&Я {my_ru_nick} - {fraction_rank} {fraction_tag}&Чем я могу Вам помочь?', arg = '{arg_id}' , enable = true , waiting = '1.5', bind = "{}" , in_fastmenu = true},
-					{ cmd = 'go' , description = 'Позвать игрока за собой' , text = 'Хорошо {get_ru_nick({arg_id})}, следуйте за мной.', arg = '{arg_id}' , enable = true, waiting = '1.5' , bind = "{}", in_fastmenu = true},
+					{cmd = 'zd', description = 'Привествие игрока' , text = 'Здравствуйте {get_ru_nick({arg_id})}&Я {my_ru_nick} - {fraction_rank} {fraction_tag}&Чем я могу Вам помочь?', arg = '{arg_id}' , enable = true , waiting = '1.5', bind = "{}" , in_fastmenu = true},
+					{cmd = 'go' , description = 'Позвать игрока за собой' , text = 'Хорошо {get_ru_nick({arg_id})}, следуйте за мной.', arg = '{arg_id}' , enable = true, waiting = '1.5', bind = "{}", in_fastmenu = true},
+					{cmd = 'expel' , description = 'Выгнать игрока из здания' ,  text = 'Вы больше не можете здесь находиться, я выгоняю вас из здания!&/me схватив человека ведёт к выходу из здания и закрывает за ним дверь&/expel {arg_id} Н.П.Р.' , arg = '{arg_id}' , enable = true , waiting = '1.5', bind = "{}", in_fastmenu = true},
 					
-					{ cmd = 'expel' , description = 'Выгнать игрока из здания' ,  text = 'Вы больше не можете здесь находиться, я выгоняю вас из здрания!&/me схватив человека ведёт к выходу из здания и закрывает за ним дверь&/expel {arg_id} Н.П.Р.' , arg = '{arg_id}' , enable = true , waiting = '1.5' , bind = "{}", in_fastmenu = true},
-					{ cmd = 'cure' , description = 'Поднять игрока из стадии' ,  text = '/me наклоняется над человеком, и прощупывает его пульс на сонной артерии&/cure {arg_id}&/do Пульс отсутствует.&/me начинает делать человеку непрямой массаж сердца, время от времени проверяя пульс&/do Спустя несколько минут сердце человека началось биться.&/do Человек пришел в сознание.&/todo Отлично*улыбаясь' , arg = '{arg_id}' , enable = true , waiting = '1.5' , bind = "{}"},
 				},
 				fd = {
-					{ cmd = 'siren' , description = 'Вкл/выкл мигалок в т/с' , text = '{switchCarSiren}', arg = '' , enable = true , waiting = '1.5', bind = "{}" },
-					{ cmd = 'zd' , description = 'Привествие игрока' , text = 'Здраствуйте {get_ru_nick({arg_id})}&Я {my_ru_nick} - {fraction_rank} {fraction_tag}&Чем я могу Вам помочь?', arg = '{arg_id}' , enable = true , waiting = '1.5', bind = "{}" , in_fastmenu = true},
-					{ cmd = 'cure' , description = 'Поднять игрока из стадии' ,  text = '/me наклоняется над человеком, и прощупывает его пульс на сонной артерии&/cure {arg_id}&/do Пульс отсутствует.&/me начинает делать человеку непрямой массаж сердца, время от времени проверяя пульс&/do Спустя несколько минут сердце человека началось биться.&/do Человек пришел в сознание.&/todo Отлично*улыбаясь' , arg = '{arg_id}' , enable = true , waiting = '1.5' , bind = "{}" , in_fastmenu = true},
+					{cmd = 'siren' , description = 'Вкл/выкл мигалок в т/с' , text = '{switchCarSiren}', arg = '' , enable = true , waiting = '1.5', bind = "{}"},
+					{cmd = 'zd' , description = 'Привествие игрока' , text = 'Здравствуйте {get_ru_nick({arg_id})}&Я {my_ru_nick} - {fraction_rank} {fraction_tag}&Чем я могу Вам помочь?', arg = '{arg_id}' , enable = true , waiting = '1.5', bind = "{}" , in_fastmenu = true},
 				},
 				lc = {
-					{cmd = 'zd' , description = 'Привествие игрока' , text = 'Здраствуйте, я {my_ru_nick} - {fraction_rank} {fraction_tag}&Чем я могу Вам помочь? Если нужна лицензия - скажите тип и срок', arg = '{arg_id}' , enable = true , waiting = '1.5', bind = "{}", in_fastmenu = true},
+					{cmd = 'zd' , description = 'Привествие игрока' , text = 'Здравствуйте, я {my_ru_nick} - {fraction_rank} {fraction_tag}&Чем я могу Вам помочь? Если нужна лицензия - скажите тип и срок', arg = '{arg_id}' , enable = true , waiting = '1.5', bind = "{}", in_fastmenu = true},
 					{cmd = 'go', description = 'Позвать игрока за собой', text = 'Хорошо {get_ru_nick({arg_id})}, следуйте за мной.', arg = '{arg_id}', enable = true, waiting = '1.5', bind = "{}", in_fastmenu = true},
-					{ cmd = 'gl' , description = 'Выдача лицензии игроку' , text = '/me взял{sex} со стола бланк на получение лицензии и заполнил{sex} его&/do Спустя некоторое время бланк на получение лицензии был заполнен.&/me распечатав лицензию передал{sex} её человеку напротив&/givelicense {arg_id}&Вот ваша лицензия, всего Вам хорошего!&/n {get_nick({arg_id})}, введите команду /offer чтобы получить лицензию!', arg = '{arg_id}' , enable = true, waiting = '1.5', bind = "{}", in_fastmenu = true},
-					{cmd = 'prices' , description = 'Ознакомить игрока с ценами' , text = '/todo Сейчас я скажу вам цены на лицензии*доставая изпод стойки бланк с ценами&/do Бланк с ценами всех лицензий в руках.&/me подвинул{sex} бланк поближе к себе и начал{sex} читать цены&На автомобиль: 1 месяц - ${price_avto1}, 2 месяца - ${price_avto2}, 3 месяца - ${price_avto3}&На мото: 1 месяц - ${price_moto1}, 2 месяца - ${price_moto2}, 3 месяца - ${price_moto3}&На водный: 1 месяц - ${price_swim1}, 2 месяца - ${price_swim2}, 3 месяца - ${price_swim3}&На полёты: 1 месяц - ${price_fly1}&На оружие: 1 месяц - ${price_gun1}, 2 месяца - ${price_gun2}, 3 месяца - ${price_gun3}&На охоту: 1 месяц - ${price_hunt1}, 2 месяца - ${price_hunt2}, 3 месяца - ${price_hunt3}&На рыбалку: 1 месяц - ${price_fish1}, 2 месяца - ${price_fish2}, 3 месяца - ${price_fish3}&На клады: 1 месяц - ${price_klad1}, 2 месяца - ${price_klad2}, 3 месяца - ${price_klad3}&На такси: 1 месяц - ${price_taxi1}, 2 месяца - ${price_taxi2}, 3 месяца - ${price_taxi3}&На механика: 1 месяц - ${price_mexa1}, 2 месяца - ${price_mexa2}, 3 месяца - ${price_mexa3}&/todo Вот такие у нас цены*убирая бланк с ценами' , arg = '' , enable = true , waiting = '1.5' , bind = "{}", in_fastmenu = true},
-					{cmd = 'medka' , description = 'Запросить медкарту для проверки' , text = 'Чтобы получить эту лицензию, покажите мне вашу мед.карту&/n {get_nick({arg_id})}, введите команду /showmc {my_id} чтобы показать мне медкарту&{pause}&/me берет от человека напротив медкарту и осматривает её&/todo Хорошо, забирайте*отдавая медкарту обратно владельцу' , arg = '{arg_id}' , enable = true , waiting = '1.5' , bind = "{}", in_fastmenu = true},
-					{cmd = 'exp' , description = 'Выгнать игрока из ЦЛ' ,  text = 'Вы больше не можете здесь находиться, я выгоняю вас из ЦЛ!&/me схватив человека ведёт к выходу из ЦЛ и закрывает за ним дверь&/expel {arg_id} Н.П.Ц.Л.' , arg = '{arg_id}' , enable = true , waiting = '1.5' , bind = "{}", in_fastmenu = true},
-					{ cmd = 'cure' , description = 'Поднять игрока из стадии' ,  text = '/me наклоняется над человеком, и прощупывает его пульс на сонной артерии&/cure {arg_id}&/do Пульс отсутствует.&/me начинает делать человеку непрямой массаж сердца, время от времени проверяя пульс&/do Спустя несколько минут сердце человека началось биться.&/do Человек пришел в сознание.&/todo Отлично*улыбаясь' , arg = '{arg_id}' , enable = true , waiting = '1.5' , bind = "{}"  },
+					{cmd = 'gl' , description = 'Выдача лицензии игроку' , text = '/me взял{sex} со стола бланк на получение лицензии и заполнил{sex} его&/do Спустя некоторое время бланк на получение лицензии был заполнен.&/me распечатав лицензию передал{sex} её человеку напротив&/givelicense {arg_id}&Вот ваша лицензия, всего Вам хорошего!&/n @{get_nick({arg_id})}, введите команду /offer чтобы получить лицензию!', arg = '{arg_id}' , enable = true, waiting = '1.5', bind = "{}", in_fastmenu = true},
+					{cmd = 'prices' , description = 'Ознакомить игрока с ценами' , text = '/todo Сейчас я скажу вам цены на лицензии*доставая изпод стойки бланк с ценами&/do Бланк с ценами всех лицензий в руках.&/me подвинул{sex} бланк поближе к себе и начал{sex} читать цены&На автомобиль: 1 месяц - ${get_price_avto1}, 2 месяца - ${get_price_avto2}, 3 месяца - ${get_price_avto3}&На мото: 1 месяц - ${get_price_moto1}, 2 месяца - ${get_price_moto2}, 3 месяца - ${get_price_moto3}&На водный: 1 месяц - ${get_price_swim1}, 2 месяца - ${get_price_swim2}, 3 месяца - ${get_price_swim3}&На полёты: 1 месяц - ${get_price_fly1}&На оружие: 1 месяц - ${get_price_gun1}, 2 месяца - ${get_price_gun2}, 3 месяца - ${get_price_gun3}&На охоту: 1 месяц - ${get_price_hunt1}, 2 месяца - ${get_price_hunt2}, 3 месяца - ${get_price_hunt3}&На рыбалку: 1 месяц - ${get_price_fish1}, 2 месяца - ${get_price_fish2}, 3 месяца - ${get_price_fish3}&На клады: 1 месяц - ${get_price_klad1}, 2 месяца - ${get_price_klad2}, 3 месяца - ${get_price_klad3}&На такси: 1 месяц - ${get_price_taxi1}, 2 месяца - ${get_price_taxi2}, 3 месяца - ${get_price_taxi3}&На механика: 1 месяц - ${get_price_mexa1}, 2 месяца - ${get_price_mexa2}, 3 месяца - ${get_price_mexa3}&/todo Вот такие у нас цены*убирая бланк с ценами' , arg = '' , enable = true , waiting = '1.5', bind = "{}", in_fastmenu = true},
+					{cmd = 'medka' , description = 'Запросить медкарту для проверки' , text = 'Чтобы получить эту лицензию, покажите мне вашу мед.карту&/n @{get_nick({arg_id})}, введите команду /showmc {my_id} чтобы показать мне медкарту&{pause}&/me берет от человека напротив медкарту и осматривает её&/todo Хорошо, забирайте*отдавая медкарту обратно владельцу' , arg = '{arg_id}' , enable = true , waiting = '1.5', bind = "{}", in_fastmenu = true},
+					{cmd = 'exp' , description = 'Выгнать игрока из ЦЛ' ,  text = 'Вы больше не можете здесь находиться, я выгоняю вас из ЦЛ!&/me схватив человека ведёт к выходу из ЦЛ и закрывает за ним дверь&/expel {arg_id} Н.П.Ц.Л.' , arg = '{arg_id}' , enable = true , waiting = '1.5', bind = "{}", in_fastmenu = true},
 				},
 				ins = {
-					{cmd = 'zd' , description = 'Привествие игрока' , text = 'Здраствуйте, я {my_ru_nick} - {fraction_rank} {fraction_tag}&Чем я могу Вам помочь? Если нужна лицензия - скажите тип и срок', arg = '{arg_id}' , enable = true , waiting = '1.5', bind = "{}", in_fastmenu = true},
+					{cmd = 'zd' , description = 'Привествие игрока' , text = 'Здравствуйте, я {my_ru_nick} - {fraction_rank} {fraction_tag}&Чем я могу Вам помочь? Если нужна лицензия - скажите тип и срок', arg = '{arg_id}' , enable = true , waiting = '1.5', bind = "{}", in_fastmenu = true},
 					{cmd = 'go', description = 'Позвать игрока за собой', text = 'Хорошо {get_ru_nick({arg_id})}, следуйте за мной.', arg = '{arg_id}', enable = true, waiting = '1.5', bind = "{}", in_fastmenu = true},
-					{cmd = 'ins' , description = 'Предложить доп.услуги' ,  text = 'Я могу оформить "Семейный сертификат" или "Пенсионное страхование"&Что вам нужно? Страхование для депозита, сертификат для выплат&/insurance {arg_id}&/me достаёт нужные бумаги для оформления и передаёт их человеку напротив' , arg = '{arg_id}' , enable = true , waiting = '1.5' , bind = "{}", in_fastmenu = true},
-					{cmd = 'exp' , description = 'Выгнать игрока из ЦЛ' ,  text = 'Вы больше не можете здесь находиться, я выгоняю вас из ЦЛ!&/me схватив человека ведёт к выходу из ЦЛ и закрывает за ним дверь&/expel {arg_id} Н.П.Ц.Л.' , arg = '{arg_id}' , enable = true , waiting = '1.5' , bind = "{}", in_fastmenu = true},
+					{cmd = 'ins' , description = 'Предложить доп.услуги' ,  text = 'Я могу оформить "Семейный сертификат" или "Пенсионное страхование"&Что вам нужно? Страхование для депозита, сертификат для выплат&/insurance {arg_id}&/me достаёт нужные бумаги для оформления и передаёт их человеку напротив' , arg = '{arg_id}' , enable = true , waiting = '1.5', bind = "{}", in_fastmenu = true},
+					{cmd = 'exp' , description = 'Выгнать игрока из ЦЛ' ,  text = 'Вы больше не можете здесь находиться, я выгоняю вас из ЦЛ!&/me схватив человека ведёт к выходу из ЦЛ и закрывает за ним дверь&/expel {arg_id} Н.П.Ц.Л.' , arg = '{arg_id}' , enable = true , waiting = '1.5', bind = "{}", in_fastmenu = true},
 				},
 				gov = {		
-					{ cmd = 'zd' , description = 'Привествие игрока' , text = 'Здравствуйте, меня зовут {my_ru_nick}, чем я могу помочь?', arg = '{arg_id}' , enable = true , waiting = '1.5', in_fastmenu = true},
-					{ cmd = 'go' , description = 'Позвать игрока за собой' , text = 'Хорошо {get_ru_nick({arg_id})}, следуйте за мной.', arg = '{arg_id}' , enable = true, waiting = '1.5', in_fastmenu = true},
-					{ cmd = 'visit' , description = 'Показать визитку адвоката' ,  text = '/me вытащил{sex} из нагрудного кармана визитку адвоката&/do На визитке написано: "{my_ru_nick}, адвокат штата".&/showvisit {arg_id}' , arg = '{arg_id}', enable = true, waiting = '1.5', in_fastmenu = true} , 
-					{ cmd = 'freely' , description = 'Предложить услуги адвоката' ,  text = '/do Папка с документами находится в левой руке.&/me открыв папку, вытащил{sex} из неё бланк для освобождения заключённого&/me достав из кармана ручку, заполнил{sex} документ и передал{sex} человеку напротив&/todo Впишите сюда свои данные и поставьте подпись снизу*передавая лист с ручкой&/free {arg_id} {arg2}' , arg = '{arg_id} {arg2}' , enable = true, waiting = '1.5'},
-					{ cmd = 'visa' , description = 'Выдать рабочую визу для VC' ,  text = 'Стоимость услуги составляет 600 тысяч. Вы согласны?&Если да, то приступаем к оформлению&{pause}&/do Бланк для оформления визы находится в кармане.&/me засунув руку в карман, взял{sex} бланк, после чего протянул{sex} его человеку напротив&/todo Впишите сюда Ваши данные и поставьте подпись снизу*протягивая лист с ручкой&/givevisa {arg_id}', arg = '{arg_id}' , enable = true, waiting = '1.5', in_fastmenu = true},
-					{ cmd = 'car' , description = 'Превратить личный т/c в сертификат' , text = 'Перед тем, как начать, попрошу полностью опустошить багажник и снять весь тюнинг&А также убедиться, что пробег меньше либо равен 200 км&Если Вы все сделали, то можем приступать&{pause}&Окей, приступаем&/do Бланк для получения сертификата находится под в кармане.&/me засунув руку в карман, взял{sex} бланк, после чего протянул{sex} его человеку напротив&/todo Впишите сюда Ваши данные и поставьте подпись снизу*протягивая лист с ручкой&/givepass {arg_id}', arg = '{arg_id}' , enable = true, waiting = '1.5', in_fastmenu = true},
-					{ cmd = 'wed' , description = 'Заключение брака' ,  text = 'Добрый день, уважаемые новобрачные и гости!&Уважаемые невеста и жених!&Сегодня - самое прекрасное и незабываемое событие в вашей жизни.&Создание семьи – это начало доброго союза двух любящих сердец.&С этого дня вы пойдёте по жизни рука об руку, вместе переживая и радость счастливых дней, и огорчения.&Создавая семью, вы добровольно приняли на себя великий долг друг перед другом и перед будущим ваших детей.&Перед началом регистрации прошу вас ещё раз подтвердить, является ли ваше решение стать супругами, создать семью&{pause}&С вашего взаимного согласия, выраженного в присутствии свидетелей, ваш брак регистрируется.&Прошу вас в знак любви и преданности друг другу обменяться обручальными кольцами.&/wedding {arg_id} {arg2}' , arg = '{arg_id} {arg2}' , enable = true, waiting = '1.5'},
-					{ cmd = 'pass' , description = 'Исправить дату рождения в паспорте' ,  text = '/do Бланк для замены информации в паспорте находится в кармане.&/me засунув руку в карман, взял{sex} бланк, после чего протянул{sex} его человеку напротив&/todo Впишите сюда новую дату и поставьте подпись снизу*протягивая лист с ручкой&/givepass {arg_id}' , arg = '{arg_id}' , enable = true , waiting = '1.5'},	
-					{ cmd = 'frisk', description = 'Обыск (7+)', text = '/do Перчатки находяться в кармане.&/me взял{sex} перчатки с кармана и надел{sex} их&/do Перчатки одеты.&/me начал нащупывать человека напротив&/frisk {arg_id}&/me полностю прощупав человека убрал{sex} перчатки обратно в карман', arg = '{arg_id}', enable = false, waiting = '1.5' },
-					{ cmd = 'exp' , description = 'Выгнать игрока из правительства' ,  text = 'Извините, но я вынужден{sex} выгнать вас из здания за неподобающее поведение.&/me схватил{sex} человека за руку и повел{sex} к выходу&/me открыв дверь рукой, вывел{sex} человека на улицу&/expel {arg_id} Неадекватное поведение' , arg = '{arg_id}' , enable = true , waiting = '1.5', in_fastmenu = true},
-					{ cmd = 'cure' , description = 'Поднять игрока из стадии' ,  text = '/me наклоняется над человеком, и прощупывает его пульс на сонной артерии&/cure {arg_id}&/do Пульс отсутствует.&/me начинает делать человеку непрямой массаж сердца, время от времени проверяя пульс&/do Спустя несколько минут сердце человека началось биться.&/do Человек пришел в сознание.&/todo Отлично*улыбаясь' , arg = '{arg_id}' , enable = true , waiting = '1.5' , bind = "{}"  },
+					{cmd = 'zd' , description = 'Привествие игрока' , text = 'Здравствуйте, меня зовут {my_ru_nick}, чем я могу помочь?', arg = '{arg_id}' , enable = true , waiting = '1.5', in_fastmenu = true},
+					{cmd = 'go' , description = 'Позвать игрока за собой' , text = 'Хорошо {get_ru_nick({arg_id})}, следуйте за мной.', arg = '{arg_id}' , enable = true, waiting = '1.5', in_fastmenu = true},
+					{cmd = 'visit' , description = 'Показать визитку адвоката' ,  text = '/me вытащил{sex} из нагрудного кармана визитку адвоката&/do На визитке написано: "{my_ru_nick}, адвокат штата".&/showvisit {arg_id}' , arg = '{arg_id}', enable = true, waiting = '1.5', in_fastmenu = true} , 
+					{cmd = 'freely' , description = 'Предложить услуги адвоката' ,  text = '/do Папка с документами находится в левой руке.&/me открыв папку, вытащил{sex} из неё бланк для освобождения заключённого&/me достав из кармана ручку, заполнил{sex} документ и передал{sex} человеку напротив&/todo Впишите сюда свои данные и поставьте подпись снизу*передавая лист с ручкой&/free {arg_id} {arg2}' , arg = '{arg_id} {arg2}' , enable = true, waiting = '1.5'},
+					{cmd = 'visa' , description = 'Выдать рабочую визу для VC' ,  text = 'Стоимость услуги составляет 600 тысяч. Вы согласны?&Если да, то приступаем к оформлению&{pause}&/do Бланк для оформления визы находится в кармане.&/me засунув руку в карман, взял{sex} бланк, после чего протянул{sex} его человеку напротив&/todo Впишите сюда Ваши данные и поставьте подпись снизу*протягивая лист с ручкой&/givevisa {arg_id}', arg = '{arg_id}' , enable = true, waiting = '1.5', in_fastmenu = true},
+					{cmd = 'car' , description = 'Превратить личный т/c в сертификат' , text = 'Перед тем, как начать, попрошу полностью опустошить багажник и снять весь тюнинг&А также убедиться, что пробег меньше либо равен 200 км&Если Вы все сделали, то можем приступать&{pause}&Окей, приступаем&/do Бланк для получения сертификата находится под в кармане.&/me засунув руку в карман, взял{sex} бланк, после чего протянул{sex} его человеку напротив&/todo Впишите сюда Ваши данные и поставьте подпись снизу*протягивая лист с ручкой&/givepass {arg_id}', arg = '{arg_id}' , enable = true, waiting = '1.5', in_fastmenu = true},
+					{cmd = 'wed' , description = 'Заключение брака' ,  text = 'Добрый день, уважаемые новобрачные и гости!&Уважаемые невеста и жених!&Сегодня - самое прекрасное и незабываемое событие в вашей жизни.&Создание семьи – это начало доброго союза двух любящих сердец.&С этого дня вы пойдёте по жизни рука об руку, вместе переживая и радость счастливых дней, и огорчения.&Создавая семью, вы добровольно приняли на себя великий долг друг перед другом и перед будущим ваших детей.&Перед началом регистрации прошу вас ещё раз подтвердить, является ли ваше решение стать супругами, создать семью&{pause}&С вашего взаимного согласия, выраженного в присутствии свидетелей, ваш брак регистрируется.&Прошу вас в знак любви и преданности друг другу обменяться обручальными кольцами.&/wedding {arg_id} {arg2}' , arg = '{arg_id} {arg2}' , enable = true, waiting = '1.5'},
+					{cmd = 'pass' , description = 'Исправить дату рождения в паспорте' ,  text = '/do Бланк для замены информации в паспорте находится в кармане.&/me засунув руку в карман, взял{sex} бланк, после чего протянул{sex} его человеку напротив&/todo Впишите сюда новую дату и поставьте подпись снизу*протягивая лист с ручкой&/givepass {arg_id}' , arg = '{arg_id}' , enable = true , waiting = '1.5'},	
+					{cmd = 'frisk', description = 'Обыск (7+)', text = '/do Перчатки находятся в кармане.&/me взял{sex} перчатки с кармана и надел{sex} их&/do Перчатки одеты.&/me начал нащупывать человека напротив&/frisk {arg_id}&/me полностью прощупав человека убрал{sex} перчатки обратно в карман', arg = '{arg_id}', enable = false, waiting = '1.5' },
+					{cmd = 'exp' , description = 'Выгнать игрока из правительства' ,  text = 'Извините, но я вынужден{sex} выгнать вас из здания за неподобающее поведение.&/me схватил{sex} человека за руку и повел{sex} к выходу&/me открыв дверь рукой, вывел{sex} человека на улицу&/expel {arg_id} Неадекватное поведение' , arg = '{arg_id}' , enable = true , waiting = '1.5', in_fastmenu = true},
+					
 				},
 				mafia = {
-					{ cmd = 'tie', description = 'Связать жертву', text = '/do В кармане бронежилета лежит шпагат.&/me легким движением руки достал{sex} из кармана шпагат&/me обвязывает руки жертвы веревкой и стягивает её&/tie {arg_id}', arg = '{arg_id}', enable = true, waiting = '1.5', bind = '{}' , in_fastmenu = true},
-					{ cmd = 'untie', description = 'Развязать жертву', text = '/do На правом бедре закреплено тактическое крепление для ножа.&/me движением правой руки открепив нож, берёт его в руки&/do В правой руке держит нож.&/me подойдя к жертве со спины, отрезал{sex} верёвку&/untie {arg_id}', arg = '{arg_id}', enable = true, waiting = '1.5', bind = '{}' , in_fastmenu = true},
-					{ cmd = 'lead', description = 'Вести жертву за собой', text = '/me движением руки схватив за шкирку жертвы, ведёт его за собой&/lead {arg_id}', arg = '{arg_id}', enable = true, waiting = '1.5', bind = '{}' , in_fastmenu = true},
-					{ cmd = 'unlead', description = 'Прекратить вести жертву', text = '/me расслабив схватку, перестаёт контролировать жертву&/unlead {arg_id}', arg = '{arg_id}', enable = true, waiting = '1.5', bind = '{}' , in_fastmenu = true},
-					{ cmd = 'gag', description = 'Заткнуть рот жертве тряпкой', text = '/do На поясе закреплена сумка.&/me правой рукой отстегнув молнию, открывает сумку&/do Внутри сумки лежит тряпка.&/me подходя к жертве, попутно достал{sex} из сумки тряпку&/do Тряпка в руках в развёрнутом виде.&/me обеими руками завернув тряпку, запихнул{sex} в рот жертвы&/gag {arg_id}', arg = '{arg_id}', enable = true, waiting = '1.5', bind = '{}', in_fastmenu = true },
-					{ cmd = 'ungag', description = 'Вытащить тряпку изо рта жертвы', text = '/me подойдя ближе к жертве, движением правой руки потянул{sex} за тряпку и забрал{sex} себе&/ungag {arg_id}', arg = '{arg_id}', enable = true, waiting = '1.5', bind = '{}' , in_fastmenu = true},
-					{ cmd = 'bag', description = 'Надеть пакет на голову жертвы', text = '/do В кармане куртки лежит мусорный пакет.&/me достал{sex} мусорный пакет из кармана, развернул{sex} его&/me надевает мусорный пакет на голову жертвы, не затягивая его&/bag {arg_id}', arg = '{arg_id}', enable = true, waiting = '1.5', bind = '{}' , in_fastmenu = true},
-					{ cmd = 'unbag', description = 'Снять пакет с головы жертвы', text = '/me легким движением руки схватив за пакет, потянул{sex} его вверх, тем самым стянув пакет с головы жертвы&/unbag {arg_id}', arg = '{arg_id}', enable = true, waiting = '1.5', bind = '{}', in_fastmenu = true },
-					{ cmd = 'inсar', description = 'Затолкать жертву в фургон', text = '/me открывает двери фургона&/me берет жертву под руки и заталкивает вперёд головой в фургон&/me закрывает двери и садится в фургон&/incar {arg_id} 3', arg = '{arg_id}', enable = true, waiting = '1.5', bind = '{}', in_fastmenu = true},
+					{cmd = 'tie', description = 'Связать жертву', text = '/do В кармане бронежилета лежит шпагат.&/me легким движением руки достал{sex} из кармана шпагат&/me обвязывает руки жертвы веревкой и стягивает её&/tie {arg_id}', arg = '{arg_id}', enable = true, waiting = '1.5', bind = '{}' , in_fastmenu = true},
+					{cmd = 'untie', description = 'Развязать жертву', text = '/do На правом бедре закреплено тактическое крепление для ножа.&/me движением правой руки открепив нож, берёт его в руки&/do В правой руке держит нож.&/me подойдя к жертве со спины, отрезал{sex} верёвку&/untie {arg_id}', arg = '{arg_id}', enable = true, waiting = '1.5', bind = '{}' , in_fastmenu = true},
+					{cmd = 'lead', description = 'Вести жертву за собой', text = '/me движением руки схватив за шкирку жертвы, ведёт его за собой&/lead {arg_id}', arg = '{arg_id}', enable = true, waiting = '1.5', bind = '{}' , in_fastmenu = true},
+					{cmd = 'unlead', description = 'Прекратить вести жертву', text = '/me расслабив схватку, перестаёт контролировать жертву&/unlead {arg_id}', arg = '{arg_id}', enable = true, waiting = '1.5', bind = '{}' , in_fastmenu = true},
+					{cmd = 'gag', description = 'Заткнуть рот жертве тряпкой', text = '/do На поясе закреплена сумка.&/me правой рукой отстегнув молнию, открывает сумку&/do Внутри сумки лежит тряпка.&/me подходя к жертве, попутно достал{sex} из сумки тряпку&/do Тряпка в руках в развёрнутом виде.&/me обеими руками завернув тряпку, запихнул{sex} в рот жертвы&/gag {arg_id}', arg = '{arg_id}', enable = true, waiting = '1.5', bind = '{}', in_fastmenu = true},
+					{cmd = 'ungag', description = 'Вытащить тряпку изо рта жертвы', text = '/me подойдя ближе к жертве, движением правой руки потянул{sex} за тряпку и забрал{sex} себе&/ungag {arg_id}', arg = '{arg_id}', enable = true, waiting = '1.5', bind = '{}' , in_fastmenu = true},
+					{cmd = 'bag', description = 'Надеть пакет на голову жертвы', text = '/do В кармане куртки лежит мусорный пакет.&/me достал{sex} мусорный пакет из кармана, развернул{sex} его&/me надевает мусорный пакет на голову жертвы, не затягивая его&/bag {arg_id}', arg = '{arg_id}', enable = true, waiting = '1.5', bind = '{}' , in_fastmenu = true},
+					{cmd = 'unbag', description = 'Снять пакет с головы жертвы', text = '/me легким движением руки схватив за пакет, потянул{sex} его вверх, тем самым стянув пакет с головы жертвы&/unbag {arg_id}', arg = '{arg_id}', enable = true, waiting = '1.5', bind = '{}', in_fastmenu = true},
+					{cmd = 'inсar', description = 'Затолкать жертву в фургон', text = '/me открывает двери фургона&/me берет жертву под руки и заталкивает вперёд головой в фургон&/me закрывает двери и садится в фургон&/incar {arg_id} 3', arg = '{arg_id}', enable = true, waiting = '1.5', bind = '{}', in_fastmenu = true},
 				},
 				ghetto = {}
 			},
 			commands_manage = {
 				my = {},
 				goss = {
-					{ cmd = 'inv' , description = 'Принятие игрока в организацию' , text = '/do В кармане есть связка с ключами от раздевалки.&/me достаёт из кармана один ключ из связки ключей от раздевалки&/todo Возьмите, это ключ от нашей раздевалки*передавая ключ человеку напротив&/invite {arg_id}&/n {get_ru_nick({arg_id})} , примите предложение в /offer чтобы получить инвайт!' , arg = '{arg_id}', enable = true, waiting = '1.5'  , bind = "{}", in_fastmenu = true  },
-					{ cmd = 'rp' , description = 'Выдача сотруднику /fractionrp' , text = '/fractionrp {arg_id}' , arg = '{arg_id}', enable = true, waiting = '1.5' , bind = "{}", in_fastmenu = true  },
-					{ cmd = 'gr' , description = 'Повышение/понижение cотрудника' , text = '{show_rank_menu}&/me достаёт из кармана свой телефон и заходит в базу данных {fraction_tag}&/me изменяет информацию о сотруднике {get_ru_nick({arg_id})} в базе данных {fraction_tag}&/me выходит с базы данных и убирает телефон обратно в карман&/giverank {arg_id} {get_rank}&/r Сотрудник {get_ru_nick({arg_id})} получил новую должность!' , arg = '{arg_id}', enable = true, waiting = '1.5', bind = "{}", in_fastmenu = true   },
-					{ cmd = 'vize' , description = 'Управление Vice City визой сотрудника' , text = '/me достаёт из кармана свой телефон и заходит в базу данных {fraction_tag}&/me изменяет информацию о сотруднике {get_ru_nick({arg_id})} в базе данных {fraction_tag}&/me выходит с базы данных и убирает телефон обратно в карман&{lmenu_vc_vize}' , arg = '{arg_id}', enable = true, waiting = '1.5', bind = "{}", in_fastmenu = true    },
-					{ cmd = 'cjob' , description = 'Посмотреть успешность сотрудника' , text = '/checkjobprogress {arg_id}' , arg = '{arg_id}', enable = true, waiting = '1.5' , bind = "{}", in_fastmenu = true   },	
-					{ cmd = 'fmutes' , description = 'Выдать мут сотруднику (10 min)' , text = '/fmutes {arg_id} Н.У.&/r Сотрудник {get_ru_nick({arg_id})} лишился права использовать рацию на 10 минут!' , arg = '{arg_id}', enable = true, waiting = '1.5' , bind = "{}"   },
-					{ cmd = 'funmute' , description = 'Снять мут сотруднику' , text = '/funmute {arg_id}&/r Сотрудник {get_ru_nick({arg_id})} теперь может пользоваться рацией!' , arg = '{arg_id}', enable = true, waiting = '1.5' , bind = "{}", in_fastmenu = true   },
-					{ cmd = 'vig' , description = 'Выдача выговора cотруднику' , text = '/me достаёт из кармана свой телефон и заходит в базу данных {fraction_tag}&/me изменяет информацию о сотруднике {get_ru_nick({arg_id})} в базе данных {fraction_tag}&/me выходит с базы данных и убирает телефон обратно в карман&/fwarn {arg_id} {arg2}&/r Сотруднику {get_ru_nick({arg_id})} выдан выговор! Причина: {arg2}' , arg = '{arg_id} {arg2}', enable = true, waiting = '1.5'  , bind = "{}"  },
-					{ cmd = 'unvig' , description = 'Снятие выговора cотруднику' , text = '/me достаёт из кармана свой телефон и заходит в базу данных {fraction_tag}&/me изменяет информацию о сотруднике {get_ru_nick({arg_id})} в базе данных {fraction_tag}&/me выходит с базы данных и убирает телефон обратно в карман&/unfwarn {arg_id}&/r Сотруднику {get_ru_nick({arg_id})} был снят выговор!' , arg = '{arg_id}', enable = true, waiting = '1.5' , bind = "{}" , in_fastmenu = true  },
-					{ cmd = 'unv' , description = 'Увольнение игрока из фракции' , text = '/me достаёт из кармана свой телефон и заходит в базу данных {fraction_tag}&/me изменяет информацию о сотруднике {get_ru_nick({arg_id})} в базе данных {fraction_tag}&/me выходит с базы данных и убирает свой телефон обратно в карман&/uninvite {arg_id} {arg2}&/r Сотрудник {get_ru_nick({arg_id})} был уволен по причине: {arg2}' , arg = '{arg_id} {arg2}', enable = true, waiting = '1.5' , bind = "{}"   },
-					{cmd = 'point' , description = 'Установить метку для сотрудников' , text = '/r Срочно выдвигайтесь ко мне, отправляю вам координаты...&/point' , arg = '', enable = true, waiting = '1.5' , bind = "{}"},
-					{ cmd = 'govka' , description = 'Собеседование по госс.волне' , text = '/d [{fraction_tag}] - [Всем]: Занимаю государственную волну, просьба не перебивать!&/gov [{fraction_tag}]: Доброго времени суток, уважаемые жители нашего штата!&/gov [{fraction_tag}]: Сейчас проходит собеседование в организацию {fraction}}&/gov [{fraction_tag}]: Для вступления вам нужно иметь документы и приехать к нам в холл.&/d [{fraction_tag}] - [Всем]: Освобождаю  государственную волну, спасибо что не перебивали.' , arg = '', enable = true, waiting = '1.5', bind = "{}"  },
+					{cmd = 'inv' , description = 'Принятие игрока в организацию' , text = '/do В кармане есть связка с ключами от раздевалки.&/me достаёт из кармана один ключ из связки ключей от раздевалки&/todo Возьмите, это ключ от нашей раздевалки*передавая ключ человеку напротив&/invite {arg_id}&/n @{get_nick({arg_id})} , примите предложение в /offer чтобы получить инвайт!' , arg = '{arg_id}', enable = true, waiting = '1.5'  , bind = "{}", in_fastmenu = true  },
+					{cmd = 'rp' , description = 'Выдача сотруднику /fractionrp' , text = '/fractionrp {arg_id}' , arg = '{arg_id}', enable = true, waiting = '1.5', bind = "{}", in_fastmenu = true  },
+					{cmd = 'gr' , description = 'Повышение/понижение cотрудника' , text = '{show_rank_menu}&/me достаёт из кармана свой телефон и заходит в базу данных {fraction_tag}&/me изменяет информацию о сотруднике {get_ru_nick({arg_id})} в базе данных {fraction_tag}&/me выходит с базы данных и убирает телефон обратно в карман&/giverank {arg_id} {get_rank}&/r Сотрудник {get_ru_nick({arg_id})} получил новую должность!' , arg = '{arg_id}', enable = true, waiting = '1.5', bind = "{}", in_fastmenu = true   },
+					{cmd = 'vize' , description = 'Управление Vice City визой сотрудника' , text = '/me достаёт из кармана свой телефон и заходит в базу данных {fraction_tag}&/me изменяет информацию о сотруднике {get_ru_nick({arg_id})} в базе данных {fraction_tag}&/me выходит с базы данных и убирает телефон обратно в карман&{lmenu_vc_vize}' , arg = '{arg_id}', enable = true, waiting = '1.5', bind = "{}", in_fastmenu = true    },
+					{cmd = 'cjob' , description = 'Посмотреть успешность сотрудника' , text = '/checkjobprogress {arg_id}' , arg = '{arg_id}', enable = true, waiting = '1.5', bind = "{}", in_fastmenu = true   },	
+					{cmd = 'fmutes' , description = 'Выдать мут сотруднику (10 min)' , text = '/fmutes {arg_id} Н.У.&/r Сотрудник {get_ru_nick({arg_id})} лишился права использовать рацию на 10 минут!' , arg = '{arg_id}', enable = true, waiting = '1.5', bind = "{}"   },
+					{cmd = 'funmute' , description = 'Снять мут сотруднику' , text = '/funmute {arg_id}&/r Сотрудник {get_ru_nick({arg_id})} теперь может пользоваться рацией!' , arg = '{arg_id}', enable = true, waiting = '1.5', bind = "{}", in_fastmenu = true   },
+					{cmd = 'vig' , description = 'Выдача выговора cотруднику' , text = '/me достаёт из кармана свой телефон и заходит в базу данных {fraction_tag}&/me изменяет информацию о сотруднике {get_ru_nick({arg_id})} в базе данных {fraction_tag}&/me выходит с базы данных и убирает телефон обратно в карман&/fwarn {arg_id} {arg2}&/r Сотруднику {get_ru_nick({arg_id})} выдан выговор! Причина: {arg2}' , arg = '{arg_id} {arg2}', enable = true, waiting = '1.5'  , bind = "{}"},
+					{cmd = 'unvig' , description = 'Снятие выговора cотруднику' , text = '/me достаёт из кармана свой телефон и заходит в базу данных {fraction_tag}&/me изменяет информацию о сотруднике {get_ru_nick({arg_id})} в базе данных {fraction_tag}&/me выходит с базы данных и убирает телефон обратно в карман&/unfwarn {arg_id}&/r Сотруднику {get_ru_nick({arg_id})} был снят выговор!' , arg = '{arg_id}', enable = true, waiting = '1.5', bind = "{}" , in_fastmenu = true  },
+					{cmd = 'unv' , description = 'Увольнение игрока из фракции' , text = '/me достаёт из кармана свой телефон и заходит в базу данных {fraction_tag}&/me изменяет информацию о сотруднике {get_ru_nick({arg_id})} в базе данных {fraction_tag}&/me выходит с базы данных и убирает свой телефон обратно в карман&/uninvite {arg_id} {arg2}&/r Сотрудник {get_ru_nick({arg_id})} был уволен по причине: {arg2}' , arg = '{arg_id} {arg2}', enable = true, waiting = '1.5', bind = "{}"   },
+					{cmd = 'point' , description = 'Установить метку для сотрудников' , text = '/r Срочно выдвигайтесь ко мне, отправляю вам координаты...&/point' , arg = '', enable = true, waiting = '1.5', bind = "{}"},
+					{cmd = 'govka' , description = 'Собеседование по госс.волне' , text = '/d [{fraction_tag}] - [Всем]: Занимаю государственную волну, просьба не перебивать!&/gov [{fraction_tag}]: Доброго времени суток, уважаемые жители нашего штата!&/gov [{fraction_tag}]: Сейчас проходит собеседование в организацию {fraction}}&/gov [{fraction_tag}]: Для вступления вам нужно иметь документы и приехать к нам в холл.&/d [{fraction_tag}] - [Всем]: Освобождаю  государственную волну, спасибо что не перебивали.' , arg = '', enable = true, waiting = '1.5', bind = "{}"},
 				},
 				goss_fbi = {
-					{ cmd = 'demoute' , description = 'Уволить госслужащего' ,  text = '/do КПК находиться на поясном держателе.&/me берёт в руки свой КПК и включает его&/me заходит в базу данных {fraction_tag} и переходит в раздел управление сотрудниками других организаций&/me открывает дело нужного сотрудника и вносит в него изменения&/do Изменения успешно сохранены.&/demoute {arg_id} {arg2}&/me выходит с базы данных {fraction_tag} и выключив КПК убирает его на поясной держатель', arg = '{arg_id} {arg2}', enable = false, waiting = '1.5', bind = "{}"},
+					{cmd = 'demoute' , description = 'Уволить госслужащего' ,  text = '/do КПК находиться на поясном держателе.&/me берёт в руки свой КПК и включает его&/me заходит в базу данных {fraction_tag} и переходит в раздел управление сотрудниками других организаций&/me открывает дело нужного сотрудника и вносит в него изменения&/do Изменения успешно сохранены.&/demoute {arg_id} {arg2}&/me выходит с базы данных {fraction_tag} и выключив КПК убирает его на поясной держатель', arg = '{arg_id} {arg2}', enable = false, waiting = '1.5', bind = "{}"},
 				},
 				goss_prison = {
 					{cmd = 'unpunish', description = 'Выпуск заключённых из ТСР', text = '/me лёгкими движениями рук берёт дело заключённого с полки, кладёт его на стол&/do На столе лежит ручка и печать.&/me лёгким движением правой руки берёт ручку, заполняет поле в деле заключённого&/me лёгкими движениями рук кладёт ручку на стол, берёт печать и ставит её в деле&/me лёгкими движениями рук ставит печать на стол, после чего закрывает дело&Ваш срок укорочен, возвращайтесь в камеру и ожидайте ...&... транспортировки до ближайшего населённого пункта.&/unpunish {arg_id} {arg2}', arg = '{arg_id} {arg2}', enable = true, waiting = '1.5'},
 					{cmd = 'rjailreklama', description = 'Реклама УДО', text = '/rjail Доброго времени суток заключенные.&/rjail В данный момент Вы можете покинуть тюрьму досрочно, через кабинет начальства тюрьмы.&/rjail Обратите внимание, УДО (условно дорочное освобожение) платное!&/rjail Спасибо за внимание.', arg = '', enable = true, waiting = '1.5'}
 				},
 				goss_gov = {
-					{ cmd = 'lic' , description = 'Выдать лицензию адвоката' , text = '/do Бланк для выдачи лицензии находится под столом.&/me засунув руку под стол, взял{sex} бланк, после чего заполнил{sex} его нужной информацией&/todo Впишите сюда Ваши данные и поставьте подпись снизу*передавая бланк и ручку&/givelicadvokat {arg_id}' , arg = '{arg_id}', enable = true, waiting = '1.5', },
-					{ cmd = 'demoute' , description = 'Уволить госслужащего' ,  text = '/do КПК находиться на поясном держателе.&/me берёт в руки свой КПК и включает его&/me заходит в базу данных {fraction_tag} и переходит в раздел управление сотрудниками других организаций&/me открывает дело нужного сотрудника и вносит в него изменения&/do Изменения успешно сохранены.&/demoute {arg_id} {arg2}&/me выходит с базы данных {fraction_tag} и выключив КПК убирает его на поясной держатель', arg = '{arg_id} {arg2}', enable = false, waiting = '1.5', bind = "{}"},
+					{cmd = 'lic' , description = 'Выдать лицензию адвоката' , text = '/do Бланк для выдачи лицензии находится под столом.&/me засунув руку под стол, взял{sex} бланк, после чего заполнил{sex} его нужной информацией&/todo Впишите сюда Ваши данные и поставьте подпись снизу*передавая бланк и ручку&/givelicadvokat {arg_id}' , arg = '{arg_id}', enable = true, waiting = '1.5', },
+					{cmd = 'demoute' , description = 'Уволить госслужащего' ,  text = '/do КПК находиться на поясном держателе.&/me берёт в руки свой КПК и включает его&/me заходит в базу данных {fraction_tag} и переходит в раздел управление сотрудниками других организаций&/me открывает дело нужного сотрудника и вносит в него изменения&/do Изменения успешно сохранены.&/demoute {arg_id} {arg2}&/me выходит с базы данных {fraction_tag} и выключив КПК убирает его на поясной держатель', arg = '{arg_id} {arg2}', enable = false, waiting = '1.5', bind = "{}"},
 				},
 				mafia = {
-					{ cmd = 'inv' , description = 'Принятие игрока в организацию' , text = '/do В кармане есть связка с ключами от раздевалки.&/me достаёт из кармана один ключ из связки ключей от раздевалки&/todo Возьмите, это ключ от нашей раздевалки*передавая ключ человеку напротив&/invite {arg_id}&/n {get_ru_nick({arg_id})} , примите предложение в /offer чтобы получить инвайт!' , arg = '{arg_id}', enable = true, waiting = '1.5'  , bind = "{}"  },
-					{ cmd = 'rp' , description = 'Выдача сотруднику /fractionrp' , text = '/fractionrp {arg_id}' , arg = '{arg_id}', enable = true, waiting = '1.5' , bind = "{}"  },
-					{ cmd = 'gr' , description = 'Повышение/понижение cотрудника' , text = '{show_rank_menu}&/todo Вот тебе новая форма!*протягивая форму человеку напротив &/giverank {arg_id} {get_rank}' , arg = '{arg_id}', enable = true, waiting = '1.5', bind = "{}"   },
-					{ cmd = 'fmutes' , description = 'Выдать мут сотруднику (10 min)' , text = '/fmutes {arg_id} Подумай о своём поведении' , arg = '{arg_id}', enable = true, waiting = '1.5' , bind = "{}"   },
-					{ cmd = 'funmute' , description = 'Снять мут сотруднику' , text = '/funmute {arg_id}' , arg = '{arg_id}', enable = true, waiting = '1.5' , bind = "{}"   },
-					{ cmd = 'vig' , description = 'Выдача выговора' , text = '/f {get_ru_nick({arg_id})}, ты провинился(-лась) в {arg2}!&/fwarn {arg_id} {arg2}' , arg = '{arg_id} {arg2}', enable = true, waiting = '1.5'  , bind = "{}"  },
-					{ cmd = 'unvig' , description = 'Снятие выговора cотруднику' , text = '/f {get_ru_nick({arg_id})}, ты прощён(-а)!&unfwarn {arg_id}' , arg = '{arg_id}', enable = true, waiting = '1.5' , bind = "{}"   },
-					{ cmd = 'unv' , description = 'Увольнение игрока из фракции' , text = '/me забирает организационную форму у человека&/uninvite {arg_id} {arg2}' , arg = '{arg_id} {arg2}', enable = true, waiting = '1.5' , bind = "{}"   },
-					{ cmd = 'point' , description = 'Установить метку для сотрудников' , text = '/f Срочно выдвигайтесь ко мне, отправляю вам координаты...&/point' , arg = '', enable = true, waiting = '1.5' , bind = "{}"  },
+					{cmd = 'inv' , description = 'Принятие игрока в организацию' , text = '/do В кармане есть связка с ключами от раздевалки.&/me достаёт из кармана один ключ из связки ключей от раздевалки&/todo Возьмите, это ключ от нашей раздевалки*передавая ключ человеку напротив&/invite {arg_id}&/n @{get_nick({arg_id})} , примите предложение в /offer чтобы получить инвайт!' , arg = '{arg_id}', enable = true, waiting = '1.5'  , bind = "{}"},
+					{cmd = 'rp' , description = 'Выдача сотруднику /fractionrp' , text = '/fractionrp {arg_id}' , arg = '{arg_id}', enable = true, waiting = '1.5', bind = "{}"},
+					{cmd = 'gr' , description = 'Повышение/понижение cотрудника' , text = '{show_rank_menu}&/todo Вот тебе новая форма!*протягивая форму человеку напротив &/giverank {arg_id} {get_rank}' , arg = '{arg_id}', enable = true, waiting = '1.5', bind = "{}"   },
+					{cmd = 'fmutes' , description = 'Выдать мут сотруднику (10 min)' , text = '/fmutes {arg_id} Подумай о своём поведении' , arg = '{arg_id}', enable = true, waiting = '1.5', bind = "{}"   },
+					{cmd = 'funmute' , description = 'Снять мут сотруднику' , text = '/funmute {arg_id}' , arg = '{arg_id}', enable = true, waiting = '1.5', bind = "{}"   },
+					{cmd = 'vig' , description = 'Выдача выговора' , text = '/f {get_ru_nick({arg_id})}, ты провинился(-лась) в {arg2}!&/fwarn {arg_id} {arg2}' , arg = '{arg_id} {arg2}', enable = true, waiting = '1.5'  , bind = "{}"},
+					{cmd = 'unvig' , description = 'Снятие выговора cотруднику' , text = '/f {get_ru_nick({arg_id})}, ты прощён(-а)!&unfwarn {arg_id}' , arg = '{arg_id}', enable = true, waiting = '1.5', bind = "{}"   },
+					{cmd = 'unv' , description = 'Увольнение игрока из фракции' , text = '/me забирает организационную форму у человека&/uninvite {arg_id} {arg2}' , arg = '{arg_id} {arg2}', enable = true, waiting = '1.5', bind = "{}"   },
+					{cmd = 'point' , description = 'Установить метку для сотрудников' , text = '/f Срочно выдвигайтесь ко мне, отправляю вам координаты...&/point' , arg = '', enable = true, waiting = '1.5', bind = "{}"},
 				},
 				ghetto = {}
 			}
@@ -491,12 +536,12 @@ local modules = {
 		name = 'Заметки',
 		path = configDirectory .. "/Notes.json",
 		data = {
-			{ note_name = 'Зарплата', note_text = 'Почему ваша зарплата может быть меньше, чем указано:&- Если у вас нету жилья (дом/отель) то у вас будет -20 процентов зп&- Если у вас есть выговор то у вас будет -20 процентов зп&- Из-за фикса экономики (от разрабов) у вас будет -10 процентов зп&&Как повысить свою зарплату:&- Вступите в фулл семью с флагом чтобы иметь +7 процентов зп &( на 20 сервере это наша семья Martelli )&- Получите \"Военный билет\" чтобы иметь +15 процентов зп&- Купите охранника на \"зп фракции\" чтобы иметь до +25 процентов зп&- Повышайтесь на ранг повыше'},
+			{ note_name = 'Зарплата в фракции', note_text = 'Почему ваша зарплата может быть меньше, чем указано:&-20 процентов если нету жилья (дом/отель/трейлер)&-20/-40 процентов если у вас есть выговоры&-10 процентов из-за фикса экономики от разрабов&&Способы повысить свою зарплату во фракции:&+5 процентов если вы проживаете в отеле&+7 процентов если вступить в семью с флагом&+15 процентов если в инвентаре есть \"Военный билет\"&+10/+15/+20/+25/+26/+30/+35 процентов если купить охранника&- Повышайтесь на ранг повыше'},
 		}
 	},
 	rpgun = {
-		name = 'RP Guns',
-		path = configDirectory .. "/RP Guns.json",
+		name = 'РП оружие',
+		path = configDirectory .. "/Guns.json",
 		data = {
             rp_guns = {
                 {id = 0, name = 'кулаки', enable = true, rpTake = 2},
@@ -519,16 +564,16 @@ local modules = {
 				{id = 17, name = 'дымовую гранату', enable = true, rpTake = 3},
 				{id = 18, name = 'коктейль Молотова', enable = true, rpTake = 3},
 				{id = 22, name = 'пистолет Colt45', enable = false, rpTake = 4},
-				{id = 23, name = "электрошокер Taser-X26P", enable = true, rpTake = 4},
+				{id = 23, name = "электрошокер Taser X26P", enable = true, rpTake = 4},
 				{id = 24, name = 'пистолет Desert Eagle', enable = true, rpTake = 4},
 				{id = 25, name = 'дробовик', enable = true, rpTake = 1},
 				{id = 26, name = 'обрез', enable = true, rpTake = 4},
 				{id = 27, name = 'улучшенный обрез', enable = false, rpTake = 1},
-				{id = 28, name = 'ПП Micro Uzi', enable = true, rpTake = 4},
+				{id = 28, name = 'ПП Micro Uzi', enable = true, rpTake = 3},
 				{id = 29, name = 'ПП MP5', enable = true, rpTake = 4},
-				{id = 30, name = 'автомат AK-47', enable = true, rpTake = 1},
+				{id = 30, name = 'автомат AK47', enable = true, rpTake = 1},
 				{id = 31, name = 'автомат M4', enable = true, rpTake = 1},
-				{id = 32, name = 'ПП Tec-9', enable = true, rpTake = 4},
+				{id = 32, name = 'ПП Tec9', enable = true, rpTake = 4},
 				{id = 33, name = 'винтовку Rifle', enable = true, rpTake = 1},
 				{id = 34, name = 'снайперскую винтовку', enable = true, rpTake = 1},
 				{id = 35, name = 'РПГ', enable = false, rpTake = 1},
@@ -540,14 +585,14 @@ local modules = {
 				{id = 41, name = 'перцовый балончик', enable = true, rpTake = 2},
 				{id = 42, name = 'огнетушитель', enable = true, rpTake = 1},
 				{id = 43, name = 'фотоапарат', enable = true, rpTake = 2},
-				{id = 44, name = 'прибор ночного видения', enable = false, rpTake = 2},
-				{id = 45, name = 'тепловизор', enable = false, rpTake = 2},
-				{id = 46, name = 'ручной парашут', enable = true, rpTake = 1},
+				{id = 44, name = 'ПНВ', enable = false, rpTake = 3},
+				{id = 45, name = 'тепловизор', enable = false, rpTake = 3},
+				{id = 46, name = 'парашут', enable = true, rpTake = 1},
 				-- gta sa damage reason
-				{id = 49, name = 'автомобиль', rpTake = 1},
+				{id = 49, name = 'т/с', rpTake = 1},
 				{id = 50, name = 'лопасти вертолёта', rpTake = 1},
-				{id = 51, name = 'бомбу', rpTake = 1},
-				{id = 54, name = 'коллизию', rpTake = 1},
+				{id = 51, name = 'гранату', rpTake = 1},
+				{id = 54, name = 'коллизию/тюнинг', rpTake = 1},
 				-- ARZ CUSTOM GUN
 				{id = 71, name = 'пистолет Desert Eagle Steel', enable = true, rpTake = 4},
 				{id = 72, name = 'пистолет Desert Eagle Gold', enable = true, rpTake = 4},
@@ -562,16 +607,28 @@ local modules = {
 				{id = 81, name = 'ПП Standart', enable = true, rpTake = 4},
 				{id = 82, name = 'пулемёт M249', enable = true, rpTake = 1},
 				{id = 83, name = 'ПП Skorp', enable = true, rpTake = 4},
-				{id = 84, name = 'автомат AKS-74 камуфляжный', enable = true, rpTake = 1},
-				{id = 85, name = 'автомат AK-47 камуфляжный', enable = true, rpTake = 1},
+				{id = 84, name = 'автомат AKS74 камуфляжный', enable = true, rpTake = 1},
+				{id = 85, name = 'автомат AK47 камуфляжный', enable = true, rpTake = 1},
 				{id = 86, name = 'дробовик Rebecca', enable = true, rpTake = 1},
 				{id = 87, name = 'портальную пушку', enable = true, rpTake = 1},
 				{id = 88, name = 'ледяной меч', enable = true, rpTake = 1},
 				{id = 89, name = 'портальную пушку', enable = true, rpTake = 4},
 				{id = 90, name = 'оглушающую гранату', enable = true, rpTake = 3},
 				{id = 91, name = 'ослепляющую гранату', enable = true, rpTake = 3},
-				{id = 92, name = 'снайперскую винтовку TAC-50', enable = true, rpTake = 1},
+				{id = 92, name = 'снайперскую винтовку TAC50', enable = true, rpTake = 1},
 				{id = 93, name = 'оглушающий пистолет', enable = true, rpTake = 4},
+				{id = 94, name = 'снежную пушку', enable = true, rpTake = 1},
+				{id = 95, name = 'пиксельный бластер', enable = true, rpTake = 3},
+				{id = 96, name = 'автомат M4 Gold', enable = true, rpTake = 1},
+				{id = 97, name = 'бандитский дробовик', enable = true, rpTake = 1},
+				{id = 98, name = 'ПП Uzi Graffiti', enable = true, rpTake = 4},
+				{id = 99, name = 'золотую монтировку', enable = true, rpTake = 1},
+				{id = 100, name = 'биту Compton', enable = true, rpTake = 1},
+				{id = 101, name = 'пистолет SciFi Deagle', enable = true, rpTake = 4},
+				{id = 102, name = 'автомат SciFi AK47', enable = true, rpTake = 1},
+				{id = 103, name = 'дробовик SciFi', enable = true, rpTake = 1},
+				{id = 104, name = 'нож SciFi', enable = true, rpTake = 3},
+				{id = 106, name = 'золотой нож', enable = true, rpTake = 3},
             },
             rpTakeNames = {
 				{"из-за спины", "за спину"},
@@ -590,22 +647,22 @@ local modules = {
         }
 	},
     smart_uk = {
-		name = 'SmartUK',
+		name = 'Умный Розыск',
 		path = configDirectory .. "/SmartUK.json",
 		data = {}
 	},
     smart_pdd = {
-		name = 'SmartPDD',
+		name = 'Умные Штрафы',
 		path = configDirectory .. "/SmartPDD.json",
 		data = {}
 	},
     smart_rptp = {
-		name = 'SmartRPTP',
+		name = 'Умный Срок',
 		path = configDirectory .. "/SmartRPTP.json",
 		data = {}
 	},
 	arz_veh = {
-		name = 'ARZ VEHICLES',
+		name = 'Транспорт',
 		path = configDirectory .. "/Vehicles.json",
 		data = {},
 		cache = {}
@@ -614,7 +671,7 @@ local modules = {
 function load_module(key)
     local obj = modules[key]
 	if not obj then
-		print('[Arizona Helper] Ошибка: неизвестный модуль "' .. key .. '"!')
+		print('Ошибка: неизвестный модуль "' .. key .. '"!')
 	else
 		if doesFileExist(obj.path) then
 			local file, errstr = io.open(obj.path, 'r')
@@ -622,28 +679,28 @@ function load_module(key)
 				local contents = file:read('*a')
 				file:close()
 				if #contents == 0 then
-					print('[Arizona Helper] Не удалось открыть модуль "' .. obj.name .. '". Причина: файл пустой')
+					print('Не удалось открыть модуль "' .. obj.name .. '". Причина: файл пустой')
 				else
 					local result, loaded = pcall(decodeJson, contents)
 					if result then
 						obj.data = loaded
-						print('[Arizona Helper] Модуль "' .. obj.name .. '" инициализирован! (есть ваши кастомные данные)')
+						print('Модуль "' .. obj.name .. '" инициализирован! (есть ваши кастомные данные)')
 					else
-						print('[Arizona Helper] Не удалось открыть модуль "' .. obj.name .. '". Ошибка: decode json')
+						print('Не удалось открыть модуль "' .. obj.name .. '". Ошибка: decode json')
 					end
 				end
 			else
-				print('[Arizona Helper] Не удалось открыть модуль "' .. obj.name .. '". Ошибка: ' .. tostring(errstr or "неизвестная"))
+				print('Не удалось открыть модуль "' .. obj.name .. '". Ошибка: ' .. tostring(errstr or "неизвестная"))
 			end
 		else
-			print('[Arizona Helper] Модуль "' .. obj.name .. '" инициализирован!')
+			print('Модуль "' .. obj.name .. '" инициализирован!')
 		end
 	end
 end
 function save_module(key)
     local obj = modules[key]
 	if not obj then
-		print('[Arizona Helper] Ошибка: неизвестный модуль "' .. key .. '"!')
+		print('Ошибка: неизвестный модуль "' .. key .. '"!')
 	else
 		local file, errstr = io.open(obj.path, 'w')
 		if file then
@@ -659,24 +716,20 @@ function save_module(key)
 			local content = looklike(obj.data)
 			if #content ~= 0 then
 				file:write(content)
-				print('[Arizona Helper] Модуль "' .. obj.name .. '" сохранён!')
+				print('Модуль "' .. obj.name .. '" сохранён!')
 			else
-				print('[Arizona Helper] Не удалось сохранить модуль "' .. obj.name .. '" - ошибка кодировки json!')
+				print('Не удалось сохранить модуль "' .. obj.name .. '" - ошибка кодировки json!')
 			end
 			file:close()
 		else
-			print('[Arizona Helper] Не удалось сохранить модуль "' .. obj.name .. '", ошибка: ' .. tostring(errstr or "неизвестная"))
+			print('Не удалось сохранить модуль "' .. obj.name .. '", ошибка: ' .. tostring(errstr or "неизвестная"))
 		end
 	end
 end
 ------------------------------------------- MonetLoader --------------------------------------------------
-function isMonetLoader() return MONET_VERSION ~= nil end
-if isMonetLoader() then
-	gta = ffi.load('GTASA') 
-	ffi.cdef[[ void _Z12AND_OpenLinkPKc(const char* link); ]]
-end
+
 if not settings.general.autofind_dpi then
-	print('[Arizona Helper] Применение авто-размера менюшек...')
+	print('Применение авто-размера менюшек...')
 	if isMonetLoader() then
 		settings.general.custom_dpi = MONET_DPI_SCALE
 	else
@@ -687,8 +740,8 @@ if not settings.general.autofind_dpi then
 	settings.general.autofind_dpi = true
 	local format_dpi = string.format('%.3f', settings.general.custom_dpi)
 	settings.general.custom_dpi = tonumber(format_dpi)
-	print('[Arizona Helper] Установлено значение: ' .. settings.general.custom_dpi)
-	print('[Arizona Helper] Вы в любой момент можете изменить значение в настройках!')
+	print('Установлено значение: ' .. settings.general.custom_dpi)
+	print('Вы в любой момент можете изменить значение в настройках!')
 	save_settings()
 end
 ----------------------------------------------- Functions -----------------------------------------------------
@@ -701,82 +754,51 @@ function add_notes(module)
 
 	local teen_codes = { note_name = 'Тен-коды', note_text = '10-1 - Сбор всех офицеров на дежурстве.&10-2 - Вышел в патруль.&10-2R - Закончил патруль.&10-3 - Радиомолчание.&10-4 - Принято.&10-5 - Повторите.&10-6 - Не принято/неверно/нет.&10-7 - Ожидайте.&10-8 - Не доступен/занят.&10-14 - Запрос транспортировки.&10-15 - Подозреваемые арестованы.&10-18 - Требуется поддержка дополнительных юнитов.&10-20 - Локация.&10-21 - Статус и местонахождение.&10-22 - Выдвигайтесь к локации.&10-27 - Меняю маркировку патруля.&10-30 - Дорожно-транспортное происшествие.&10-40 - Большое скопление людей (более 4).&10-41 - Нелегальная активность.&10-46 - Провожу обыск.&10-55 - Траффик стоп.&10-57 VICTOR - Погоня за автомобилем.&10-57 FOXTROT - Пешая погоня.&10-66 - Траффик стоп повышенного риска.&10-70 - Запрос поддержки.&10-71 - Запрос медицинской поддержки.&10-88 - Теракт/ЧС.&10-99 - Ситуация урегулирована.&10-100 Временно недоступен для вызовов.' }
 	table.insert(modules.notes.data, teen_codes)
+
 	if module ~= 'prison' then
 		local markup_patrool = { note_name = 'Маркировки патруля', note_text = 'Основные:&ADAM [A] - Патруль из 2/3 офицеров на крузере.&LINCOLN [L] - Одиночный патруль на крузере.&MARY [M] - Одиночный патруль на мотоцикле.&HENRY [H] - Высокоскоростой патруль.&AIR [AIR] - Воздушный патруль.&Air Support Division [ASD] - Воздушная поддержка.&&Дополнительные:&CHARLIE [C] - Группа захвата.&ROBERT [R] - Отдел Детективов.&SUPERVISOR [SV] - Руководящий состав.&DAVID [D] - Cпециальный отдел SWAT.&EDWARD [E] - Эвакуатор полиции.&NORA [N] - немаркированная единица патруля.'}
 		table.insert(modules.notes.data, markup_patrool)
 	end
+
 	save_module('notes')
 end
-
------------------------------------------------- Mimgui -----------------------------------------------------
+--------------------------------------------- GUI & Functions -------------------------------------------------
 local InititalWindow = imgui.new.bool()
 
 local MainWindow = imgui.new.bool()
 local theme = imgui.new.int(tonumber(settings.general.helper_theme))
-local slider_dpi = imgui.new.float(tonumber(settings.general.custom_dpi) or 1)
+local slider_dpi = imgui.new.float(tonumber(settings.general.custom_dpi))
 local input = imgui.new.char[256]()
 local slider = imgui.new.int(0)
 
-local checkbox_accent_enable = imgui.new.bool(settings.player_info.accent_enable or false)
-local checkbox_mobile_stop_button = imgui.new.bool(settings.general.mobile_stop_button or false)
-local checkbox_mobile_fastmenu_button = imgui.new.bool(settings.general.mobile_fastmenu_button or false)
--- MJ
-local checkbox_patrool_autodoklad =  imgui.new.bool(settings.general.auto_doklad_patrool or false)
-local checkbox_autodoklad_damage =  imgui.new.bool(settings.general.auto_doklad_damage or false)
-local checkbox_autodoklad_arrest =  imgui.new.bool(settings.general.auto_doklad_arrest or false)
-local checkbox_automask =  imgui.new.bool(settings.general.auto_mask or false)
-local checkbox_change_code_siren = imgui.new.bool(settings.general.auto_change_code_siren or false)
-local checkbox_update_members = imgui.new.bool(settings.general.auto_update_members or false)
-local checkbox_auto_time = imgui.new.bool(settings.general.auto_time or false)
-local checkbox_update_wanteds = imgui.new.bool(settings.mj.auto_update_wanteds or false)
-local checkbox_autodocumentation = imgui.new.bool(settings.mj.auto_documentation or false)
-local checkbox_notify_payday = imgui.new.bool(settings.general.auto_notify_payday or false)
-local checkbox_auto_clicker = imgui.new.bool(settings.general.auto_clicker_situation or false)
-local checkbox_auto_accept_docs = imgui.new.bool(settings.general.auto_accept_docs or false)
-local checkbox_awanted = imgui.new.bool(settings.mj.awanted or false)
-local checkbox_mobile_taser_button = imgui.new.bool(settings.general.use_taser_menu or false)
-local checkbox_mobile_meg_button = imgui.new.bool(settings.general.mobile_meg_button or false)
-
--- dep
-local checkbox_dep_anti_skobki = imgui.new.bool(settings.deportament.anti_skobki or false)
-
--- LC
-local price_lc = {
-    avto1 = imgui.new.char[256](u8(settings.lc.price.avto1) or 0),
-    avto2 = imgui.new.char[256](u8(settings.lc.price.avto2) or 0),
-    avto3 = imgui.new.char[256](u8(settings.lc.price.avto3) or 0),
-    moto1 = imgui.new.char[256](u8(settings.lc.price.moto1) or 0),
-    moto2 = imgui.new.char[256](u8(settings.lc.price.moto2) or 0),
-    moto3 = imgui.new.char[256](u8(settings.lc.price.moto3) or 0),
-    fish1 = imgui.new.char[256](u8(settings.lc.price.fish1) or 0),
-    fish2 = imgui.new.char[256](u8(settings.lc.price.fish2) or 0),
-    fish3 = imgui.new.char[256](u8(settings.lc.price.fish3) or 0),
-    swim1 = imgui.new.char[256](u8(settings.lc.price.swim1) or 0),
-    swim2 = imgui.new.char[256](u8(settings.lc.price.swim2) or 0),
-    swim3 = imgui.new.char[256](u8(settings.lc.price.swim3) or 0),
-    gun1 = imgui.new.char[256](u8(settings.lc.price.gun1) or 0),
-    gun2 = imgui.new.char[256](u8(settings.lc.price.gun2) or 0),
-    gun3 = imgui.new.char[256](u8(settings.lc.price.gun3) or 0),
-    hunt1 = imgui.new.char[256](u8(settings.lc.price.hunt1) or 0),
-    hunt2 = imgui.new.char[256](u8(settings.lc.price.hunt2) or 0),
-    hunt3 = imgui.new.char[256](u8(settings.lc.price.hunt3) or 0),
-    klad1 = imgui.new.char[256](u8(settings.lc.price.klad1) or 0),
-    klad2 = imgui.new.char[256](u8(settings.lc.price.klad2) or 0),
-    klad3 = imgui.new.char[256](u8(settings.lc.price.klad3) or 0),
-    taxi1 = imgui.new.char[256](u8(settings.lc.price.taxi1) or 0),
-    taxi2 = imgui.new.char[256](u8(settings.lc.price.taxi2) or 0),
-    taxi3 = imgui.new.char[256](u8(settings.lc.price.taxi3) or 0),
-    mexa1 = imgui.new.char[256](u8(settings.lc.price.mexa1) or 0),
-    mexa2 = imgui.new.char[256](u8(settings.lc.price.mexa2) or 0),
-    mexa3 = imgui.new.char[256](u8(settings.lc.price.mexa3) or 0),
-    fly1 = imgui.new.char[256](u8(settings.lc.price.fly1) or 0),
-    fly2 = imgui.new.char[256](u8(settings.lc.price.fly2) or 0),
-    fly3 = imgui.new.char[256](u8(settings.lc.price.fly3) or 0)
+local checkbox = {
+    accent_enable = imgui.new.bool(settings.player_info.accent_enable),
+    mobile_stop_button = imgui.new.bool(settings.general.mobile_stop_button),
+    mobile_fastmenu_button = imgui.new.bool(settings.general.mobile_fastmenu_button),
+    auto_update_members = imgui.new.bool(settings.general.auto_update_members),
+    auto_notify_payday = imgui.new.bool(settings.general.auto_notify_payday),
+    auto_accept_docs = imgui.new.bool(settings.general.auto_accept_docs),
+    -- auto_clicker_situation = imgui.new.bool((settings.mj.auto_clicker_situation or settings.mh.auto_clicker_situation)),
+	dep_anti_skobki = imgui.new.bool(settings.deportament.anti_skobki),
+    -- MJ
+    auto_change_code_siren = imgui.new.bool(settings.mj.auto_change_code_siren),
+    auto_doklad_patrool = imgui.new.bool(settings.mj.auto_doklad_patrool),
+    auto_doklad_damage = imgui.new.bool(settings.mj.auto_doklad_damage),
+    auto_doklad_arrest = imgui.new.bool(settings.mj.auto_doklad_arrest),
+    auto_time = imgui.new.bool(settings.mj.auto_time),
+    auto_update_wanteds = imgui.new.bool(settings.mj.auto_update_wanteds),
+    auto_case_documentation = imgui.new.bool(settings.mj.auto_case_documentation),
+    auto_mask = imgui.new.bool(settings.mj.auto_mask),
+    awanted = imgui.new.bool(settings.mj.awanted),
+    mobile_taser_button = imgui.new.bool(settings.mj.mobile_taser_button),
+    mobile_meg_button = imgui.new.bool(settings.mj.mobile_meg_button),
+	-- MD
+	auto_doklad_patrool = imgui.new.bool(settings.md.auto_doklad_patrool),
+    auto_doklad_damage = imgui.new.bool(settings.md.auto_doklad_damage),
 }
 
-
 -- MH
-local price_mh = {
+local get_price_mh = {
     heal = imgui.new.char[256](u8(settings.mh.price.heal)),
     heal_vc = imgui.new.char[256](u8(settings.mh.price.heal_vc)),
     healactor = imgui.new.char[256](u8(settings.mh.price.healactor)),
@@ -791,31 +813,78 @@ local price_mh = {
     med30 = imgui.new.char[256](u8(settings.mh.price.med30)),
     med60 = imgui.new.char[256](u8(settings.mh.price.med60))
 }
-local MedCardMenu = imgui.new.bool()
-local medcard_days = imgui.new.int()
-local medcard_status = imgui.new.int(3)
+local medCard = {
+	menu = imgui.new.bool(),
+	days = imgui.new.int(3),
+	status = imgui.new.int(3)
+}
+local recept = {
+	menu = imgui.new.bool(),
+	recepts = imgui.new.int(1)
+}
+local antibiotik = {
+	menu = imgui.new.bool(),
+	ants = imgui.new.int(1)
+}
+local heal_in_chat = {
+	fast_menu = imgui.new.bool(),
+	bool = false,
+	player_id = nil,
+	worlds = {'вылечи', 'лечи', 'хил', 'лек', 'heal', 'hil', 'lek', 'табл', 'болит', 'голова', 'лекни' , 'ktr', 'ktxb', 'ujkjdf'}
+}
+-- LC
+local get_price_lc = {
+    avto1 = imgui.new.char[256](u8(settings.lc.price.avto1)),
+    avto2 = imgui.new.char[256](u8(settings.lc.price.avto2)),
+    avto3 = imgui.new.char[256](u8(settings.lc.price.avto3)),
+    moto1 = imgui.new.char[256](u8(settings.lc.price.moto1)),
+    moto2 = imgui.new.char[256](u8(settings.lc.price.moto2)),
+    moto3 = imgui.new.char[256](u8(settings.lc.price.moto3)),
+    fish1 = imgui.new.char[256](u8(settings.lc.price.fish1)),
+    fish2 = imgui.new.char[256](u8(settings.lc.price.fish2)),
+    fish3 = imgui.new.char[256](u8(settings.lc.price.fish3)),
+    swim1 = imgui.new.char[256](u8(settings.lc.price.swim1)),
+    swim2 = imgui.new.char[256](u8(settings.lc.price.swim2)),
+    swim3 = imgui.new.char[256](u8(settings.lc.price.swim3)),
+    gun1 = imgui.new.char[256](u8(settings.lc.price.gun1)),
+    gun2 = imgui.new.char[256](u8(settings.lc.price.gun2)),
+    gun3 = imgui.new.char[256](u8(settings.lc.price.gun3)),
+    hunt1 = imgui.new.char[256](u8(settings.lc.price.hunt1)),
+    hunt2 = imgui.new.char[256](u8(settings.lc.price.hunt2)),
+    hunt3 = imgui.new.char[256](u8(settings.lc.price.hunt3)),
+    klad1 = imgui.new.char[256](u8(settings.lc.price.klad1)),
+    klad2 = imgui.new.char[256](u8(settings.lc.price.klad2)),
+    klad3 = imgui.new.char[256](u8(settings.lc.price.klad3)),
+    taxi1 = imgui.new.char[256](u8(settings.lc.price.taxi1)),
+    taxi2 = imgui.new.char[256](u8(settings.lc.price.taxi2)),
+    taxi3 = imgui.new.char[256](u8(settings.lc.price.taxi3)),
+    mexa1 = imgui.new.char[256](u8(settings.lc.price.mexa1)),
+    mexa2 = imgui.new.char[256](u8(settings.lc.price.mexa2)),
+    mexa3 = imgui.new.char[256](u8(settings.lc.price.mexa3)),
+    fly1 = imgui.new.char[256](u8(settings.lc.price.fly1)),
+    fly2 = imgui.new.char[256](u8(settings.lc.price.fly2)),
+    fly3 = imgui.new.char[256](u8(settings.lc.price.fly3))
+}
 
-local ReceptMenu = imgui.new.bool()
-local recepts = imgui.new.int(1)
 
-local AntibiotikMenu = imgui.new.bool()
-local antibiotiks = imgui.new.int(1)
-
-local FastHealMenu = imgui.new.bool()
-local heal_in_chat = {bool = false, player_id = nil, worlds = {'вылечи', 'лечи', 'хил', 'лек', 'heal', 'hil', 'lek', 'табл', 'болит', 'голова', 'лекни' , 'ktr', 'ktxb', 'ujkjdf'}}
 
 local DeportamentWindow = imgui.new.bool()
-local input_dep_fm = imgui.new.char[32](u8(settings.deportament.dep_fm))
-local input_dep_text = imgui.new.char[256]()
-local input_dep_tag1 = imgui.new.char[32](u8(settings.deportament.dep_tag1))
-local input_dep_tag2 = imgui.new.char[32](u8(settings.deportament.dep_tag2))
-local input_dep_new_tag = imgui.new.char[32]()
+local inputs_dep = {
+    fm      = imgui.new.char[32](u8(settings.deportament.dep_fm)),
+    text    = imgui.new.char[256](),
+    tag1    = imgui.new.char[32](u8(settings.deportament.dep_tag1)),
+    tag2    = imgui.new.char[32](u8(settings.deportament.dep_tag2)),
+    new_tag = imgui.new.char[32]()
+}
 
-local MembersWindow = imgui.new.bool()
-local updmembers = {}
-local members = {}
-local members_new = {}
-local members_info = {fraction = '', check = false}
+local members = {
+	menu = imgui.new.bool(),
+	all = {},
+	new = {},
+	upd = {},
+	info = {fraction = '', check = false},
+}
+
 
 local GiveRankMenu = imgui.new.bool()
 local giverank = imgui.new.int(5)
@@ -877,17 +946,17 @@ local binder_tags_text = [[
 {get_rp_nick({arg_id})} - получить Никнейм без символа _ из аргумента ID игрока
 {get_ru_nick({arg_id})} - получить Никнейм на кирилице из аргумента ID игрока 
 
-{price_heal} - Цена лечения пациентов
-{price_healbad} - Цена лечения от наркозависимости
-{price_actorheal} - Цена лечения охранников
-{price_medosm} - Цена мед.осмотра для пилота
-{price_mticket} - Цена обследования военного билета
-{price_ant} - Цена антибиотика   
-{price_recept} - Цена рецепта
-{price_med7} - Цена медккарты на 7 дней   
-{price_med14} - Цена медккарты на 14 дней
-{price_med30} - Цена медккарты на 30 дней   
-{price_med60} - Цена медккарты на 60 дней
+{get_price_heal} - Цена лечения пациентов
+{get_price_healbad} - Цена лечения от наркозависимости
+{get_price_actorheal} - Цена лечения охранников
+{get_price_medosm} - Цена мед.осмотра для пилота
+{get_price_mticket} - Цена обследования военного билета
+{get_price_ant} - Цена антибиотика   
+{get_price_recept} - Цена рецепта
+{get_price_med7} - Цена медккарты на 7 дней   
+{get_price_med14} - Цена медккарты на 14 дней
+{get_price_med30} - Цена медккарты на 30 дней   
+{get_price_med60} - Цена медккарты на 60 дней
 
 {show_medcard_menu} - Открыть меню мед.карты
 {get_medcard_days} - Получить номер выбранного кол-ва дней
@@ -911,8 +980,6 @@ local ImItems2 = imgui.new['const char*'][#item_list2](item_list2)
 
 local MegafonWindow = imgui.new.bool()
 
-local InformationWindow = imgui.new.bool()
-
 local TaserWindow = imgui.new.bool()
 
 local WantedWindow = imgui.new.bool()
@@ -922,7 +989,6 @@ local wanted = {}
 local wanted_new = {}
 local check_wanted = false
 local search_awanted = false
-
 
 local PostMenu = imgui.new.bool()
 local PatroolMenu = imgui.new.bool()
@@ -949,12 +1015,10 @@ local TsmMenuWindow = imgui.new.bool()
 local PuMenuWindow = imgui.new.bool()
 
 
-
 local ProbivMenu = imgui.new.bool()
 local input_probiv_key = imgui.new.char[128]()
 
 -------------------------------------------- Init Colors (MoonMonet) ----------------------------------------------------
-local monet_no_errors, moon_monet = pcall(require, 'MoonMonet')
 function rgbToHex(rgb)
 	local r = bit.band(bit.rshift(rgb, 16), 0xFF)
 	local g = bit.band(bit.rshift(rgb, 8), 0xFF)
@@ -968,7 +1032,7 @@ if settings.general.helper_theme == 0 then
 		message_color_hex = '{' ..  rgbToHex(settings.general.moonmonet_theme_color) .. '}'
 		theme[0] = 0
 	else
-		print('[Arizona Helper] Ошибка: нету библиотеки MoonMonet! Ставлю Dark Theme по дефолту')
+		print('Ошибка: нету библиотеки MoonMonet! Ставлю Dark Theme по дефолту')
 		settings.general.helper_theme = 1
 		message_color = settings.general.message_color
 		message_color_hex = '{' ..  rgbToHex(settings.general.message_color) .. '}'
@@ -987,7 +1051,6 @@ local msgcolor = imgui.new.float[3](tmp.z, tmp.y, tmp.x)
 ------------------------------------------- Mimgui Hotkey  ---------------------------------------------------
 local hotkeys = {}
 if not isMonetLoader() then
-	hotkey_no_errors, hotkey = pcall(require, 'mimgui_hotkeys')
 	if hotkey_no_errors and not isMode('') then
 		hotkey.Text.NoKey = u8'< click and select keys >'
 		hotkey.Text.WaitForKey = u8'< wait keys >'
@@ -1058,7 +1121,7 @@ if not isMonetLoader() then
 						sampProcessChatInput('/' .. command.cmd)
 					end
 				end)
-				print('[Arizona Helper] Создан хоткей для команды /' .. command.cmd .. ' на клавишу ' .. getNameKeysFrom(command.bind))
+				print('Создан хоткей для команды /' .. command.cmd .. ' на клавишу ' .. getNameKeysFrom(command.bind))
 				sampAddChatMessage('[Arizona Helper] {ffffff}Создан хоткей для команды ' .. message_color_hex .. '/' .. command.cmd .. ' {ffffff}на клавишу '  .. message_color_hex .. getNameKeysFrom(command.bind), message_color)
 			end
 		end
@@ -1171,9 +1234,29 @@ function processWeaponChange(oldGun, nowGun)
 end
 ------------------------------------------ Variables ---------------------------------------------------------
 local binderTags = {
-	my_id = function() return select(2, sampGetPlayerIdByCharHandle(PLAYER_PED)) end,
-    my_nick = function() return sampGetPlayerNickname(select(2, sampGetPlayerIdByCharHandle(PLAYER_PED))) end,
-    my_rp_nick = function() return sampGetPlayerNickname(select(2, sampGetPlayerIdByCharHandle(PLAYER_PED))):gsub('_',' ') end,
+	my_id = function()
+		if isMonetLoader() then
+			local id = sampGetPlayerIdByNickname(ReverseTranslateNick(settings.player_info.name_surname))
+			if id == nil then print('Не удалось получить ваш ID, измените Имя и Фамилию в главном меню!') end
+			return id or 'ID'
+		else
+			return select(2, sampGetPlayerIdByCharHandle(PLAYER_PED))
+		end
+	end,
+    my_nick = function()
+		if isMonetLoader() then
+			return ReverseTranslateNick(settings.player_info.name_surname)
+		else
+			return sampGetPlayerNickname(select(2, sampGetPlayerIdByCharHandle(PLAYER_PED)))
+		end
+	end,
+    my_rp_nick = function() 
+		if isMonetLoader() then
+			return ReverseTranslateNick(settings.player_info.name_surname):gsub('_',' ')
+		else
+			return sampGetPlayerNickname(select(2, sampGetPlayerIdByCharHandle(PLAYER_PED))):gsub('_',' ') 
+		end
+	end,
     my_doklad_nick = function() 
 		local nick
 		if isMonetLoader() then
@@ -1196,20 +1279,58 @@ local binderTags = {
 	sex = function() 
 		return (settings.player_info.sex == 'Женщина') and 'a' or ''
 	end,
-	get_time = function ()
+	get_time = function()
 		return os.date("%H:%M:%S")
 	end,
-	get_rank = function ()
+	get_date = function()
+		return os.date("%H:%M:%S")
+	end,
+	get_rank = function()
 		return giverank[0]
 	end,
-	get_square = function ()
-		return kvadrat()
+	get_square = function()
+		local KV = {
+			[1] = "А",
+			[2] = "Б",
+			[3] = "В",
+			[4] = "Г",
+			[5] = "Д",
+			[6] = "Ж",
+			[7] = "З",
+			[8] = "И",
+			[9] = "К",
+			[10] = "Л",
+			[11] = "М",
+			[12] = "Н",
+			[13] = "О",
+			[14] = "П",
+			[15] = "Р",
+			[16] = "С",
+			[17] = "Т",
+			[18] = "У",
+			[19] = "Ф",
+			[20] = "Х",
+			[21] = "Ц",
+			[22] = "Ч",
+			[23] = "Ш",
+			[24] = "Я",
+		}
+		local X, Y, Z = getCharCoordinates(playerPed)
+		X = math.ceil((X + 3000) / 250)
+		Y = math.ceil((Y * - 1 + 3000) / 250)
+		Y = KV[Y]
+		if Y ~= nil then
+			local KVX = (Y.."-"..X)
+			return KVX
+		else
+			return X
+		end
 	end,
-	get_area = function ()
+	get_area = function()
 		local x,y,z = getCharCoordinates(PLAYER_PED)
-		return calculateZoneRu(x,y,z)
+		return getAreaRu(x,y,z)
 	end,
-	get_city = function ()
+	get_city = function()
 		local city = {
 			[0] = "Вне города",
 			[1] = "Лос Сантос",
@@ -1218,9 +1339,9 @@ local binderTags = {
 		}
 		return city[getCityPlayerIsIn(PLAYER_PED)]
 	end,
-	get_storecar_model = function ()
+	get_storecar_model = function()
 		local closest_car = nil
-		local closest_distance = 75
+		local closest_distance = 50
 		local my_pos = {getCharCoordinates(PLAYER_PED)}
 		local my_car
 		if isCharInAnyCar(PLAYER_PED) then
@@ -1231,7 +1352,6 @@ local binderTags = {
 				local vehicle_pos = {getCarCoordinates(vehicle)}
 				local distance = getDistanceBetweenCoords3d(my_pos[1], my_pos[2], my_pos[3], vehicle_pos[1], vehicle_pos[2], vehicle_pos[3])
 				if distance < closest_distance and vehicle ~= my_car then
-					--sampAddChatMessage(math.floor(distance),-1)
 					closest_distance = distance
 					closest_car = vehicle
 				end
@@ -1239,290 +1359,543 @@ local binderTags = {
 			end
 		end
 		if closest_car then
-			local clr1, clr2 = getCarColours(closest_car)
-			local CarColorName = ""
+			-- local colorNames = {
+			-- 	[0] = "чёрного",
+			-- 	[1] = "белого",
+			-- 	[2] = "бирюзового",
+			-- 	[3] = "бордового",
+			-- 	[4] = "хвойного",
+			-- 	[5] = "пурпурного",
+			-- 	[6] = "жёлтого",
+			-- 	[7] = "голубого",
+			-- 	[8] = "серого",
+			-- 	[9] = "оливкового",
+			-- 	[10] = "синего",
+			-- 	[11] = "серого",
+			-- 	[12] = "голубого",
+			-- 	[13] = "графитового",
+			-- 	[14] = "светлого",
+			-- 	[15] = "светлого",
+			-- 	[16] = "хвойного",
+			-- 	[17] = "бордового",
+			-- 	[18] = "бордового",
+			-- 	[19] = "серого",
+			-- 	[20] = "синего",
+			-- 	[21] = "бордового",
+			-- 	[22] = "бордового",
+			-- 	[23] = "серого",
+			-- 	[24] = "графитового",
+			-- 	[25] = "серого",
+			-- 	[26] = "светлого",
+			-- 	[27] = "тусклого",
+			-- 	[28] = "синего",
+			-- 	[29] = "светлого",
+			-- 	[30] = "бордового",
+			-- 	[31] = "бордового",
+			-- 	[32] = "голубоватого",
+			-- 	[33] = "серого",
+			-- 	[34] = "тусклого",
+			-- 	[35] = "коричневого",
+			-- 	[36] = "синего",
+			-- 	[37] = "хвойного",
+			-- 	[38] = "серого",
+			-- 	[39] = "синего",
+			-- 	[40] = "тёмного",
+			-- 	[41] = "коричневого",
+			-- 	[42] = "коричневого",
+			-- 	[43] = "бордового",
+			-- 	[44] = "хвойного",
+			-- 	[45] = "бордового",
+			-- 	[46] = "бежевого",
+			-- 	[47] = "зелёного",
+			-- 	[48] = "кварцевого",
+			-- 	[49] = "голубого",
+			-- 	[50] = "серебристого",
+			-- 	[51] = "хвойного",
+			-- 	[52] = "синего",
+			-- 	[53] = "синего",
+			-- 	[54] = "синего",
+			-- 	[55] = "коричневого",
+			-- 	[56] = "голубого",
+			-- 	[57] = "коричневого",
+			-- 	[58] = "тёмнокрасного",
+			-- 	[59] = "синего",
+			-- 	[60] = "светлого",
+			-- 	[61] = "коричневого",
+			-- 	[62] = "тёмнокрасного",
+			-- 	[63] = "серебристого",
+			-- 	[64] = "светлого",
+			-- 	[65] = "оливкового",
+			-- 	[66] = "коричневого",
+			-- 	[67] = "асфальтового",
+			-- 	[68] = "оливкового",
+			-- 	[69] = "кварцевого",
+			-- 	[70] = "тёмнокрасного",
+			-- 	[71] = "светлого",
+			-- 	[72] = "зелёного",
+			-- 	[73] = "оливкового",
+			-- 	[74] = "бордового",
+			-- 	[75] = "синего",
+			-- 	[76] = "оливкового",
+			-- 	[77] = "коричневого",
+			-- 	[78] = "розового",
+			-- 	[79] = "синего",
+			-- 	[80] = "розового",
+			-- 	[81] = "серого",
+			-- 	[82] = "тёмнокрасного",
+			-- 	[83] = "бирюзового",
+			-- 	[84] = "коричневого",
+			-- 	[85] = "розового",
+			-- 	[86] = "хвойного",
+			-- 	[87] = "синего",
+			-- 	[88] = "винного",
+			-- 	[89] = "оливкового",
+			-- 	[90] = "светлого",
+			-- 	[91] = "пурпурного",
+			-- 	[92] = "тёмносерого",
+			-- 	[93] = "синего",
+			-- 	[94] = "синего",
+			-- 	[95] = "синего",
+			-- 	[96] = "светлого",
+			-- 	[97] = "асфальтового",
+			-- 	[98] = "тёмносерого",
+			-- 	[99] = "коричневого",
+			-- 	[100] = "бриллиантового",
+			-- 	[101] = "кобальтового",
+			-- 	[102] = "коричневого",
+			-- 	[103] = "синего",
+			-- 	[104] = "коричневого",
+			-- 	[105] = "серого",
+			-- 	[106] = "синего",
+			-- 	[107] = "кварцевого",
+			-- 	[108] = "бриллиантового",
+			-- 	[109] = "серого",
+			-- 	[110] = "оливкового",
+			-- 	[111] = "голубого",
+			-- 	[112] = "серого",
+			-- 	[113] = "коричневого",
+			-- 	[114] = "зелёного",
+			-- 	[115] = "тёмнокрасного",
+			-- 	[116] = "синего",
+			-- 	[117] = "бордового",
+			-- 	[118] = "голубого",
+			-- 	[119] = "коричневого",
+			-- 	[120] = "кварцевого",
+			-- 	[121] = "бордового",
+			-- 	[122] = "тёмносерого",
+			-- 	[123] = "коричневого",
+			-- 	[124] = "тёмнокрасного",
+			-- 	[125] = "синего",
+			-- 	[126] = "розового",
+			-- 	[127] = "чёрного",
+			-- 	[128] = "зелёного",
+			-- 	[129] = "бордового",
+			-- 	[130] = "синего",
+			-- 	[131] = "коричневого",
+			-- 	[132] = "тёмнокрасного",
+			-- 	[133] = "чёрного",
+			-- 	[134] = "синего",
+			-- 	[135] = "яркосинего",
+			-- 	[136] = "аметистового",
+			-- 	[137] = "зелёного",
+			-- 	[138] = "серого",
+			-- 	[139] = "пурпурного",
+			-- 	[140] = "светлого",
+			-- 	[141] = "тёмносерого",
+			-- 	[142] = "оливкового",
+			-- 	[143] = "фиолетового",
+			-- 	[144] = "фиолетового",
+			-- 	[145] = "зелёного",
+			-- 	[146] = "коричневого",
+			-- 	[147] = "фиолетового",
+			-- 	[148] = "оливкового",
+			-- 	[149] = "тёмного",
+			-- 	[150] = "чёрного",
+			-- 	[151] = "чёрного",
+			-- 	[152] = "хвойного",
+			-- 	[153] = "розового",
+			-- 	[154] = "светлого",
+			-- 	[155] = "хвойного",
+			-- 	[156] = "коричневого",
+			-- 	[157] = "чёрного",
+			-- 	[158] = "хвойного",
+			-- 	[159] = "коричневого",
+			-- 	[160] = "тёмнокрасного",
+			-- 	[161] = "коричневого",
+			-- 	[162] = "коричневого",
+			-- 	[163] = "розового",
+			-- 	[164] = "синего",
+			-- 	[165] = "коричневого",
+			-- 	[166] = "синего",
+			-- 	[167] = "оранжевого",
+			-- 	[168] = "синего",
+			-- 	[169] = "розового",
+			-- 	[170] = "оранжевого",
+			-- 	[171] = "оранжевого",
+			-- 	[172] = "чёрного",
+			-- 	[173] = "синего",
+			-- 	[174] = "синего",
+			-- 	[175] = "коричневого",
+			-- 	[176] = "оранжевого",
+			-- 	[177] = "коричневого",
+			-- 	[178] = "хвойного",
+			-- 	[179] = "синего",
+			-- 	[180] = "светлого",
+			-- 	[181] = "хвойного",
+			-- 	[182] = "оранжевого",
+			-- 	[183] = "оливкового",
+			-- 	[184] = "голубого",
+			-- 	[185] = "чёрного",
+			-- 	[186] = "коричневого",
+			-- 	[187] = "синего",
+			-- 	[188] = "коричневого",
+			-- 	[189] = "оранжевого",
+			-- 	[190] = "зелёного",
+			-- 	[191] = "чёрного",
+			-- 	[192] = "оранжевого",
+			-- 	[193] = "коричневого",
+			-- 	[194] = "хвойного",
+			-- 	[195] = "коричневого",
+			-- 	[196] = "чёрного",
+			-- 	[197] = "синего",
+			-- 	[198] = "коричневого",
+			-- 	[199] = "оранжевого",
+			-- 	[200] = "чёрного",
+			-- 	[201] = "коричневого",
+			-- 	[202] = "коричневого",
+			-- 	[203] = "коричневого",
+			-- 	[204] = "чёрного",
+			-- 	[205] = "синего",
+			-- 	[206] = "хвойного",
+			-- 	[207] = "чёрного",
+			-- 	[208] = "синего",
+			-- 	[209] = "хвойного",
+			-- 	[210] = "чёрного",
+			-- 	[211] = "синего",
+			-- 	[212] = "хвойного",
+			-- 	[213] = "чёрного",
+			-- 	[214] = "синего",
+			-- 	[215] = "коричневого",
+			-- 	[216] = "оранжевого",
+			-- 	[217] = "коричневого",
+			-- 	[218] = "синего",
+			-- 	[219] = "чёрного",
+			-- 	[220] = "хвойного",
+			-- 	[221] = "чёрного",
+			-- 	[222] = "коричневого",
+			-- 	[223] = "чёрного",
+			-- 	[224] = "синего",
+			-- 	[225] = "хвойного",
+			-- 	[226] = "чёрного",
+			-- 	[227] = "синего",
+			-- 	[228] = "коричневого",
+			-- 	[229] = "оранжевого",
+			-- 	[230] = "чёрного",
+			-- 	[231] = "коричневого",
+			-- 	[232] = "синего",
+			-- 	[233] = "чёрного",
+			-- 	[234] = "синего",
+			-- 	[235] = "коричневого",
+			-- 	[236] = "хвойного",
+			-- 	[237] = "чёрного",
+			-- 	[238] = "оранжевого",
+			-- 	[239] = "коричневого",
+			-- 	[240] = "голубого",
+			-- 	[241] = "зеленого",
+			-- 	[242] = "фиолетового",
+			-- 	[243] = "зелёного",
+			-- 	[244] = "коричневого",
+			-- 	[245] = "хвойного",
+			-- 	[246] = "голубого",
+			-- 	[247] = "синего",
+			-- 	[248] = "бордового",
+			-- 	[249] = "бордового",
+			-- 	[250] = "серого",
+			-- 	[251] = "серого",
+			-- 	[252] = "чёрного",
+			-- 	[253] = "серого",
+			-- 	[254] = "коричневого",
+			-- 	[255] = "синего"
+			-- }
 			local colorNames = {
 				[0] = "чёрного",
 				[1] = "белого",
 				[2] = "бирюзового",
 				[3] = "бордового",
-				[4] = "тёмно-зелёного",
-				[5] = "красно-пурпурного",
-				[6] = "золотисто-жёлтого",
-				[7] = "синего",
-				[8] = "светло-серого",
-				[9] = "серо-зелёного",
-				[10] = "тёмно-синего",
-				[11] = "серо-синего",
-				[12] = "голубино-синего",
-				[13] = "графитово-серого",
-				[14] = "очень светло-серого",
-				[15] = "светло-серого",
-				[16] = "тёмно-зелёного",
-				[17] = "насыщенного красно-коричневого",
-				[18] = "тёмно-розового",
-				[19] = "серо-коричневого",
-				[20] = "тёмно-синего",
-				[21] = "светло-бурдового",
-				[22] = "бордово-красного",
+				[4] = "хвойного",
+				[5] = "пурпурного",
+				[6] = "жёлтого",
+				[7] = "голубого",
+				[8] = "серого",
+				[9] = "оливкового",
+				[10] = "синего",
+				[11] = "серого",
+				[12] = "голубого",
+				[13] = "графитового",
+				[14] = "светлого",
+				[15] = "светлого",
+				[16] = "хвойного",
+				[17] = "бордового",
+				[18] = "бордового",
+				[19] = "серого",
+				[20] = "синего",
+				[21] = "бордового",
+				[22] = "бордового",
 				[23] = "серого",
 				[24] = "графитового",
-				[25] = "тёмно-серого",
-				[26] = "светло-серого",
-				[27] = "тускло-серого",
-				[28] = "тёмно-синего",
-				[29] = "светло-серого",
-				[30] = "черно-красного",
-				[31] = "тёмно-красного",
-				[32] = "светло-серого с голубым оттенком",
-				[33] = "серой белки",
-				[34] = "тускло-серого",
-				[35] = "серо-коричневого",
-				[36] = "серо-синего",
-				[37] = "черно-зелёного",
+				[25] = "серого",
+				[26] = "светлого",
+				[27] = "тусклого",
+				[28] = "синего",
+				[29] = "светлого",
+				[30] = "бордового",
+				[31] = "бордового",
+				[32] = "голубоватого",
+				[33] = "серого",
+				[34] = "тусклого",
+				[35] = "коричневого",
+				[36] = "синего",
+				[37] = "хвойного",
 				[38] = "серого",
-				[39] = "серо-синего",
-				[40] = "красновато-черного",
-				[41] = "серо-коричневого",
-				[42] = "коричнево-красного",
-				[43] = "тёмно-бордового",
-				[44] = "тёмно-зелёного",
-				[45] = "тёмно-бордового",
-				[46] = "серо-бежевого",
-				[47] = "зеленовато-серого",
-				[48] = "кварцевого",
-				[49] = "серо-голубого",
-				[50] = "серебристо-серого",
-				[51] = "тёмно-зелёного",
-				[52] = "серо-синего",
-				[53] = "очень тёмного синего",
-				[54] = "тёмно-синего",
-				[55] = "тёмно-коричневого",
-				[56] = "серо-голубого",
-				[57] = "светло-коричневого",
-				[58] = "тёмно-красного",
-				[59] = "отдаленно-синего",
-				[60] = "светло-серого",
-				[61] = "тёмно-коричневого",
-				[62] = "тёмно-красного",
-				[63] = "серебристо-серого",
-				[64] = "светло-серого",
+				[39] = "синего",
+				[40] = "тёмного",
+				[41] = "коричневого",
+				[42] = "коричневого",
+				[43] = "бордового",
+				[44] = "хвойного",
+				[45] = "бордового",
+				[46] = "бежевого",
+				[47] = "оливкового",
+				[48] = "оливкового",
+				[49] = "серого",
+				[50] = "серебристого",
+				[51] = "хвойного",
+				[52] = "синего",
+				[53] = "синего",
+				[54] = "синего",
+				[55] = "коричневого",
+				[56] = "голубого",
+				[57] = "оливкового",
+				[58] = "тёмнокрасного",
+				[59] = "синего",
+				[60] = "светлого",
+				[61] = "оранжевого",
+				[62] = "тёмнокрасного",
+				[63] = "серебристого",
+				[64] = "светлого",
 				[65] = "оливкового",
-				[66] = "тёмного серо-красно-коричневого",
-				[67] = "аспидно-серого",
-				[68] = "оливково-серого",
+				[66] = "коричневого",
+				[67] = "асфальтового",
+				[68] = "оливкового",
 				[69] = "кварцевого",
-				[70] = "тёмно-красного",
-				[71] = "светло аспидно-серого",
-				[72] = "серовато-зеленого",
-				[73] = "оливково-зелёного",
-				[74] = "тёмно-бордового",
-				[75] = "очень тёмного синего",
-				[76] = "светло-оливкового",
-				[77] = "светло-коричневого",
-				[78] = "тёмно-розового",
-				[79] = "тёмно-синего",
-				[80] = "тёмно-розового",
-				[81] = "средне-серого",
-				[82] = "тёмно-красного",
-				[83] = "зелено-синего",
-				[84] = "тёмно-коричневого",
-				[85] = "тёмно-розового",
-				[86] = "тёмно-зелёного",
-				[87] = "тёмно-синего",
-				[88] = "винно-красного",
-				[89] = "светло-оливкового",
-				[90] = "светло-серого",
-				[91] = "пурпурно-синего",
-				[92] = "тёмно-серого",
-				[93] = "синего",
-				[94] = "тёмно-синего",
-				[95] = "тёмно-синего",
-				[96] = "светло-серого",
-				[97] = "аспидно-серого",
-				[98] = "тёмно-серого",
-				[99] = "бледно серо-коричневого",
-				[100] = "брилиантово-синего",
-				[101] = "кобальто-синего",
-				[102] = "светло-коричневого",
+				[70] = "тёмнокрасного",
+				[71] = "светлого",
+				[72] = "тёмносерого",
+				[73] = "оливкового",
+				[74] = "бордового",
+				[75] = "синего",
+				[76] = "оливкового",
+				[77] = "оранжевого",
+				[78] = "бордового",
+				[79] = "синего",
+				[80] = "розового",
+				[81] = "оливкового",
+				[82] = "тёмнокрасного",
+				[83] = "бирюзового",
+				[84] = "коричневого",
+				[85] = "розового",
+				[86] = "хвойного",
+				[87] = "синего",
+				[88] = "винного",
+				[89] = "оливкового",
+				[90] = "светлого",
+				[91] = "тёмносинего",
+				[92] = "тёмносерого",
+				[93] = "голубоватого",
+				[94] = "синего",
+				[95] = "синего",
+				[96] = "светлого",
+				[97] = "асфальтового",
+				[98] = "голубоватого",
+				[99] = "коричневого",
+				[100] = "бриллиантового",
+				[101] = "кобальтового",
+				[102] = "коричневого",
 				[103] = "синего",
-				[104] = "светло-коричневого",
-				[105] = "серовато-синего",
+				[104] = "коричневого",
+				[105] = "серого",
 				[106] = "синего",
-				[107] = "кварцевого",
-				[108] = "брилиантово-синего",
-				[109] = "серовато-синего",
-				[110] = "светло оливково-серого",
-				[111] = "серовато-голубого",
-				[112] = "синевато-серого",
-				[113] = "тёмно-коричневого",
-				[114] = "серовато-зелёного",
-				[115] = "тёмно-красного",
-				[116] = "тёмно-синего",
-				[117] = "тёмно-бордового",
-				[118] = "светло-голубого",
-				[119] = "красновато-коричневого",
-				[120] = "кварцевого",
-				[121] = "тёмно-бордового",
-				[122] = "тёмно-серого",
-				[123] = "тёмно-коричневого",
-				[124] = "тёмно-красного",
-				[125] = "тёмно-синего",
+				[107] = "оливкового",
+				[108] = "бриллиантового",
+				[109] = "серого",
+				[110] = "оливкового",
+				[111] = "серого",
+				[112] = "серого",
+				[113] = "коричневого",
+				[114] = "зелёного",
+				[115] = "тёмнокрасного",
+				[116] = "синего",
+				[117] = "бордового",
+				[118] = "голубого",
+				[119] = "коричневого",
+				[120] = "оливкового",
+				[121] = "бордового",
+				[122] = "тёмносерого",
+				[123] = "коричневого",
+				[124] = "тёмнокрасного",
+				[125] = "синего",
 				[126] = "розового",
 				[127] = "чёрного",
 				[128] = "зелёного",
-				[129] = "тёмного бордового",
+				[129] = "бордового",
 				[130] = "синего",
-				[131] = "тёмно-коричневого",
-				[132] = "тёмно-красного",
-				[133] = "чёрного с лёгким оттенком зелёного",
-				[134] = "тёмно-синего",
-				[135] = "ярко-синего",
+				[131] = "коричневого",
+				[132] = "тёмнокрасного",
+				[133] = "чёрного",
+				[134] = "фиолетового",
+				[135] = "яркосинего",
 				[136] = "аметистового",
-				[137] = "травяного зелёного",
-				[138] = "светло серого",
-				[139] = "насыщенного пурпурно-синего",
-				[140] = "светло-серого",
-				[141] = "тёмно-серого",
+				[137] = "зелёного",
+				[138] = "серого",
+				[139] = "пурпурного",
+				[140] = "светлого",
+				[141] = "тёмносерого",
 				[142] = "оливкового",
-				[143] = "тёмно-серого с фиолетовым оттенком",
-				[144] = "тёмно-фиолетового",
-				[145] = "светло-зелёного",
-				[146] = "розовато-коричневого",
-				[147] = "тёмно-фиолетового",
-				[148] = "тёмного серо-оливково-зелёного",
-				[149] = "очень тёмно-коричневого",
-				[150] = "оливково-черного",
-				[151] = "чёрного",
-				[152] = "тёмно-зелёного",
-				[153] = "светло-розового",
-				[154] = "светло-серого",
-				[155] = "тёмно-зелёного",
-				[156] = "серо-коричневого",
-				[157] = "чёрного",
-				[158] = "тёмно-зелёного",
-				[159] = "тёмно-коричневого",
-				[160] = "тёмно-красного",
-				[161] = "светло-коричневого",
-				[162] = "тёмно-коричневого",
-				[163] = "тёмно-розового",
-				[164] = "тёмно-синего",
-				[165] = "светло-коричневого",
-				[166] = "тёмно-синего",
-				[167] = "тёмно-оранжевого",
-				[168] = "тёмно-синего",
-				[169] = "тёмно-розового",
-				[170] = "тёмно-оранжевого",
-				[171] = "тёмно-оранжевого",
-				[172] = "чёрного",
-				[173] = "тёмно-синего",
-				[174] = "синего",
-				[175] = "тёмно-коричневого",
-				[176] = "тёмно-оранжевого",
-				[177] = "тёмно-коричневого",
-				[178] = "тёмно-зелёного",
-				[179] = "тёмно-синего",
-				[180] = "светло-серого",
-				[181] = "тёмно-зелёного",
-				[182] = "тёмно-оранжевого",
-				[183] = "светло-оливкового",
-				[184] = "светло-синего",
+				[143] = "фиолетового",
+				[144] = "фиолетового",
+				[145] = "зелёного",
+				[146] = "пурпурного",
+				[147] = "фиолетового",
+				[148] = "оливкового",
+				[149] = "тёмного",
+				[150] = "тёмнозелёного",
+				[151] = "зеленого",
+				[152] = "синего",
+				[153] = "зелёного",
+				[154] = "салатового",
+				[155] = "бирюзового",
+				[156] = "коричневого",
+				[157] = "светлого",
+				[158] = "оранжевого",
+				[159] = "коричневого",
+				[160] = "тёмнозелёного",
+				[161] = "винного",
+				[162] = "синего",
+				[163] = "графитового",
+				[164] = "чёрного",
+				[165] = "бирюзового",
+				[166] = "бирюзового",
+				[167] = "фиолетового",
+				[168] = "бордового",
+				[169] = "фиолетового",
+				[170] = "фиолетового",
+				[171] = "фиолетового",
+				[172] = "хвойного",
+				[173] = "коричневого",
+				[174] = "коричневого",
+				[175] = "коричневого",
+				[176] = "пурпурного",
+				[177] = "пурпурного",
+				[178] = "пурпурного",
+				[179] = "фиолетового",
+				[180] = "коричневого",
+				[181] = "красного",
+				[182] = "оранжевого",
+				[183] = "оливкового",
+				[184] = "голубого",
 				[185] = "чёрного",
-				[186] = "тёмно-коричневого",
-				[187] = "тёмно-синего",
-				[188] = "тёмно-коричневого",
-				[189] = "светло-оранжевого",
-				[190] = "светло-зелёного",
-				[191] = "чёрного",
-				[192] = "тёмно-оранжевого",
-				[193] = "тёмно-коричневого",
-				[194] = "тёмно-зелёного",
-				[195] = "тёмно-коричневого",
-				[196] = "чёрного",
-				[197] = "тёмно-синего",
-				[198] = "тёмно-коричневого",
-				[199] = "тёмно-оранжевого",
-				[200] = "чёрного",
-				[201] = "тёмно-коричневого",
-				[202] = "светло-коричневого",
-				[203] = "светло-коричневого",
-				[204] = "чёрного",
-				[205] = "тёмно-синего",
-				[206] = "тёмно-зелёного",
-				[207] = "чёрного",
-				[208] = "тёмно-синего",
-				[209] = "тёмно-зелёного",
-				[210] = "чёрного",
-				[211] = "тёмно-синего",
-				[212] = "тёмно-зелёного",
-				[213] = "чёрного",
-				[214] = "тёмно-синего",
-				[215] = "тёмно-коричневого",
-				[216] = "тёмно-оранжевого",
-				[217] = "тёмно-коричневого",
-				[218] = "тёмно-синего",
-				[219] = "чёрного",
-				[220] = "тёмно-зелёного",
-				[221] = "чёрного",
-				[222] = "тёмно-коричневого",
-				[223] = "чёрного",
-				[224] = "тёмно-синего",
-				[225] = "тёмно-зелёного",
-				[226] = "чёрного",
-				[227] = "тёмно-синего",
-				[228] = "тёмно-коричневого",
-				[229] = "тёмно-оранжевого",
-				[230] = "чёрного",
-				[231] = "тёмно-коричневого",
-				[232] = "тёмно-синего",
-				[233] = "чёрного",
-				[234] = "тёмно-синего",
-				[235] = "тёмно-коричневого",
-				[236] = "тёмно-зелёного",
-				[237] = "чёрного",
-				[238] = "тёмно-оранжевого",
-				[239] = "тёмно-коричневого",
-				[240] = "тёмно-зелёного",
-				[241] = "тёмно-синего",
-				[242] = "тёмно-коричневого",
-				[243] = "тёмно-синего",
-				[244] = "чёрного",
-				[245] = "тёмно-зелёного",
-				[246] = "тёмно-коричневого",
-				[247] = "тёмно-синего",
-				[248] = "тёмно-зелёного",
-				[249] = "чёрного",
-				[250] = "тёмно-оранжевого",
-				[251] = "тёмно-синего",
+				[186] = "чёрного",
+				[187] = "зелёного",
+				[188] = "зелёного",
+				[189] = "зелёного",
+				[190] = "пурпурного",
+				[191] = "салатового",
+				[192] = "светлого",
+				[193] = "светлого",
+				[194] = "оливкового",
+				[195] = "оливкового",
+				[196] = "серого",
+				[197] = "оливкового",
+				[198] = "синего",
+				[199] = "оливкового",
+				[200] = "странного",
+				[201] = "синего",
+				[202] = "зелёного",
+				[203] = "синего",
+				[204] = "голубого",
+				[205] = "синего",
+				[206] = "тёмносинего",
+				[207] = "голубого",
+				[208] = "синего",
+				[209] = "синего",
+				[210] = "синего",
+				[211] = "фиолетового",
+				[212] = "оранжевого",
+				[213] = "светлого",
+				[214] = "оливкового",
+				[215] = "чёрного",
+				[216] = "оранжевого",
+				[217] = "бирюзового",
+				[218] = "бледно-розового",
+				[219] = "оранжевого",
+				[220] = "розового",
+				[221] = "оливкового",
+				[222] = "оранжевого",
+				[223] = "синего",
+				[224] = "бордового",
+				[225] = "хвойного",
+				[226] = "салатового",
+				[227] = "зелёного",
+				[228] = "бледного",
+				[229] = "салатового",
+				[230] = "бордового",
+				[231] = "коричневого",
+				[232] = "розового",
+				[233] = "пурпурного",
+				[234] = "тёмнозелёного",
+				[235] = "оливкового",
+				[236] = "хвойного",
+				[237] = "пурпурного",
+				[238] = "оранжевого",
+				[239] = "коричневого",
+				[240] = "голубого",
+				[241] = "зеленого",
+				[242] = "фиолетового",
+				[243] = "зелёного",
+				[244] = "коричневого",
+				[245] = "хвойного",
+				[246] = "голубого",
+				[247] = "синего",
+				[248] = "бордового",
+				[249] = "бордового",
+				[250] = "серого",
+				[251] = "серого",
 				[252] = "чёрного",
-				[253] = "тёмно-коричневого",
-				[254] = "тёмно-зелёного",
-				[255] = "тёмно-синего"
+				[253] = "серого",
+				[254] = "коричневого",
+				[255] = "синего"
 			}
-			if clr1 == clr2 then
-				CarColorName = colorNames[clr1] .. " цвета"
-			else
-				CarColorName = colorNames[clr1] .. '-' .. colorNames[clr2] .. " цвета"
-			end
-			function getVehPlateNumberByCarHandle(car)
+			local clr1, clr2 = getCarColours(closest_car)
+			local CarColorName = " " .. colorNames[clr1] .. " цвета"
+			local function getVehPlateNumberByCarHandle(car)
 				for i, plate in pairs(modules.arz_veh.cache) do
 					result, veh = sampGetCarHandleBySampVehicleId(plate.carID)
 					if result and veh == car then
-						return ' (' .. plate.number .. ') '
+						return ' c номерами ' .. plate.number
 					end
 				end
-				return ' '
+				return ''
 			end
-			return "" .. getNameOfARZVehicleModel(getCarModel(closest_car)) .. getVehPlateNumberByCarHandle(closest_car) .. CarColorName
+			return (getNameOfARZVehicleModel(getCarModel(closest_car)) .. CarColorName .. getVehPlateNumberByCarHandle(closest_car))
 		else
-			sampAddChatMessage("[Arizona Helper] {ffffff}Не удалось получить модель ближайшего т/c с водителем!", 0x009EFF)
-			return ' транспортного средства'
+			--sampAddChatMessage("[Arizona Helper] {ffffff}Не удалось получить модель ближайшего т/c с водителем!", 0x009EFF)
+			return 'транспортного средства'
 		end
 	end,
-	get_form_su = function ()
+	get_form_su = function()
 		return form_su
 	end,
-	get_patrool_format_time = function ()
+	get_patrool_format_time = function()
 		local hours = math.floor(patrool.time / 3600)
 		local minutes = math.floor((patrool.time % 3600) / 60)
 		local secs = patrool.time % 60
@@ -1534,7 +1907,7 @@ local binderTags = {
 			return string.format("%d секунд(-ы)", secs)
 		end
 	end,
-	get_patrool_time = function ()
+	get_patrool_time = function()
 		local hours = math.floor(patrool.time / 3600)
 		local minutes = math.floor(( patrool.time % 3600) / 60)
 		local secs = patrool.time % 60
@@ -1544,16 +1917,16 @@ local binderTags = {
 			return string.format("%02d:%02d", minutes, secs)
 		end
 	end,
-	get_patrool_code = function ()
+	get_patrool_code = function()
 		return patrool.code
 	end,
-	get_patrool_mark = function ()
+	get_patrool_mark = function()
 		return patrool.mark .. '-' .. select(2, sampGetPlayerIdByCharHandle(PLAYER_PED))
 	end,
-	get_patrool_name = function ()
+	get_patrool_name = function()
 		return patrool.name
 	end,
-	get_car_units = function ()
+	get_car_units = function()
 		if isCharInAnyCar(PLAYER_PED) then
 			local car = storeCarCharIsInNoSave(PLAYER_PED)
 			local success, passengers = getNumberOfPassengers(car)
@@ -1597,7 +1970,7 @@ local binderTags = {
 			return 'Нету'
 		end
 	end,
-	switchCarSiren = function ()
+	switchCarSiren = function()
 		if isCharInAnyCar(PLAYER_PED) then
 			local car = storeCarCharIsInNoSave(PLAYER_PED)
 			if getDriverOfCar(car) == PLAYER_PED then
@@ -1613,80 +1986,80 @@ local binderTags = {
 		end
 	end,
 	-- LC
-	price_avto1 = function() return settings.lc.price.avto1 end,
-	price_avto2 = function() return settings.lc.price.avto2 end,
-	price_avto3 = function() return settings.lc.price.avto3 end,
-	price_moto1 = function() return settings.lc.price.moto1 end,
-	price_moto2 = function() return settings.lc.price.moto2 end,
-	price_moto3 = function() return settings.lc.price.moto3 end,
-	price_fish1 = function() return settings.lc.price.fish1 end,
-	price_fish2 = function() return settings.lc.price.fish2 end,
-	price_fish3 = function() return settings.lc.price.fish3 end,
-	price_swim1 = function() return settings.lc.price.swim1 end,
-	price_swim2 = function() return settings.lc.price.swim2 end,
-	price_swim3 = function() return settings.lc.price.swim3 end,
-	price_gun1 = function() return settings.lc.price.gun1 end,
-	price_gun2 = function() return settings.lc.price.gun2 end,
-	price_gun3 = function() return settings.lc.price.gun3 end,
-	price_hunt1 = function() return settings.lc.price.hunt1 end,
-	price_hunt2 = function() return settings.lc.price.hunt2 end,
-	price_hunt3 = function() return settings.lc.price.hunt3 end,
-	price_klad1 = function() return settings.lc.price.klad1 end,
-	price_klad2 = function() return settings.lc.price.klad2 end,
-	price_klad3 = function() return settings.lc.price.klad3 end,
-	price_taxi1 = function() return settings.lc.price.taxi1 end,
-	price_taxi2 = function() return settings.lc.price.taxi2 end,
-	price_taxi3 = function() return settings.lc.price.taxi3 end,
-	price_mexa1 = function() return settings.lc.price.mexa1 end,
-	price_mexa2 = function() return settings.lc.price.mexa2 end,
-	price_mexa3 = function() return settings.lc.price.mexa3 end,
-	price_fly1 = function() return settings.lc.price.fly1 end,
-	price_fly2 = function() return settings.lc.price.fly2 end,
-	price_fly3 = function() return settings.lc.price.fly3 end,
+	get_price_avto1 = function() return settings.lc.price.avto1 end,
+	get_price_avto2 = function() return settings.lc.price.avto2 end,
+	get_price_avto3 = function() return settings.lc.price.avto3 end,
+	get_price_moto1 = function() return settings.lc.price.moto1 end,
+	get_price_moto2 = function() return settings.lc.price.moto2 end,
+	get_price_moto3 = function() return settings.lc.price.moto3 end,
+	get_price_fish1 = function() return settings.lc.price.fish1 end,
+	get_price_fish2 = function() return settings.lc.price.fish2 end,
+	get_price_fish3 = function() return settings.lc.price.fish3 end,
+	get_price_swim1 = function() return settings.lc.price.swim1 end,
+	get_price_swim2 = function() return settings.lc.price.swim2 end,
+	get_price_swim3 = function() return settings.lc.price.swim3 end,
+	get_price_gun1 = function() return settings.lc.price.gun1 end,
+	get_price_gun2 = function() return settings.lc.price.gun2 end,
+	get_price_gun3 = function() return settings.lc.price.gun3 end,
+	get_price_hunt1 = function() return settings.lc.price.hunt1 end,
+	get_price_hunt2 = function() return settings.lc.price.hunt2 end,
+	get_price_hunt3 = function() return settings.lc.price.hunt3 end,
+	get_price_klad1 = function() return settings.lc.price.klad1 end,
+	get_price_klad2 = function() return settings.lc.price.klad2 end,
+	get_price_klad3 = function() return settings.lc.price.klad3 end,
+	get_price_taxi1 = function() return settings.lc.price.taxi1 end,
+	get_price_taxi2 = function() return settings.lc.price.taxi2 end,
+	get_price_taxi3 = function() return settings.lc.price.taxi3 end,
+	get_price_mexa1 = function() return settings.lc.price.mexa1 end,
+	get_price_mexa2 = function() return settings.lc.price.mexa2 end,
+	get_price_mexa3 = function() return settings.lc.price.mexa3 end,
+	get_price_fly1 = function() return settings.lc.price.fly1 end,
+	get_price_fly2 = function() return settings.lc.price.fly2 end,
+	get_price_fly3 = function() return settings.lc.price.fly3 end,
 	-- MH
-	price_heal = function()
+	get_price_heal = function()
 		if sampGetCurrentServerName():find("Vice City") then
 			return settings.mh.price.heal_vc
 		else
 			return settings.mh.price.heal
 		end
 	end,
-	price_actorheal = function()
+	get_price_actorheal = function()
 		if u8(sampGetCurrentServerName()):find("Vice City") then
 			return settings.mh.price.healactor_vc
 		else
 			return settings.mh.price.healactor
 		end
 	end,
-	price_medosm = function() return settings.mh.price.medosm end,
-	price_mticket = function() return settings.mh.price.mticket end,
-	price_healbad = function() return settings.mh.price.healbad end,
-	price_ant = function() return settings.mh.price.ant end,
-	price_recept = function() return settings.mh.price.recept end,
-	price_med7 = function() return settings.mh.price.med7 end,
-	price_med14 = function() return settings.mh.price.med14 end,
-	price_med30 = function() return settings.mh.price.med30 end,
-	price_med60 = function() return settings.mh.price.med60 end,
+	get_price_medosm = function() return settings.mh.price.medosm end,
+	get_price_mticket = function() return settings.mh.price.mticket end,
+	get_price_healbad = function() return settings.mh.price.healbad end,
+	get_price_ant = function() return settings.mh.price.ant end,
+	get_price_recept = function() return settings.mh.price.recept end,
+	get_price_med7 = function() return settings.mh.price.med7 end,
+	get_price_med14 = function() return settings.mh.price.med14 end,
+	get_price_med30 = function() return settings.mh.price.med30 end,
+	get_price_med60 = function() return settings.mh.price.med60 end,
 	get_medcard_days = function() 
-		return medcard_days[0]
+		return medCard.days[0]
 	end,
 	get_medcard_status = function() 
-		return medcard_status[0]
+		return medCard.status[0]
 	end,
 	get_recepts = function ()
-		return recepts[0]
+		return recept.recepts[0]
 	end,
 	get_ants = function ()
-		return antibiotiks[0]
+		return antibiotik.ants[0]
 	end,
 	get_medcard_price = function ()
-		if medcard_days[0] == 0 then
+		if medCard.days[0] == 0 then
 			return settings.mh.price.med7
-		elseif medcard_days[0] == 1 then
+		elseif medCard.days[0] == 1 then
 			return settings.mh.price.med14
-		elseif medcard_days[0] == 2 then
+		elseif medCard.days[0] == 2 then
 			return settings.mh.price.med30
-		elseif medcard_days[0] == 3 then
+		elseif medCard.days[0] == 3 then
 			return settings.mh.price.med60
 		else
 			return 1000
@@ -1698,14 +2071,15 @@ local PlayerID = nil
 local player_id = nil
 local check_stats = false
 local clicked = false
-local isActiveCommand = false
+
 local debug_mode = false
-local command_stop = false
-local command_pause = false
+
+local commands = {isActive = false, isStop = false, isPause = false}
+-- local commands.isStop = false
+-- local commands.isPause = false
 
 -- only 9/10
 local spawncar_bool = false
-
 local vc_vize = {bool = false, player_id = nil}
 
 local message1
@@ -1730,28 +2104,21 @@ local givelic = {bool = false, time = 1, type = ''}
 
 local InfraredVision = false
 local NightVision = false
-
-
--- local asdebug = false
--- local as_debug = {
--- 	show_hit = {
-
--- 	},
--- 	clicked = {
-
--- 	},
--- }
--- local path_debug = configDirectory .. "/debug.json"
 ------------------------------------------- Functions -----------------------------------------------------
+
 function welcome_message()
 	if not sampIsLocalPlayerSpawned() then 
 		sampAddChatMessage('[Arizona Helper] {ffffff}Инициализация хелпера прошла успешно!',message_color)
 		sampAddChatMessage('[Arizona Helper] {ffffff}Для полной загрузки хелпера сначало заспавнитесь (войдите на сервер)',message_color)
 		repeat wait(0) until sampIsLocalPlayerSpawned()
 	end
+
 	sampAddChatMessage('[Arizona Helper] {ffffff}Загрузка хелпера прошла успешно!', message_color)
-	print('[Arizona Helper] Полная загрузка хелпера прошла успешно!')
 	show_arz_notify('info', 'Arizona Helper', "Загрузка хелпера прошла успешно!", 3000)
+	print('Полная загрузка хелпера прошла успешно!')
+
+	show_arz_sms("Привет!", "MTG MODS", 815168, 120012, 2000, "https://mtgmods.github.io/arizona-helper/Resourse/logo.gif")
+
 	if isMonetLoader() or settings.general.bind_mainmenu == nil then	
 		sampAddChatMessage('[Arizona Helper] {ffffff}Чтоб открыть меню хелпера введите команду ' .. message_color_hex .. '/helper', message_color)
 	elseif hotkey_no_errors and settings.general.bind_mainmenu then
@@ -1769,9 +2136,9 @@ function registerCommandsFrom(array)
 end
 function register_command(chat_cmd, cmd_arg, cmd_text, cmd_waiting)
 	sampRegisterChatCommand(chat_cmd, function(arg)
-		if not isActiveCommand then
-			if command_stop then
-				command_stop = false
+		if not commands.isActive then
+			if commands.isStop then
+				commands.isStop = false
 			end
 			local arg_check = false
 			local modifiedText = cmd_text
@@ -1860,8 +2227,8 @@ function register_command(chat_cmd, cmd_arg, cmd_text, cmd_waiting)
 			end
 			if arg_check then
 				lua_thread.create(function()
-					isActiveCommand = true
-					command_pause = false
+					commands.isActive = true
+					commands.isPause = false
 					if modifiedText:find('&.+&') then
 						info_stop_command()
 					end
@@ -1870,14 +2237,14 @@ function register_command(chat_cmd, cmd_arg, cmd_text, cmd_waiting)
 						table.insert(lines, line)
 					end
 					for line_index, line in ipairs(lines) do
-						if command_stop then 
-							command_stop = false 
-							isActiveCommand = false
+						if commands.isStop then 
+							commands.isStop = false 
+							commands.isActive = false
 							if isMonetLoader() and settings.general.mobile_stop_button then
 								CommandStopWindow[0] = false
 							end
 							sampAddChatMessage('[Arizona Helper] {ffffff}Отыгровка команды /' .. chat_cmd .. " успешно остановлена!", message_color) 
-							break	
+							break
 						else
 							if line == '{show_medcard_menu}' then
 								if cmd_arg == '{arg_id}' then
@@ -1888,7 +2255,7 @@ function register_command(chat_cmd, cmd_arg, cmd_text, cmd_waiting)
 										player_id = tonumber(arg_id)
 									end
 								end
-								MedCardMenu[0] = true
+								medCard.menu[0] = true
 								break
 							elseif line == '{show_recept_menu}' then
 								if cmd_arg == '{arg_id}' then
@@ -1899,7 +2266,7 @@ function register_command(chat_cmd, cmd_arg, cmd_text, cmd_waiting)
 										player_id = tonumber(arg_id)
 									end
 								end
-								ReceptMenu[0] = true
+								recept.menu[0] = true
 								break
 							elseif line == '{show_ant_menu}' then
 								if cmd_arg == '{arg_id}' then
@@ -1910,7 +2277,7 @@ function register_command(chat_cmd, cmd_arg, cmd_text, cmd_waiting)
 										player_id = tonumber(arg_id)
 									end
 								end
-								AntibiotikMenu[0] = true
+								antibiotik.menu[0] = true
 								break
 							elseif line == '{lmenu_vc_vize}' then
 								if cmd_arg == '{arg_id}' then
@@ -1949,21 +2316,21 @@ function register_command(chat_cmd, cmd_arg, cmd_text, cmd_waiting)
 								break
 							elseif line == "{pause}" then
 								sampAddChatMessage('[Arizona Helper] {ffffff}Команда /' .. chat_cmd .. ' поставлена на паузу!', message_color)
-								command_pause = true
+								commands.isPause = true
 								CommandPauseWindow[0] = true
-								while command_pause do
+								while commands.isPause do
 									wait(0)
 								end
-								if not command_stop then
+								if not commands.isStop then
 									sampAddChatMessage('[Arizona Helper] {ffffff}Продолжаю отыгровку команды /' .. chat_cmd, message_color)	
 								end			
 							else
-								if not command_stop then
+								if not commands.isStop then
 									if line_index ~= 1 then wait(cmd_waiting * 1000) end
-									if not command_stop then 
+									if not commands.isStop then 
 										for tag, replacement in pairs(binderTags) do
 											if line:find("{" .. tag .. "}") then
-												local success, result = pcall(string.gsub, line, "{" .. tag .. "}", replacement())
+												local success, result = pcall(string.gsub, line, "{" .. tag .. "}", function() return replacement() end)
 												if success then
 													line = result
 												end
@@ -1972,8 +2339,8 @@ function register_command(chat_cmd, cmd_arg, cmd_text, cmd_waiting)
 										sampSendChat(line)
 									end
 								else
-									command_stop = false 
-									isActiveCommand = false
+									commands.isStop = false 
+									commands.isActive = false
 									if isMonetLoader() and settings.general.mobile_stop_button then
 										CommandStopWindow[0] = false
 									end
@@ -1983,7 +2350,7 @@ function register_command(chat_cmd, cmd_arg, cmd_text, cmd_waiting)
 							end
 						end
 					end
-					isActiveCommand = false
+					commands.isActive = false
 					if isMonetLoader() and settings.general.mobile_stop_button then
 						CommandStopWindow[0] = false
 					end
@@ -2015,11 +2382,14 @@ function initialize_commands()
 	sampRegisterChatCommand("helper", function() MainWindow[0] = not MainWindow[0] end)
 	sampRegisterChatCommand("hm", show_fast_menu)
 	sampRegisterChatCommand("stop", function() 
-		if isActiveCommand then command_stop = true else 
+		if commands.isActive then 
+			commands.isStop = true
+		else 
+			visualCEF('findGame.Success', true)
 			sampAddChatMessage('[Arizona Helper] {ffffff}В данный момент нету никакой активной команды/отыгровки!', message_color) 
 		end
 	end)
-	sampRegisterChatCommand("debug", function() debug_mode = not debug_mode sampAddChatMessage('[Arizona Helper] {ffffff}Отслеживание команд ' .. (debug_mode and 'включено!' or 'выключено!'), message_color) end)
+	sampRegisterChatCommand("debug", function() debug_mode = not debug_mode sampAddChatMessage('[Arizona Helper] {ffffff}Отслеживание данных с сервера ' .. (debug_mode and 'включено!' or 'выключено!'), message_color) end)
 	sampRegisterChatCommand("fixsize", function()
 		settings.general.custom_dpi = 1.0
 		settings.general.autofind_dpi = false
@@ -2032,18 +2402,22 @@ function initialize_commands()
 		imgui.StrCopy(input, '')
 		RPWeaponWindow[0] = not RPWeaponWindow[0] 
 	end)
-	sampRegisterChatCommand('probiv', function (id)
-		if isParamSampID(id) then
+	sampRegisterChatCommand('probiv', function(arg)
+		if arg then
 			probiv = nil
-			imgui.StrCopy(input, sampGetPlayerNickname(id))
+			if isParamSampID(arg) then
+				imgui.StrCopy(input, sampGetPlayerNickname(arg))
+			else
+				imgui.StrCopy(input, arg)
+			end
 			imgui.StrCopy(input_probiv_key, u8(settings.general.probiv_api_key))
 			ProbivMenu[0] = true
 		else
-			sampAddChatMessage('[Arizona Helper] {ffffff}Используйте /probiv [ID игрока]', message_color)
+			sampAddChatMessage('[Arizona Helper] {ffffff}Используйте /probiv [ID или Nick игрока]', message_color)
 		end
 	end)
 	sampRegisterChatCommand("pnv", function(arg)
-		if not isActiveCommand then
+		if not commands.isActive then
 			NightVision = not NightVision
 			if NightVision then
 				sampSendChat('/me достаёт из кармана очки ночного видения и надевает их')
@@ -2059,15 +2433,15 @@ function initialize_commands()
 		end
 	end)
 	sampRegisterChatCommand("irv", function(arg)
-		if not isActiveCommand then
+		if not commands.isActive then
 			InfraredVision = not InfraredVision
 			setInfraredVision(InfraredVision)	
 			NightVision = false
 			setNightVision(NightVision)	
 			if InfraredVision then
-				sampSendChat('/me достаёт из кармана инфакрасные очки и надевает их')
+				sampSendChat('/me достаёт из кармана инфракрасные очки и надевает их')
 			else
-				sampSendChat('/me снимает с себя инфакрасные очки и убирает их в карман')
+				sampSendChat('/me снимает с себя инфракрасные очки и убирает их в карман')
 			end
 		else
 			sampAddChatMessage('[Arizona Helper] {ffffff}Дождитесь завершения отыгровки предыдущей команды!', message_color)
@@ -2077,14 +2451,14 @@ function initialize_commands()
 
 	if not isMode('none') then
 		sampRegisterChatCommand("mb", function(arg)
-			if not isActiveCommand then
-				if MembersWindow[0] then
-					MembersWindow[0] = false
-					updmembers.check = false
+			if not commands.isActive then
+				if members.menu[0] then
+					members.menu[0] = false
+					members.upd.check = false
 					sampAddChatMessage('[Arizona Helper] {ffffff}Меню списка сотрудников закрыто!', message_color)
 				else
-					members_new = {} 
-					members_info.check = true 
+					members.new = {} 
+					members.info.check = true 
 					sampSendChat("/members")
 				end
 			else
@@ -2093,7 +2467,7 @@ function initialize_commands()
 			end
 		end)
 		sampRegisterChatCommand("dep", function(arg)
-			if not isActiveCommand then
+			if not commands.isActive then
 				DeportamentWindow[0] = not DeportamentWindow[0]
 			else
 				sampAddChatMessage('[Arizona Helper] {ffffff}Дождитесь завершения отыгровки предыдущей команды!', message_color)
@@ -2101,7 +2475,7 @@ function initialize_commands()
 			end
 		end)
 		sampRegisterChatCommand("sob", function(arg)
-			if not isActiveCommand then
+			if not commands.isActive then
 				if isParamSampID(arg) then
 					player_id = tonumber(arg)
 					SobesMenu[0] = not SobesMenu[0]
@@ -2118,13 +2492,13 @@ function initialize_commands()
 
 	if isMode('police') or isMode('fbi') then
 		sampRegisterChatCommand("sum", function(arg) 
-			if not isActiveCommand then
+			if not commands.isActive then
 				if isParamSampID(arg) then
 					if #modules.smart_uk.data ~= 0 then
 						player_id = tonumber(arg)
 						SumMenuWindow[0] = true 
 					else
-						sampAddChatMessage('[Arizona Helper] {ffffff}Сначало загрузите/заполните систему умного розыска в /helper - Функции ' .. binderTags.fraction_tag(), message_color)
+						sampAddChatMessage('[Arizona Helper] {ffffff}Сначало загрузите/заполните систему умного розыска в /helper - Функции орги', message_color)
 						playNotifySound()
 					end
 				else
@@ -2137,13 +2511,13 @@ function initialize_commands()
 			end
 		end)
 		sampRegisterChatCommand("tsm", function(arg) 
-			if not isActiveCommand then
+			if not commands.isActive then
 				if isParamSampID(arg) then
 					if #modules.smart_pdd.data ~= 0 then
 						player_id = tonumber(arg)
 						TsmMenuWindow[0] = true
 					else
-						sampAddChatMessage('[Arizona Helper] {ffffff}Сначало загрузите/заполните систему умных штрафов в /helper - Функции ' .. binderTags.fraction_tag(), message_color)
+						sampAddChatMessage('[Arizona Helper] {ffffff}Сначало загрузите/заполните систему умных штрафов в /helper - Функции орги', message_color)
 						playNotifySound()
 					end
 				else
@@ -2159,18 +2533,34 @@ function initialize_commands()
 			MegafonWindow[0] = not MegafonWindow[0]
 		end)
 		sampRegisterChatCommand("afind", function (arg)
-			sampAddChatMessage('НЕДОСТУПНО В ФРИ ВЕРСИИ', -1)
+			if isParamSampID(arg) then
+				afind = not afind
+				if afind then
+					lua_thread.create(function ()
+						sampAddChatMessage('[Arizona Helper]{ffffff} Начинаю поиск игрока ' .. sampGetPlayerNickname(arg) .. '. Деактивация: ' .. message_color_hex .. '/afind', message_color)
+						while afind do
+							sampSendChat('/find ' .. arg)
+							wait(3000)
+						end
+					end)
+				else
+					sampAddChatMessage('[Arizona Helper]{ffffff} Отключаю поиск игрока ' .. sampGetPlayerNickname(arg), message_color)
+				end
+			else
+				sampAddChatMessage('[Arizona Helper]{ffffff} Используйте ' .. message_color_hex .. '/afind [ID игрока]', message_color)
+			end
 		end)
 		sampRegisterChatCommand("wanted", function(arg)
 			sampSendChat('/wanted ' .. arg)
 			sampAddChatMessage('[Arizona Helper] {ffffff}Лучше используйте /wanteds для автосканирования всего вантеда!', message_color)
 		end)
 		sampRegisterChatCommand("wanteds", function(arg)
-			if WantedWindow[0] then
+			if WantedWindow[0] or updwanteds.stop then
 				WantedWindow[0] = false
+				check_wanted = false
 				updwanteds.check = false
 				sampAddChatMessage('[Arizona Helper] {ffffff}Меню списка преступников закрыто!', message_color)
-			elseif not isActiveCommand then
+			elseif not commands.isActive then
 				lua_thread.create(function()
 					local max_lvl = isMode('fbi') and 7 or 6
 					sampAddChatMessage('[Arizona Helper] {ffffff}Сканирование /wanted, ожидайте ' .. message_color_hex .. max_lvl .. ' {ffffff}секунд...', message_color)
@@ -2178,7 +2568,7 @@ function initialize_commands()
 					wanted_new = {}
 					check_wanted = true
 					for i = max_lvl, 1, -1 do
-						--printStringNow('WANTED ' .. i, 1000)
+						printStringNow("CHECK WANTED " .. i, 1000)
 						sampSendChat('/wanted ' .. i)
 						wait(1000)
 					end
@@ -2186,13 +2576,18 @@ function initialize_commands()
 					if #wanted_new == 0 then
 						sampAddChatMessage('[Arizona Helper] {ffffff}Сейчас на сервере нету игроков с розыском!', message_color)
 					else
-						sampAddChatMessage('[Arizona Helper] {ffffff}Сканирование /wanted окончено! Для закрытия меню введите команду ещё раз', message_color)
+						sampAddChatMessage('[Arizona Helper] {ffffff}Сканирование /wanted окончено! Найдено преступников: ' .. #wanted_new, message_color)
 						wanted = wanted_new
+						updwanteds.stop = false
 						updwanteds.time = 0
 						updwanteds.last_time = os.time()
 						updwanteds.check = true
 						WantedWindow[0] = true
-						
+						if settings.mj.awanted then
+							search_awanted = truew
+							sampAddChatMessage('[Arizona Helper - Ассистент] {ffffff}Функция AWANTED работает, вы можете закрыть менюшку списка преступников.', message_color)
+							sampAddChatMessage('[Arizona Helper - Ассистент] {ffffff}Если возле вас будет игрок с розыском - вы получите оповещение!', message_color)
+						end
 					end
 				end)
 			else
@@ -2200,9 +2595,8 @@ function initialize_commands()
 				playNotifySound()
 			end
 		end)
-
 		sampRegisterChatCommand("patrool", function(arg)
-			if not isActiveCommand then
+			if not commands.isActive then
 				-- if isCharInAnyCar(PLAYER_PED) or PatroolMenu[0] then
 				-- 	PatroolMenu[0] = not PatroolMenu[0]
 				-- else
@@ -2217,7 +2611,7 @@ function initialize_commands()
 	end
 
 	sampRegisterChatCommand("post", function(arg)
-		if not isActiveCommand then
+		if not commands.isActive then
 			imgui.StrCopy(input, '')
 			PostMenu[0] = not PostMenu[0]
 		else
@@ -2228,13 +2622,13 @@ function initialize_commands()
 
 	if isMode('prison') then
 		sampRegisterChatCommand("pum", function(arg) 
-			if not isActiveCommand then
+			if not commands.isActive then
 				if isParamSampID(arg) then
 					if #modules.smart_rptp.data ~= 0 then
 						player_id = tonumber(arg)
 						PuMenuWindow[0] = true 
 					else
-						sampAddChatMessage('[Arizona Helper] {ffffff}Сначало загрузите/заполните систему умного срока в /helper - Функции ' .. binderTags.fraction_tag(), message_color)
+						sampAddChatMessage('[Arizona Helper] {ffffff}Сначало загрузите/заполните систему умного срока в /helper - Функции орги', message_color)
 						playNotifySound()
 					end
 				else
@@ -2263,9 +2657,9 @@ function initialize_commands()
 	if settings.player_info.fraction_rank_number >= 9 then
 		sampRegisterChatCommand("lm", show_leader_fast_menu)
 		sampRegisterChatCommand("spcar", function()
-			if not isActiveCommand then
+			if not commands.isActive then
 				lua_thread.create(function()
-					isActiveCommand = true
+					commands.isActive = true
 					if isMonetLoader() and settings.general.mobile_stop_button then
 						sampAddChatMessage('[Arizona Helper] {ffffff}Чтобы остановить отыгровку команды используйте ' .. message_color_hex .. '/stop {ffffff}или нажмите кнопку внизу экрана', message_color)
 						CommandStopWindow[0] = true
@@ -2276,9 +2670,9 @@ function initialize_commands()
 					end
 					sampSendChat("/rb Внимание! Через 15 секунд будет спавн транспорта организации.")
 					wait(1500)
-					if command_stop then 
-						command_stop = false 
-						isActiveCommand = false
+					if commands.isStop then 
+						commands.isStop = false 
+						commands.isActive = false
 						if isMonetLoader() and settings.general.mobile_stop_button then
 							CommandStopWindow[0] = false
 						end
@@ -2287,9 +2681,9 @@ function initialize_commands()
 					end
 					sampSendChat("/rb Займите транспорт, иначе он будет заспавнен.")
 					wait(13500)	
-					if command_stop then 
-						command_stop = false 
-						isActiveCommand = false
+					if commands.isStop then 
+						commands.isStop = false 
+						commands.isActive = false
 						if isMonetLoader() and settings.general.mobile_stop_button then
 							CommandStopWindow[0] = false
 						end
@@ -2298,7 +2692,7 @@ function initialize_commands()
 					end
 					spawncar_bool = true
 					sampSendChat("/lmenu")
-					isActiveCommand = false
+					commands.isActive = false
 					if isMonetLoader() and settings.general.mobile_stop_button then
 						CommandStopWindow[0] = false
 					end
@@ -2429,12 +2823,10 @@ function ReverseTranslateNick(name)
         ['ци'] = 'tsi', ['уз'] = 'uz', ['кейт'] = 'kate', ['яу'] = 'yau',
         ['раун'] = 'rown', ['уев'] = 'uev', ['Бэйби'] = 'Baby',
         ['Джейсон'] = 'Jason', ['лий'] = 'liy', ['ейн'] = 'ein', ['ейм'] = 'ame'
-    }
-    
+    } 
     for k, v in pairs(translit_table) do
         name = name:gsub(k, v)
-    end
-    
+    end 
     local char_table = {
         ['А'] = 'A', ['Б'] = 'B', ['В'] = 'V', ['Г'] = 'G', ['Д'] = 'D',
         ['Е'] = 'E', ['Ё'] = 'Yo', ['Ж'] = 'Zh', ['З'] = 'Z', ['И'] = 'I',
@@ -2449,13 +2841,11 @@ function ReverseTranslateNick(name)
         ['о'] = 'o', ['п'] = 'p', ['р'] = 'r', ['с'] = 's', ['т'] = 't',
         ['у'] = 'u', ['ф'] = 'f', ['х'] = 'h', ['ц'] = 'ts', ['ч'] = 'ch',
         ['ш'] = 'sh', ['щ'] = 'sch', ['ъ'] = '', ['ы'] = 'y', ['ь'] = '',
-        ['э'] = 'e', ['ю'] = 'yu', ['я'] = 'ya'
+        ['э'] = 'e', ['ю'] = 'yu', ['я'] = 'ya', [' '] = '_'
     }
-    
     for k, v in pairs(char_table) do
         name = name:gsub(k, v)
     end
-    
     return name
 end
 function isParamSampID(id)
@@ -2529,69 +2919,18 @@ function get_players()
 	end
 	return playersInRange
 end
-function show_arz_notify(type, title, text, time)
-	if isMonetLoader() then
-	-- 	if type == 'info' then
-	-- 		type = 3
-	-- 	elseif type == 'error' then
-	-- 		type = 2
-	-- 	elseif type == 'success' then
-	-- 		type = 1
-	-- 	end
-	-- 	local bs = raknetNewBitStream()
-	-- 	raknetBitStreamWriteInt8(bs, 62)
-	-- 	raknetBitStreamWriteInt8(bs, 6)
-	-- 	raknetBitStreamWriteBool(bs, true)
-	-- 	raknetEmulPacketReceiveBitStream(220, bs)
-	-- 	raknetDeleteBitStream(bs)
-	-- 	local json = encodeJson({
-	-- 		styleInt = type,
-	-- 		title = title,
-	-- 		text = text,
-	-- 		duration = time
-	-- 	})
-	-- 	local interfaceid = 6
-	-- 	local subid = 0
-	-- 	local bs = raknetNewBitStream()
-	-- 	raknetBitStreamWriteInt8(bs, 84)
-	-- 	raknetBitStreamWriteInt8(bs, interfaceid)
-	-- 	raknetBitStreamWriteInt8(bs, subid)
-	-- 	raknetBitStreamWriteInt32(bs, #json)
-	-- 	raknetBitStreamWriteString(bs, json)
-	-- 	raknetEmulPacketReceiveBitStream(220, bs)
-	-- 	raknetDeleteBitStream(bs)
-	else
 
-		local function escape_js(s)
-        return s:gsub("\\", "\\\\"):gsub('"', '\\"')
-    end
-
-    local safe_type = escape_js(type)
-    local safe_title = escape_js(title)
-    local safe_text = escape_js(text)
-    local safe_time = tostring(time)
-
-    local str = ('window.executeEvent("event.notify.initialize", "[\\"%s\\", \\"%s\\", \\"%s\\", \\"%s\\"]");')
-        :format(safe_type, safe_title, safe_text, safe_time)
-
-    visualCEF(str, true)
-	end
-end
-function run_code(code)
-    local bs = raknetNewBitStream()
-    raknetBitStreamWriteInt8(bs, 17)
-    raknetBitStreamWriteInt32(bs, 0)
-    raknetBitStreamWriteInt32(bs, string.len(code))
-    raknetBitStreamWriteString(bs, code)
-    raknetEmulPacketReceiveBitStream(220, bs)
-    raknetDeleteBitStream(bs)
-end
 function openLink(link)
 	if isMonetLoader() then
-		gta._Z12AND_OpenLinkPKc(link)
+		ffi.cdef[[ void _Z12AND_OpenLinkPKc(const char* link); ]]
+		ffi.load('GTASA')._Z12AND_OpenLinkPKc(link)
 	else
 		os.execute("explorer " .. link)
 	end
+end
+
+function check(id, message)
+    
 end
 
 -- MH
@@ -2600,18 +2939,18 @@ function fast_heal_in_chat(id)
 		sampAddChatMessage('[Arizona Helper] {ffffff}Чтоб вылечить игрока ' .. sampGetPlayerNickname(id) .. ', в течении 5-ти секунд нажмите кнопку',message_color)
 		heal_in_chat.player_id = id
 		heal_in_chat.bool = true
-		FastHealMenu[0] = true
+		heal_in_chat.fast_menu[0] = true
 		lua_thread.create(function()
 			wait(5000)
 			if heal_in_chat.bool then
-				FastHealMenu[0] = false
+				heal_in_chat.fast_menu[0] = false
 				heal_in_chat.bool = false
 				sampAddChatMessage('[Arizona Helper] {ffffff}Вы не успели вылечить игрока ' .. sampGetPlayerNickname(id), message_color)
 			end
 		end)
 	elseif hotkey_no_errors then
-		sampAddChatMessage('[Arizona Helper] {ffffff}Чтобы вылечить игрока ' .. sampGetPlayerNickname(id) .. ' нажмите ' .. message_color_hex .. getNameKeysFrom(settings.general.bind_fastheal) .. ' {ffffff}в течении 5-ти секунд!',message_color)
-		show_arz_notify('info', 'Arizona Helper', 'Нажмите ' .. getNameKeysFrom(settings.general.bind_fastheal) .. ' чтобы быстро вылечить игрока', 5000)
+		sampAddChatMessage('[Arizona Helper] {ffffff}Чтобы вылечить игрока ' .. sampGetPlayerNickname(id) .. ' нажмите ' .. message_color_hex .. getNameKeysFrom(settings.general.bind_action) .. ' {ffffff}в течении 5-ти секунд!',message_color)
+		show_arz_notify('info', 'Arizona Helper', 'Нажмите ' .. getNameKeysFrom(settings.general.bind_action) .. ' чтобы быстро вылечить игрока', 5000)
 		heal_in_chat.player_id = id
 		heal_in_chat.bool = true
 		lua_thread.create(function()
@@ -2636,459 +2975,417 @@ function sampGetPlayerIdByNickname(nick)
 	    end
 	end
 	if id == nil then
-		sampAddChatMessage('[Arizona Helper] {ffffff}Ошибка: не удалось получить ID игрока!', message_color)
+		print('Не удалось получить ID игрока!')
 		id = ''
 	end
 	return id
 end
 function getNameOfARZVehicleModel(id)
 	local need_download_arzveh = false
-	if doesFileExist(modules.arz_veh.path) then
-		if modules.arz_veh.data and #modules.arz_veh.data ~= 0 then
-			local check = false
-			for _, vehicle in ipairs(modules.arz_veh.data) do
-				if vehicle.model_id == id then
-					check = true
-					--sampAddChatMessage("[Arizona Helper] {ffffff}Самый ближайший транспорт к вам это " .. vehicle.name ..  " [ID " .. id .. "].", message_color)
-					return " " .. vehicle.name
-				end
+	if doesFileExist(modules.arz_veh.path) and modules.arz_veh.data and #modules.arz_veh.data ~= 0 then
+		local check = false
+		for _, vehicle in ipairs(modules.arz_veh.data) do
+			if vehicle.model_id == id then
+				check = true
+				--sampAddChatMessage("[Arizona Helper] {ffffff}Самый ближайший транспорт к вам это " .. vehicle.name ..  " [ID " .. id .. "].", message_color)
+				return vehicle.name
 			end
-			if not check then
-				need_download_arzveh = true
-			end
-		else
-			sampAddChatMessage('[Arizona Helper] {ffffff}Не удалось получить модель т/c с ID ' .. id .. "! Ошибка инициализации VehiclesArizona.json", message_color)
+		end
+		if not check then
 			need_download_arzveh = true
 		end
 	else
-		sampAddChatMessage('[Arizona Helper] {ffffff}Не удалось получить модель т/c с ID ' .. id .. "! Отсуствует файл VehiclesArizona.json", message_color)
 		need_download_arzveh = true
 	end
 	if need_download_arzveh then
-		sampAddChatMessage('[Arizona Helper] {ffffff}Пытаюсь скачать файл VehiclesArizona.json в папку ' .. modules.arz_veh.path, message_color)
+		sampAddChatMessage('[Arizona Helper] {ffffff}Нет названия модели т/c с ID ' .. id .. ", так как отсуствует файл Vehicles.json", message_color)
+		sampAddChatMessage('[Arizona Helper] {ffffff}Использую просто "транспортного средства", и пытаюсь скачать файл...', message_color)
 		download_file = 'arz_veh'
-		downloadFileFromUrlToPath('https://github.com/MTGMODS/arizona-helper/raw/refs/heads/main/Vehicles/VehiclesArizona.json', modules.arz_veh.path)
-		return ' транспортного средства'
+		-- downloadFileFromUrlToPath('https://github.com/MTGMODS/arizona-helper/raw/refs/heads/main/SmartVEH/Vehicles.json', modules.arz_veh.path)
+		downloadFileFromUrlToPath('https://mtgmods.github.io/arizona-helper/SmartVEH/Vehicles.json', modules.arz_veh.path)
+		return 'транспортного средства'
 	end
 end
-function kvadrat()
-    local KV = {
-        [1] = "А",
-        [2] = "Б",
-        [3] = "В",
-        [4] = "Г",
-        [5] = "Д",
-        [6] = "Ж",
-        [7] = "З",
-        [8] = "И",
-        [9] = "К",
-        [10] = "Л",
-        [11] = "М",
-        [12] = "Н",
-        [13] = "О",
-        [14] = "П",
-        [15] = "Р",
-        [16] = "С",
-        [17] = "Т",
-        [18] = "У",
-        [19] = "Ф",
-        [20] = "Х",
-        [21] = "Ц",
-        [22] = "Ч",
-        [23] = "Ш",
-        [24] = "Я",
-    }
-    local X, Y, Z = getCharCoordinates(playerPed)
-    X = math.ceil((X + 3000) / 250)
-    Y = math.ceil((Y * - 1 + 3000) / 250)
-    Y = KV[Y]
-	if Y ~= nil then
-		local KVX = (Y.."-"..X)
-		return KVX
-	else
-		return X
-	end
-end
-function calculateZoneRu(x, y, z)
-    local streets = {
-        {"Клуб Ависпа", -2667.810, -302.135, -28.831, -2646.400, -262.320, 71.169},
-        {"Аэропорт", -1315.420, -405.388, 15.406, -1264.400, -209.543, 25.406},
-        {"Клуб Ависпа", -2550.040, -355.493, 0.000, -2470.040, -318.493, 39.700},
-        {"Аэропорт", -1490.330, -209.543, 15.406, -1264.400, -148.388, 25.406},
-        {"Гарсия", -2395.140, -222.589, -5.3, -2354.090, -204.792, 200.000},
-        {"Шейди-Кэбин", -1632.830, -2263.440, -3.0, -1601.330, -2231.790, 200.000},
-        {"Восточный ЛС", 2381.680, -1494.030, -89.084, 2421.030, -1454.350, 110.916},
-        {"Грузовое депо", 1236.630, 1163.410, -89.084, 1277.050, 1203.280, 110.916},
-        {"Пересечение Блэкфилд", 1277.050, 1044.690, -89.084, 1315.350, 1087.630, 110.916},
-        {"Клуб Ависпа", -2470.040, -355.493, 0.000, -2270.040, -318.493, 46.100},
-        {"Темпл", 1252.330, -926.999, -89.084, 1357.000, -910.170, 110.916},
-        {"Станция Юнити", 1692.620, -1971.800, -20.492, 1812.620, -1932.800, 79.508},
-        {"Грузовое депо ЛВ", 1315.350, 1044.690, -89.084, 1375.600, 1087.630, 110.916},
-        {"Лос-Флорес", 2581.730, -1454.350, -89.084, 2632.830, -1393.420, 110.916},
-        {"Казино", 2437.390, 1858.100, -39.084, 2495.090, 1970.850, 60.916},
-        {"Химзавод Истер-Бэй", -1132.820, -787.391, 0.000, -956.476, -768.027, 200.000},
-        {"Деловой район", 1370.850, -1170.870, -89.084, 1463.900, -1130.850, 110.916},
-        {"Восточная Эспаланда", -1620.300, 1176.520, -4.5, -1580.010, 1274.260, 200.000},
-        {"Станция Маркет", 787.461, -1410.930, -34.126, 866.009, -1310.210, 65.874},
-        {"Станция Линден", 2811.250, 1229.590, -39.594, 2861.250, 1407.590, 60.406},
-        {"Пересечение Монтгомери", 1582.440, 347.457, 0.000, 1664.620, 401.750, 200.000},
-        {"Мост Фредерик", 2759.250, 296.501, 0.000, 2774.250, 594.757, 200.000},
-        {"Станция Йеллоу-Белл", 1377.480, 2600.430, -21.926, 1492.450, 2687.360, 78.074},
-        {"Деловой район", 1507.510, -1385.210, 110.916, 1582.550, -1325.310, 335.916},
-        {"Джефферсон", 2185.330, -1210.740, -89.084, 2281.450, -1154.590, 110.916},
-        {"Малхолланд", 1318.130, -910.170, -89.084, 1357.000, -768.027, 110.916},
-        {"Клуб Ависпа", -2361.510, -417.199, 0.000, -2270.040, -355.493, 200.000},
-        {"Джефферсон", 1996.910, -1449.670, -89.084, 2056.860, -1350.720, 110.916},
-        {"Западаное шоссе", 1236.630, 2142.860, -89.084, 1297.470, 2243.230, 110.916},
-        {"Джефферсон", 2124.660, -1494.030, -89.084, 2266.210, -1449.670, 110.916},
-        {"Северное шоссе", 1848.400, 2478.490, -89.084, 1938.800, 2553.490, 110.916},
-        {"Родео", 422.680, -1570.200, -89.084, 466.223, -1406.050, 110.916},
-        {"Станция Крэнберри", -2007.830, 56.306, 0.000, -1922.000, 224.782, 100.000},
-        {"Деловой район", 1391.050, -1026.330, -89.084, 1463.900, -926.999, 110.916},
-        {"Западный Рэдсэндс", 1704.590, 2243.230, -89.084, 1777.390, 2342.830, 110.916},
-        {"Маленькая Мексика", 1758.900, -1722.260, -89.084, 1812.620, -1577.590, 110.916},
-        {"Пересечение Блэкфилд", 1375.600, 823.228, -89.084, 1457.390, 919.447, 110.916},
-        {"Аэропорт", 1974.630, -2394.330, -39.084, 2089.000, -2256.590, 60.916},
-        {"Бекон-Хилл", -399.633, -1075.520, -1.489, -319.033, -977.516, 198.511},
-        {"Родео", 334.503, -1501.950, -89.084, 422.680, -1406.050, 110.916},
-        {"Ричман", 225.165, -1369.620, -89.084, 334.503, -1292.070, 110.916},
-        {"Деловой район", 1724.760, -1250.900, -89.084, 1812.620, -1150.870, 110.916},
-        {"Стрип-клуб", 2027.400, 1703.230, -89.084, 2137.400, 1783.230, 110.916},
-        {"Деловой район", 1378.330, -1130.850, -89.084, 1463.900, -1026.330, 110.916},
-        {"Пересечение Блэкфилд", 1197.390, 1044.690, -89.084, 1277.050, 1163.390, 110.916},
-        {"Конференц Центр", 1073.220, -1842.270, -89.084, 1323.900, -1804.210, 110.916},
-        {"Монтгомери", 1451.400, 347.457, -6.1, 1582.440, 420.802, 200.000},
-        {"Долина Фостер", -2270.040, -430.276, -1.2, -2178.690, -324.114, 200.000},
-        {"Часовня Блэкфилд", 1325.600, 596.349, -89.084, 1375.600, 795.010, 110.916},
-        {"Аэропорт", 2051.630, -2597.260, -39.084, 2152.450, -2394.330, 60.916},
-        {"Малхолланд", 1096.470, -910.170, -89.084, 1169.130, -768.027, 110.916},
-        {"Поле для гольфа", 1457.460, 2723.230, -89.084, 1534.560, 2863.230, 110.916},
-        {"Стрип", 2027.400, 1783.230, -89.084, 2162.390, 1863.230, 110.916},
-        {"Джефферсон", 2056.860, -1210.740, -89.084, 2185.330, -1126.320, 110.916},
-        {"Малхолланд", 952.604, -937.184, -89.084, 1096.470, -860.619, 110.916},
-        {"Альдеа-Мальвада", -1372.140, 2498.520, 0.000, -1277.590, 2615.350, 200.000},
-        {"Лас-Колинас", 2126.860, -1126.320, -89.084, 2185.330, -934.489, 110.916},
-        {"Лас-Колинас", 1994.330, -1100.820, -89.084, 2056.860, -920.815, 110.916},
-        {"Ричман", 647.557, -954.662, -89.084, 768.694, -860.619, 110.916},
-        {"Грузовое депо", 1277.050, 1087.630, -89.084, 1375.600, 1203.280, 110.916},
-        {"Северное шоссе", 1377.390, 2433.230, -89.084, 1534.560, 2507.230, 110.916},
-        {"Уиллоуфилд", 2201.820, -2095.000, -89.084, 2324.000, -1989.900, 110.916},
-        {"Северное шоссе", 1704.590, 2342.830, -89.084, 1848.400, 2433.230, 110.916},
-        {"Темпл", 1252.330, -1130.850, -89.084, 1378.330, -1026.330, 110.916},
-        {"Маленькая Мексика", 1701.900, -1842.270, -89.084, 1812.620, -1722.260, 110.916},
-        {"Квинс", -2411.220, 373.539, 0.000, -2253.540, 458.411, 200.000},
-        {"Аэропорт", 1515.810, 1586.400, -12.500, 1729.950, 1714.560, 87.500},
-        {"Ричман", 225.165, -1292.070, -89.084, 466.223, -1235.070, 110.916},
-        {"Темпл", 1252.330, -1026.330, -89.084, 1391.050, -926.999, 110.916},
-        {"Восточный ЛС", 2266.260, -1494.030, -89.084, 2381.680, -1372.040, 110.916},
-        {"Воссточное шоссе", 2623.180, 943.235, -89.084, 2749.900, 1055.960, 110.916},
-        {"Уиллоуфилд", 2541.700, -1941.400, -89.084, 2703.580, -1852.870, 110.916},
-        {"Лас-Колинас", 2056.860, -1126.320, -89.084, 2126.860, -920.815, 110.916},
-        {"Воссточное шоссе", 2625.160, 2202.760, -89.084, 2685.160, 2442.550, 110.916},
-        {"Родео", 225.165, -1501.950, -89.084, 334.503, -1369.620, 110.916},
-        {"Лас-Брухас", -365.167, 2123.010, -3.0, -208.570, 2217.680, 200.000},
-        {"Воссточное шоссе", 2536.430, 2442.550, -89.084, 2685.160, 2542.550, 110.916},
-        {"Родео", 334.503, -1406.050, -89.084, 466.223, -1292.070, 110.916},
-        {"Вайнвуд", 647.557, -1227.280, -89.084, 787.461, -1118.280, 110.916},
-        {"Родео", 422.680, -1684.650, -89.084, 558.099, -1570.200, 110.916},
-        {"Северное шоссе", 2498.210, 2542.550, -89.084, 2685.160, 2626.550, 110.916},
-        {"Деловой район", 1724.760, -1430.870, -89.084, 1812.620, -1250.900, 110.916},
-        {"Родео", 225.165, -1684.650, -89.084, 312.803, -1501.950, 110.916},
-        {"Джефферсон", 2056.860, -1449.670, -89.084, 2266.210, -1372.040, 110.916},
-        {"Хэмптон-Барнс", 603.035, 264.312, 0.000, 761.994, 366.572, 200.000},
-        {"Темпл", 1096.470, -1130.840, -89.084, 1252.330, -1026.330, 110.916},
-        {"Мост Кинкейд", -1087.930, 855.370, -89.084, -961.950, 986.281, 110.916},
-        {"Пляж Верона", 1046.150, -1722.260, -89.084, 1161.520, -1577.590, 110.916},
-        {"Коммерческий район", 1323.900, -1722.260, -89.084, 1440.900, -1577.590, 110.916},
-        {"Малхолланд", 1357.000, -926.999, -89.084, 1463.900, -768.027, 110.916},
-        {"Родео", 466.223, -1570.200, -89.084, 558.099, -1385.070, 110.916},
-        {"Малхолланд", 911.802, -860.619, -89.084, 1096.470, -768.027, 110.916},
-        {"Малхолланд", 768.694, -954.662, -89.084, 952.604, -860.619, 110.916},
-        {"Южное шоссе", 2377.390, 788.894, -89.084, 2537.390, 897.901, 110.916},
-        {"Айдлвуд", 1812.620, -1852.870, -89.084, 1971.660, -1742.310, 110.916},
-        {"Океанские доки", 2089.000, -2394.330, -89.084, 2201.820, -2235.840, 110.916},
-        {"Коммерческий район", 1370.850, -1577.590, -89.084, 1463.900, -1384.950, 110.916},
-        {"Северное шоссе", 2121.400, 2508.230, -89.084, 2237.400, 2663.170, 110.916},
-        {"Темпл", 1096.470, -1026.330, -89.084, 1252.330, -910.170, 110.916},
-        {"Глен Парк", 1812.620, -1449.670, -89.084, 1996.910, -1350.720, 110.916},
-        {"Аэропорт Истер-Бэй", -1242.980, -50.096, 0.000, -1213.910, 578.396, 200.000},
-        {"Мост Мартин", -222.179, 293.324, 0.000, -122.126, 476.465, 200.000},
-        {"Стрип", 2106.700, 1863.230, -89.084, 2162.390, 2202.760, 110.916},
-        {"Уиллоуфилд", 2541.700, -2059.230, -89.084, 2703.580, -1941.400, 110.916},
-        {"Канал Марина", 807.922, -1577.590, -89.084, 926.922, -1416.250, 110.916},
-        {"Аэропорт", 1457.370, 1143.210, -89.084, 1777.400, 1203.280, 110.916},
-        {"Айдлвуд", 1812.620, -1742.310, -89.084, 1951.660, -1602.310, 110.916},
-        {"Восточная Эспаланда", -1580.010, 1025.980, -6.1, -1499.890, 1274.260, 200.000},
-        {"Деловой район", 1370.850, -1384.950, -89.084, 1463.900, -1170.870, 110.916},
-        {"Мост Мако", 1664.620, 401.750, 0.000, 1785.140, 567.203, 200.000},
-        {"Родео", 312.803, -1684.650, -89.084, 422.680, -1501.950, 110.916},
-        {"Площадь Першинг", 1440.900, -1722.260, -89.084, 1583.500, -1577.590, 110.916},
-        {"Малхолланд", 687.802, -860.619, -89.084, 911.802, -768.027, 110.916},
-        {"Мост Гант", -2741.070, 1490.470, -6.1, -2616.400, 1659.680, 200.000},
-        {"Лас-Колинас", 2185.330, -1154.590, -89.084, 2281.450, -934.489, 110.916},
-        {"Малхолланд", 1169.130, -910.170, -89.084, 1318.130, -768.027, 110.916},
-        {"Северное шоссе", 1938.800, 2508.230, -89.084, 2121.400, 2624.230, 110.916},
-        {"Коммерческий район", 1667.960, -1577.590, -89.084, 1812.620, -1430.870, 110.916},
-        {"Родео", 72.648, -1544.170, -89.084, 225.165, -1404.970, 110.916},
-        {"Рока-Эскаланте", 2536.430, 2202.760, -89.084, 2625.160, 2442.550, 110.916},
-        {"Родео", 72.648, -1684.650, -89.084, 225.165, -1544.170, 110.916},
-        {"Центральный Рынок", 952.663, -1310.210, -89.084, 1072.660, -1130.850, 110.916},
-        {"Лас-Колинас", 2632.740, -1135.040, -89.084, 2747.740, -945.035, 110.916},
-        {"Малхолланд", 861.085, -674.885, -89.084, 1156.550, -600.896, 110.916},
-        {"Кингс", -2253.540, 373.539, -9.1, -1993.280, 458.411, 200.000},
-        {"Восточный Рэдсэндс", 1848.400, 2342.830, -89.084, 2011.940, 2478.490, 110.916},
-        {"Деловой район", -1580.010, 744.267, -6.1, -1499.890, 1025.980, 200.000},
-        {"Конференц Центр", 1046.150, -1804.210, -89.084, 1323.900, -1722.260, 110.916},
-        {"Ричман", 647.557, -1118.280, -89.084, 787.461, -954.662, 110.916},
-        {"Оушен-Флэтс", -2994.490, 277.411, -9.1, -2867.850, 458.411, 200.000},
-        {"Колледж Грингласс", 964.391, 930.890, -89.084, 1166.530, 1044.690, 110.916},
-        {"Глен Парк", 1812.620, -1100.820, -89.084, 1994.330, -973.380, 110.916},
-        {"Грузовое депо", 1375.600, 919.447, -89.084, 1457.370, 1203.280, 110.916},
-        {"Регьюлар-Том", -405.770, 1712.860, -3.0, -276.719, 1892.750, 200.000},
-        {"Пляж Верона", 1161.520, -1722.260, -89.084, 1323.900, -1577.590, 110.916},
-        {"Восточный ЛС", 2281.450, -1372.040, -89.084, 2381.680, -1135.040, 110.916},
-        {"Дворец Калигулы", 2137.400, 1703.230, -89.084, 2437.390, 1783.230, 110.916},
-        {"Айдлвуд", 1951.660, -1742.310, -89.084, 2124.660, -1602.310, 110.916},
-        {"Пилигрим", 2624.400, 1383.230, -89.084, 2685.160, 1783.230, 110.916},
-        {"Айдлвуд", 2124.660, -1742.310, -89.084, 2222.560, -1494.030, 110.916},
-        {"Квинс", -2533.040, 458.411, 0.000, -2329.310, 578.396, 200.000},
-        {"Деловой район", -1871.720, 1176.420, -4.5, -1620.300, 1274.260, 200.000},
-        {"Коммерческий район", 1583.500, -1722.260, -89.084, 1758.900, -1577.590, 110.916},
-        {"Восточный ЛС", 2381.680, -1454.350, -89.084, 2462.130, -1135.040, 110.916},
-        {"Канал Марина", 647.712, -1577.590, -89.084, 807.922, -1416.250, 110.916},
-        {"Ричман", 72.648, -1404.970, -89.084, 225.165, -1235.070, 110.916},
-        {"Вайнвуд", 647.712, -1416.250, -89.084, 787.461, -1227.280, 110.916},
-        {"Восточный ЛС", 2222.560, -1628.530, -89.084, 2421.030, -1494.030, 110.916},
-        {"Родео", 558.099, -1684.650, -89.084, 647.522, -1384.930, 110.916},
-        {"Истерский Тоннель", -1709.710, -833.034, -1.5, -1446.010, -730.118, 200.000},
-        {"Родео", 466.223, -1385.070, -89.084, 647.522, -1235.070, 110.916},
-        {"Восточный Рэдсэндс", 1817.390, 2202.760, -89.084, 2011.940, 2342.830, 110.916},
-        {"Казино", 2162.390, 1783.230, -89.084, 2437.390, 1883.230, 110.916},
-        {"Айдлвуд", 1971.660, -1852.870, -89.084, 2222.560, -1742.310, 110.916},
-        {"Пересечение Монтгомери", 1546.650, 208.164, 0.000, 1745.830, 347.457, 200.000},
-        {"Уиллоуфилд", 2089.000, -2235.840, -89.084, 2201.820, -1989.900, 110.916},
-        {"Темпл", 952.663, -1130.840, -89.084, 1096.470, -937.184, 110.916},
-        {"Прикл-Пайн", 1848.400, 2553.490, -89.084, 1938.800, 2863.230, 110.916},
-        {"Аэропорт", 1400.970, -2669.260, -39.084, 2189.820, -2597.260, 60.916},
-        {"Мост Гарвер", -1213.910, 950.022, -89.084, -1087.930, 1178.930, 110.916},
-        {"Мост Гарвер", -1339.890, 828.129, -89.084, -1213.910, 1057.040, 110.916},
-        {"Мост Кинкейд", -1339.890, 599.218, -89.084, -1213.910, 828.129, 110.916},
-        {"Мост Кинкейд", -1213.910, 721.111, -89.084, -1087.930, 950.022, 110.916},
-        {"Пляж Верона", 930.221, -2006.780, -89.084, 1073.220, -1804.210, 110.916},
-        {"Обсерватория", 1073.220, -2006.780, -89.084, 1249.620, -1842.270, 110.916},
-        {"Гора Вайнвуд", 787.461, -1130.840, -89.084, 952.604, -954.662, 110.916},
-        {"Гора Вайнвуд", 787.461, -1310.210, -89.084, 952.663, -1130.840, 110.916},
-        {"Коммерческий район", 1463.900, -1577.590, -89.084, 1667.960, -1430.870, 110.916},
-        {"Центральный Рынок", 787.461, -1416.250, -89.084, 1072.660, -1310.210, 110.916},
-        {"Западный Рокшор", 2377.390, 596.349, -89.084, 2537.390, 788.894, 110.916},
-        {"Северное шоссе", 2237.400, 2542.550, -89.084, 2498.210, 2663.170, 110.916},
-        {"Восточный пляж", 2632.830, -1668.130, -89.084, 2747.740, -1393.420, 110.916},
-        {"Мост Фаллоу", 434.341, 366.572, 0.000, 603.035, 555.680, 200.000},
-        {"Уиллоуфилд", 2089.000, -1989.900, -89.084, 2324.000, -1852.870, 110.916},
-        {"Чайнатаун", -2274.170, 578.396, -7.6, -2078.670, 744.170, 200.000},
-        {"Скалистый массив", -208.570, 2337.180, 0.000, 8.430, 2487.180, 200.000},
-        {"Океанские доки", 2324.000, -2145.100, -89.084, 2703.580, -2059.230, 110.916},
-        {"Химзавод Истер-Бэй", -1132.820, -768.027, 0.000, -956.476, -578.118, 200.000},
-        {"Казино Визаж", 1817.390, 1703.230, -89.084, 2027.400, 1863.230, 110.916},
-        {"Оушен-Флэтс", -2994.490, -430.276, -1.2, -2831.890, -222.589, 200.000},
-        {"Ричман", 321.356, -860.619, -89.084, 687.802, -768.027, 110.916},
-        {"Нефтяной комплекс", 176.581, 1305.450, -3.0, 338.658, 1520.720, 200.000},
-        {"Ричман", 321.356, -768.027, -89.084, 700.794, -674.885, 110.916},
-        {"Казино", 2162.390, 1883.230, -89.084, 2437.390, 2012.180, 110.916},
-        {"Восточный пляж", 2747.740, -1668.130, -89.084, 2959.350, -1498.620, 110.916},
-        {"Джефферсон", 2056.860, -1372.040, -89.084, 2281.450, -1210.740, 110.916},
-        {"Деловой район", 1463.900, -1290.870, -89.084, 1724.760, -1150.870, 110.916},
-        {"Деловой район", 1463.900, -1430.870, -89.084, 1724.760, -1290.870, 110.916},
-        {"Мост Гарвер", -1499.890, 696.442, -179.615, -1339.890, 925.353, 20.385},
-        {"Южное шоссе", 1457.390, 823.228, -89.084, 2377.390, 863.229, 110.916},
-        {"Восточный ЛС", 2421.030, -1628.530, -89.084, 2632.830, -1454.350, 110.916},
-        {"Колледж Грингласс", 964.391, 1044.690, -89.084, 1197.390, 1203.220, 110.916},
-        {"Лас-Колинас", 2747.740, -1120.040, -89.084, 2959.350, -945.035, 110.916},
-        {"Малхолланд", 737.573, -768.027, -89.084, 1142.290, -674.885, 110.916},
-        {"Океанские доки", 2201.820, -2730.880, -89.084, 2324.000, -2418.330, 110.916},
-        {"Восточный ЛС", 2462.130, -1454.350, -89.084, 2581.730, -1135.040, 110.916},
-        {"Гантон", 2222.560, -1722.330, -89.084, 2632.830, -1628.530, 110.916},
-        {"Клуб Ависпа", -2831.890, -430.276, -6.1, -2646.400, -222.589, 200.000},
-        {"Уиллоуфилд", 1970.620, -2179.250, -89.084, 2089.000, -1852.870, 110.916},
-        {"Северная Эспланада", -1982.320, 1274.260, -4.5, -1524.240, 1358.900, 200.000},
-        {"Казино Хай-Роллер", 1817.390, 1283.230, -89.084, 2027.390, 1469.230, 110.916},
-        {"Океанские доки", 2201.820, -2418.330, -89.084, 2324.000, -2095.000, 110.916},
-        {"Мотель", 1823.080, 596.349, -89.084, 1997.220, 823.228, 110.916},
-        {"Бэйсайнд-Марина", -2353.170, 2275.790, 0.000, -2153.170, 2475.790, 200.000},
-        {"Кингс", -2329.310, 458.411, -7.6, -1993.280, 578.396, 200.000},
-        {"Эль-Корона", 1692.620, -2179.250, -89.084, 1812.620, -1842.270, 110.916},
-        {"Часовня Блэкфилд", 1375.600, 596.349, -89.084, 1558.090, 823.228, 110.916},
-        {"Розовый лебедь", 1817.390, 1083.230, -89.084, 2027.390, 1283.230, 110.916},
-        {"Западное шоссе", 1197.390, 1163.390, -89.084, 1236.630, 2243.230, 110.916},
-        {"Лос-Флорес", 2581.730, -1393.420, -89.084, 2747.740, -1135.040, 110.916},
-        {"Казино Визаж", 1817.390, 1863.230, -89.084, 2106.700, 2011.830, 110.916},
-        {"Прикл-Пайн", 1938.800, 2624.230, -89.084, 2121.400, 2861.550, 110.916},
-        {"Пляж Верона", 851.449, -1804.210, -89.084, 1046.150, -1577.590, 110.916},
-        {"Пересечение Робада", -1119.010, 1178.930, -89.084, -862.025, 1351.450, 110.916},
-        {"Линден-Сайд", 2749.900, 943.235, -89.084, 2923.390, 1198.990, 110.916},
-        {"Океанские доки", 2703.580, -2302.330, -89.084, 2959.350, -2126.900, 110.916},
-        {"Уиллоуфилд", 2324.000, -2059.230, -89.084, 2541.700, -1852.870, 110.916},
-        {"Кингс", -2411.220, 265.243, -9.1, -1993.280, 373.539, 200.000},
-        {"Коммерческий район", 1323.900, -1842.270, -89.084, 1701.900, -1722.260, 110.916},
-        {"Малхолланд", 1269.130, -768.027, -89.084, 1414.070, -452.425, 110.916},
-        {"Канал Марина", 647.712, -1804.210, -89.084, 851.449, -1577.590, 110.916},
-        {"Бэттери-Пойнт", -2741.070, 1268.410, -4.5, -2533.040, 1490.470, 200.000},
-        {"Казино 4 Дракона", 1817.390, 863.232, -89.084, 2027.390, 1083.230, 110.916},
-        {"Блэкфилд", 964.391, 1203.220, -89.084, 1197.390, 1403.220, 110.916},
-        {"Северное шоссе", 1534.560, 2433.230, -89.084, 1848.400, 2583.230, 110.916},
-        {"Поле для гольфа", 1117.400, 2723.230, -89.084, 1457.460, 2863.230, 110.916},
-        {"Айдлвуд", 1812.620, -1602.310, -89.084, 2124.660, -1449.670, 110.916},
-        {"Западный Рэдсэндс", 1297.470, 2142.860, -89.084, 1777.390, 2243.230, 110.916},
-        {"Доэрти", -2270.040, -324.114, -1.2, -1794.920, -222.589, 200.000},
-        {"Ферма Хиллтоп", 967.383, -450.390, -3.0, 1176.780, -217.900, 200.000},
-        {"Лас-Барранкас", -926.130, 1398.730, -3.0, -719.234, 1634.690, 200.000},
-        {"Казино Пираты", 1817.390, 1469.230, -89.084, 2027.400, 1703.230, 110.916},
-        {"Сити Холл", -2867.850, 277.411, -9.1, -2593.440, 458.411, 200.000},
-        {"Клуб Ависпа", -2646.400, -355.493, 0.000, -2270.040, -222.589, 200.000},
-        {"Стрип", 2027.400, 863.229, -89.084, 2087.390, 1703.230, 110.916},
-        {"Хашбери", -2593.440, -222.589, -1.0, -2411.220, 54.722, 200.000},
-        {"Аэропорт", 1852.000, -2394.330, -89.084, 2089.000, -2179.250, 110.916},
-        {"Уайтвуд-Истейтс", 1098.310, 1726.220, -89.084, 1197.390, 2243.230, 110.916},
-        {"Водохранилище", -789.737, 1659.680, -89.084, -599.505, 1929.410, 110.916},
-        {"Эль-Корона", 1812.620, -2179.250, -89.084, 1970.620, -1852.870, 110.916},
-        {"Деловой район", -1700.010, 744.267, -6.1, -1580.010, 1176.520, 200.000},
-        {"Долина Фостер", -2178.690, -1250.970, 0.000, -1794.920, -1115.580, 200.000},
-        {"Лас-Паясадас", -354.332, 2580.360, 2.0, -133.625, 2816.820, 200.000},
-        {"Долина Окультадо", -936.668, 2611.440, 2.0, -715.961, 2847.900, 200.000},
-        {"Пересечение Блэкфилд", 1166.530, 795.010, -89.084, 1375.600, 1044.690, 110.916},
-        {"Гантон", 2222.560, -1852.870, -89.084, 2632.830, -1722.330, 110.916},
-        {"Аэропорт Истер-Бэй", -1213.910, -730.118, 0.000, -1132.820, -50.096, 200.000},
-        {"Восточный Рэдсэндс", 1817.390, 2011.830, -89.084, 2106.700, 2202.760, 110.916},
-        {"Восточная Эспаланда", -1499.890, 578.396, -79.615, -1339.890, 1274.260, 20.385},
-        {"Дворец Калигулы", 2087.390, 1543.230, -89.084, 2437.390, 1703.230, 110.916},
-        {"Казино Рояль", 2087.390, 1383.230, -89.084, 2437.390, 1543.230, 110.916},
-        {"Ричман", 72.648, -1235.070, -89.084, 321.356, -1008.150, 110.916},
-        {"Казино", 2437.390, 1783.230, -89.084, 2685.160, 2012.180, 110.916},
-        {"Малхолланд", 1281.130, -452.425, -89.084, 1641.130, -290.913, 110.916},
-        {"Деловой район", -1982.320, 744.170, -6.1, -1871.720, 1274.260, 200.000},
-        {"Ханки-Панки-Пойнт", 2576.920, 62.158, 0.000, 2759.250, 385.503, 200.000},
-        {"Военный склад топлива", 2498.210, 2626.550, -89.084, 2749.900, 2861.550, 110.916},
-        {"Шоссе Гарри-Голд", 1777.390, 863.232, -89.084, 1817.390, 2342.830, 110.916},
-        {"Тоннель Бэйсайд", -2290.190, 2548.290, -89.084, -1950.190, 2723.290, 110.916},
-        {"Океанские доки", 2324.000, -2302.330, -89.084, 2703.580, -2145.100, 110.916},
-        {"Ричман", 321.356, -1044.070, -89.084, 647.557, -860.619, 110.916},
-        {"Промсклад Рэндольфа", 1558.090, 596.349, -89.084, 1823.080, 823.235, 110.916},
-        {"Восточный пляж", 2632.830, -1852.870, -89.084, 2959.350, -1668.130, 110.916},
-        {"Флинт-Уотер", -314.426, -753.874, -89.084, -106.339, -463.073, 110.916},
-        {"Блуберри", 19.607, -404.136, 3.8, 349.607, -220.137, 200.000},
-        {"Станция Линден", 2749.900, 1198.990, -89.084, 2923.390, 1548.990, 110.916},
-        {"Глен Парк", 1812.620, -1350.720, -89.084, 2056.860, -1100.820, 110.916},
-        {"Деловой район", -1993.280, 265.243, -9.1, -1794.920, 578.396, 200.000},
-        {"Западный Рэдсэндс", 1377.390, 2243.230, -89.084, 1704.590, 2433.230, 110.916},
-        {"Ричман", 321.356, -1235.070, -89.084, 647.522, -1044.070, 110.916},
-        {"Мост Гант", -2741.450, 1659.680, -6.1, -2616.400, 2175.150, 200.000},
-        {"Бар Probe Inn", -90.218, 1286.850, -3.0, 153.859, 1554.120, 200.000},
-        {"Пересечение Флинт", -187.700, -1596.760, -89.084, 17.063, -1276.600, 110.916},
-        {"Лас-Колинас", 2281.450, -1135.040, -89.084, 2632.740, -945.035, 110.916},
-        {"Собелл-Рейл-Ярдс", 2749.900, 1548.990, -89.084, 2923.390, 1937.250, 110.916},
-        {"Изумрудный остров", 2011.940, 2202.760, -89.084, 2237.400, 2508.230, 110.916},
-        {"Скалистый массив", -208.570, 2123.010, -7.6, 114.033, 2337.180, 200.000},
-        {"Санта-Флора", -2741.070, 458.411, -7.6, -2533.040, 793.411, 200.000},
-        {"Плайя-дель-Севиль", 2703.580, -2126.900, -89.084, 2959.350, -1852.870, 110.916},
-        {"Центральный Рынок", 926.922, -1577.590, -89.084, 1370.850, -1416.250, 110.916},
-        {"Квинс", -2593.440, 54.722, 0.000, -2411.220, 458.411, 200.000},
-        {"Пересечение Пилсон", 1098.390, 2243.230, -89.084, 1377.390, 2507.230, 110.916},
-        {"Спинибед", 2121.400, 2663.170, -89.084, 2498.210, 2861.550, 110.916},
-        {"Пилигрим", 2437.390, 1383.230, -89.084, 2624.400, 1783.230, 110.916},
-        {"Блэкфилд", 964.391, 1403.220, -89.084, 1197.390, 1726.220, 110.916},
-        {"Большое ухо", -410.020, 1403.340, -3.0, -137.969, 1681.230, 200.000},
-        {"Диллимор", 580.794, -674.885, -9.5, 861.085, -404.790, 200.000},
-        {"Эль-Кебрадос", -1645.230, 2498.520, 0.000, -1372.140, 2777.850, 200.000},
-        {"Северная Эспланада", -2533.040, 1358.900, -4.5, -1996.660, 1501.210, 200.000},
-        {"Аэропорт Истер-Бэй", -1499.890, -50.096, -1.0, -1242.980, 249.904, 200.000},
-        {"Рыбацкая лагуна", 1916.990, -233.323, -100.000, 2131.720, 13.800, 200.000},
-        {"Малхолланд", 1414.070, -768.027, -89.084, 1667.610, -452.425, 110.916},
-        {"Восточный пляж", 2747.740, -1498.620, -89.084, 2959.350, -1120.040, 110.916},
-        {"Сан-Андреас Саунд", 2450.390, 385.503, -100.000, 2759.250, 562.349, 200.000},
-        {"Тенистые ручьи", -2030.120, -2174.890, -6.1, -1820.640, -1771.660, 200.000},
-        {"Центральный Рынок", 1072.660, -1416.250, -89.084, 1370.850, -1130.850, 110.916},
-        {"Западный Рокшор", 1997.220, 596.349, -89.084, 2377.390, 823.228, 110.916},
-        {"Прикл-Пайн", 1534.560, 2583.230, -89.084, 1848.400, 2863.230, 110.916},
-        {"Бухта Пасхи", -1794.920, -50.096, -1.04, -1499.890, 249.904, 200.000},
-        {"Лифи-Холлоу", -1166.970, -1856.030, 0.000, -815.624, -1602.070, 200.000},
-        {"Грузовое депо", 1457.390, 863.229, -89.084, 1777.400, 1143.210, 110.916},
-        {"Прикл-Пайн", 1117.400, 2507.230, -89.084, 1534.560, 2723.230, 110.916},
-        {"Блуберри", 104.534, -220.137, 2.3, 349.607, 152.236, 200.000},
-        {"Скалистый массив", -464.515, 2217.680, 0.000, -208.570, 2580.360, 200.000},
-        {"Деловой район", -2078.670, 578.396, -7.6, -1499.890, 744.267, 200.000},
-        {"Восточный Рокшор", 2537.390, 676.549, -89.084, 2902.350, 943.235, 110.916},
-        {"Залив Сан-Фиерро", -2616.400, 1501.210, -3.0, -1996.660, 1659.680, 200.000},
-        {"Парадизо", -2741.070, 793.411, -6.1, -2533.040, 1268.410, 200.000},
-        {"Казино", 2087.390, 1203.230, -89.084, 2640.400, 1383.230, 110.916},
-        {"Олд-Вентурас-Стрип", 2162.390, 2012.180, -89.084, 2685.160, 2202.760, 110.916},
-        {"Джанипер-Хилл", -2533.040, 578.396, -7.6, -2274.170, 968.369, 200.000},
-        {"Джанипер-Холлоу", -2533.040, 968.369, -6.1, -2274.170, 1358.900, 200.000},
-        {"Рока-Эскаланте", 2237.400, 2202.760, -89.084, 2536.430, 2542.550, 110.916},
-        {"Воссточное шоссе", 2685.160, 1055.960, -89.084, 2749.900, 2626.550, 110.916},
-        {"Пляж Верона", 647.712, -2173.290, -89.084, 930.221, -1804.210, 110.916},
-        {"Долина Фостер", -2178.690, -599.884, -1.2, -1794.920, -324.114, 200.000},
-        {"Арко-дель-Оэсте", -901.129, 2221.860, 0.000, -592.090, 2571.970, 200.000},
-        {"Упавшее дерево", -792.254, -698.555, -5.3, -452.404, -380.043, 200.000},
-        {"Ферма", -1209.670, -1317.100, 114.981, -908.161, -787.391, 251.981},
-        {"Дамба Шермана", -968.772, 1929.410, -3.0, -481.126, 2155.260, 200.000},
-        {"Северная Эспланада", -1996.660, 1358.900, -4.5, -1524.240, 1592.510, 200.000},
-        {"Финансовый район", -1871.720, 744.170, -6.1, -1701.300, 1176.420, 300.000},
-        {"Гарсия", -2411.220, -222.589, -1.14, -2173.040, 265.243, 200.000},
-        {"Монтгомери", 1119.510, 119.526, -3.0, 1451.400, 493.323, 200.000},
-        {"Крик", 2749.900, 1937.250, -89.084, 2921.620, 2669.790, 110.916},
-        {"Аэропорт", 1249.620, -2394.330, -89.084, 1852.000, -2179.250, 110.916},
-        {"Пляж Санта-Мария", 72.648, -2173.290, -89.084, 342.648, -1684.650, 110.916},
-        {"Пересечение Малхолланд", 1463.900, -1150.870, -89.084, 1812.620, -768.027, 110.916},
-        {"Эйнджел-Пайн", -2324.940, -2584.290, -6.1, -1964.220, -2212.110, 200.000},
-        {"Вёрдант-Медоус", 37.032, 2337.180, -3.0, 435.988, 2677.900, 200.000},
-        {"Октан-Спрингс", 338.658, 1228.510, 0.000, 664.308, 1655.050, 200.000},
-        {"Казино Кам-э-Лот", 2087.390, 943.235, -89.084, 2623.180, 1203.230, 110.916},
-        {"Западный Рэдсэндс", 1236.630, 1883.110, -89.084, 1777.390, 2142.860, 110.916},
-        {"Пляж Санта-Мария", 342.648, -2173.290, -89.084, 647.712, -1684.650, 110.916},
-        {"Обсерватория", 1249.620, -2179.250, -89.084, 1692.620, -1842.270, 110.916},
-        {"Аэропорт", 1236.630, 1203.280, -89.084, 1457.370, 1883.110, 110.916},
-        {"Округ Флинт", -594.191, -1648.550, 0.000, -187.700, -1276.600, 200.000},
-        {"Обсерватория", 930.221, -2488.420, -89.084, 1249.620, -2006.780, 110.916},
-        {"Паломино Крик", 2160.220, -149.004, 0.000, 2576.920, 228.322, 200.000},
-        {"Океанские доки", 2373.770, -2697.090, -89.084, 2809.220, -2330.460, 110.916},
-        {"Аэропорт Истер-Бэй", -1213.910, -50.096, -4.5, -947.980, 578.396, 200.000},
-        {"Уайтвуд-Истейтс", 883.308, 1726.220, -89.084, 1098.310, 2507.230, 110.916},
-        {"Калтон-Хайтс", -2274.170, 744.170, -6.1, -1982.320, 1358.900, 200.000},
-        {"Бухта Пасхи", -1794.920, 249.904, -9.1, -1242.980, 578.396, 200.000},
-        {"Залив ЛС", -321.744, -2224.430, -89.084, 44.615, -1724.430, 110.916},
-        {"Доэрти", -2173.040, -222.589, -1.0, -1794.920, 265.243, 200.000},
-        {"Гора Чилиад", -2178.690, -2189.910, -47.917, -2030.120, -1771.660, 576.083},
-        {"Форт-Карсон", -376.233, 826.326, -3.0, 123.717, 1220.440, 200.000},
-        {"Долина Фостер", -2178.690, -1115.580, 0.000, -1794.920, -599.884, 200.000},
-        {"Оушен-Флэтс", -2994.490, -222.589, -1.0, -2593.440, 277.411, 200.000},
-        {"Ферн-Ридж", 508.189, -139.259, 0.000, 1306.660, 119.526, 200.000},
-        {"Бэйсайд", -2741.070, 2175.150, 0.000, -2353.170, 2722.790, 200.000},
-        {"Аэропорт", 1457.370, 1203.280, -89.084, 1777.390, 1883.110, 110.916},
-        {"Поместье Блуберри", -319.676, -220.137, 0.000, 104.534, 293.324, 200.000},
-        {"Пэлисейдс", -2994.490, 458.411, -6.1, -2741.070, 1339.610, 200.000},
-        {"Норт-Рок", 2285.370, -768.027, 0.000, 2770.590, -269.740, 200.000},
-        {"Карьер Хантер", 337.244, 710.840, -115.239, 860.554, 1031.710, 203.761},
-        {"Аэропорт", 1382.730, -2730.880, -89.084, 2201.820, -2394.330, 110.916},
-        {"Миссионер-Хилл", -2994.490, -811.276, 0.000, -2178.690, -430.276, 200.000},
-        {"Залив СФ", -2616.400, 1659.680, -3.0, -1996.660, 2175.150, 200.000},
-        {"Тюрьма ЛВ", -91.586, 1655.050, -50.000, 421.234, 2123.010, 250.000},
-        {"Гора Чилиад", -2997.470, -1115.580, -47.917, -2178.690, -971.913, 576.083},
-        {"Гора Чилиад", -2178.690, -1771.660, -47.917, -1936.120, -1250.970, 576.083},
-        {"Аэропорт Истер-Бэй", -1794.920, -730.118, -3.0, -1213.910, -50.096, 200.000},
-        {"Паноптикум", -947.980, -304.320, -1.1, -319.676, 327.071, 200.000},
-        {"Тенистые ручьи", -1820.640, -2643.680, -8.0, -1226.780, -1771.660, 200.000},
-        {"Бэк-о-Бейонд", -1166.970, -2641.190, 0.000, -321.744, -1856.030, 200.000},
-        {"Гора Чилиад", -2994.490, -2189.910, -47.917, -2178.690, -1115.580, 576.083},
-        {"Тьерра Робада", -1213.910, 596.349, -242.990, -480.539, 1659.680, 900.000},
-        {"Округ Флинт", -1213.910, -2892.970, -242.990, 44.615, -768.027, 900.000},
-        {"Уэтстоун", -2997.470, -2892.970, -242.990, -1213.910, -1115.580, 900.000},
-        {"Пустынный округ", -480.539, 596.349, -242.990, 869.461, 2993.870, 900.000},
-        {"Тьерра Робада", -2997.470, 1659.680, -242.990, -480.539, 2993.870, 900.000},
-        {"Окружность СФ", -2997.470, -1115.580, -242.990, -1213.910, 1659.680, 900.000},
-        {"Окружность ЛВ", 869.461, 596.349, -242.990, 2997.060, 2993.870, 900.000},
-        {"Туманный округ", -1213.910, -768.027, -242.990, 2997.060, 596.349, 900.000},
-        {"Окружность ЛС", 44.615, -2892.970, -242.990, 2997.060, -768.027, 900.000}
-    }
+function getAreaRu(x, y, z)
+	local streets = {
+		{"Гольф-клуб Ависпа", -2667.810, -302.135, -28.831, -2646.400, -262.320, 71.169},
+		{"Аэропорт СФ", -1315.420, -405.388, 15.406, -1264.400, -209.543, 25.406},
+		{"Гольф-клуб Ависпа", -2550.040, -355.493, 0.000, -2470.040, -318.493, 39.700},
+		{"Аэропорт СФ", -1490.330, -209.543, 15.406, -1264.400, -148.388, 25.406},
+		{"Гарсия", -2395.140, -222.589, -5.3, -2354.090, -204.792, 200.000},
+		{"Тенистые ручьи", -1632.830, -2263.440, -3.0, -1601.330, -2231.790, 200.000},
+		{"Восточный ЛС", 2381.680, -1494.030, -89.084, 2421.030, -1454.350, 110.916},
+		{"Грузовой склад ЛВ", 1236.630, 1163.410, -89.084, 1277.050, 1203.280, 110.916},
+		{"Блэкфилдский перекрёсток", 1277.050, 1044.690, -89.084, 1315.350, 1087.630, 110.916},
+		{"Гольф-клуб Ависпа", -2470.040, -355.493, 0.000, -2270.040, -318.493, 46.100},
+		{"Темпл драйв", 1252.330, -926.999, -89.084, 1357.000, -910.170, 110.916},
+		{"Вокзал ЛС", 1692.620, -1971.800, -20.492, 1812.620, -1932.800, 79.508},
+		{"Грузовой склад ЛВ", 1315.350, 1044.690, -89.084, 1375.600, 1087.630, 110.916},
+		{"Лос-Флорес", 2581.730, -1454.350, -89.084, 2632.830, -1393.420, 110.916},
+		{"Азартный район", 2437.390, 1858.100, -39.084, 2495.090, 1970.850, 60.916},
+		{"Истербэйский химзавод", -1132.820, -787.391, 0.000, -956.476, -768.027, 200.000},
+		{"Центральный район СФ", 1370.850, -1170.870, -89.084, 1463.900, -1130.850, 110.916},
+		{"Восточная Эспаланда", -1620.300, 1176.520, -4.5, -1580.010, 1274.260, 200.000},
+		{"Станция Маркет", 787.461, -1410.930, -34.126, 866.009, -1310.210, 65.874},
+		{"Вокзал ЛВ", 2811.250, 1229.590, -39.594, 2861.250, 1407.590, 60.406},
+		{"Перекрёсток Монтгомери", 1582.440, 347.457, 0.000, 1664.620, 401.750, 200.000},
+		{"Мост Фредерик", 2759.250, 296.501, 0.000, 2774.250, 594.757, 200.000},
+		{"Станция Йеллоу-Белл", 1377.480, 2600.430, -21.926, 1492.450, 2687.360, 78.074},
+		{"Центральный район СФ", 1507.510, -1385.210, 110.916, 1582.550, -1325.310, 335.916},
+		{"Отель Ночные волки", 2185.330, -1210.740, -89.084, 2281.450, -1154.590, 110.916},
+		{"Гора Вайнвуд", 1318.130, -910.170, -89.084, 1357.000, -768.027, 110.916},
+		{"Гольф-клуб Ависпа", -2361.510, -417.199, 0.000, -2270.040, -355.493, 200.000},
+		{"Больница Джефферсон", 1996.910, -1449.670, -89.084, 2056.860, -1350.720, 110.916},
+		{"Западаное шоссе", 1236.630, 2142.860, -89.084, 1297.470, 2243.230, 110.916},
+		{"Джефферсон", 2124.660, -1494.030, -89.084, 2266.210, -1449.670, 110.916},
+		{"Северное шоссе ЛВ", 1848.400, 2478.490, -89.084, 1938.800, 2553.490, 110.916},
+		{"Родео драйв", 422.680, -1570.200, -89.084, 466.223, -1406.050, 110.916},
+		{"Вокзал СФ", -2007.830, 56.306, 0.000, -1922.000, 224.782, 100.000},
+		{"Центральный район СФ", 1391.050, -1026.330, -89.084, 1463.900, -926.999, 110.916},
+		{"Западный Редсандс", 1704.590, 2243.230, -89.084, 1777.390, 2342.830, 110.916},
+		{"Маленькая Мексика", 1758.900, -1722.260, -89.084, 1812.620, -1577.590, 110.916},
+		{"Блэкфилдский перекрёсток", 1375.600, 823.228, -89.084, 1457.390, 919.447, 110.916},
+		{"Аэропорт ЛС", 1974.630, -2394.330, -39.084, 2089.000, -2256.590, 60.916},
+		{"Бекон-Хилл", -399.633, -1075.520, -1.489, -319.033, -977.516, 198.511},
+		{"Родео драйв", 334.503, -1501.950, -89.084, 422.680, -1406.050, 110.916},
+		{"Гора Вайнвуд", 225.165, -1369.620, -89.084, 334.503, -1292.070, 110.916},
+		{"Центральный район СФ", 1724.760, -1250.900, -89.084, 1812.620, -1150.870, 110.916},
+		{"Стрип", 2027.400, 1703.230, -89.084, 2137.400, 1783.230, 110.916},
+		{"Центральный район СФ", 1378.330, -1130.850, -89.084, 1463.900, -1026.330, 110.916},
+		{"Блэкфилдский перекрёсток", 1197.390, 1044.690, -89.084, 1277.050, 1163.390, 110.916},
+		{"Автовокзал", 1073.220, -1842.270, -89.084, 1323.900, -1804.210, 110.916},
+		{"Монтгомери", 1451.400, 347.457, -6.1, 1582.440, 420.802, 200.000},
+		{"Фостерская долина", -2270.040, -430.276, -1.2, -2178.690, -324.114, 200.000},
+		{"Блэкфилд", 1325.600, 596.349, -89.084, 1375.600, 795.010, 110.916},
+		{"Аэропорт ЛС", 2051.630, -2597.260, -39.084, 2152.450, -2394.330, 60.916},
+		{"Гора Вайнвуд", 1096.470, -910.170, -89.084, 1169.130, -768.027, 110.916},
+		{"Гольф-корт Йеллоубелл", 1457.460, 2723.230, -89.084, 1534.560, 2863.230, 110.916},
+		{"Стрип", 2027.400, 1783.230, -89.084, 2162.390, 1863.230, 110.916},
+		{"Джефферсон", 2056.860, -1210.740, -89.084, 2185.330, -1126.320, 110.916},
+		{"Гора Вайнвуд", 952.604, -937.184, -89.084, 1096.470, -860.619, 110.916},
+		{"Эль-Кебрадос", -1372.140, 2498.520, 0.000, -1277.590, 2615.350, 200.000},
+		{"Лас-Колинас", 2126.860, -1126.320, -89.084, 2185.330, -934.489, 110.916},
+		{"Лас-Колинас", 1994.330, -1100.820, -89.084, 2056.860, -920.815, 110.916},
+		{"Гора Вайнвуд", 647.557, -954.662, -89.084, 768.694, -860.619, 110.916},
+		{"Грузовой склад ЛВ", 1277.050, 1087.630, -89.084, 1375.600, 1203.280, 110.916},
+		{"Северное шоссе ЛВ", 1377.390, 2433.230, -89.084, 1534.560, 2507.230, 110.916},
+		{"Уиллоуфилд", 2201.820, -2095.000, -89.084, 2324.000, -1989.900, 110.916},
+		{"Северное шоссе ЛВ", 1704.590, 2342.830, -89.084, 1848.400, 2433.230, 110.916},
+		{"Темпл драйв", 1252.330, -1130.850, -89.084, 1378.330, -1026.330, 110.916},
+		{"Маленькая Мексика", 1701.900, -1842.270, -89.084, 1812.620, -1722.260, 110.916},
+		{"Квинс", -2411.220, 373.539, 0.000, -2253.540, 458.411, 200.000},
+		{"Аэропорт ЛВ", 1515.810, 1586.400, -12.500, 1729.950, 1714.560, 87.500},
+		{"Гора Вайнвуд", 225.165, -1292.070, -89.084, 466.223, -1235.070, 110.916},
+		{"Темпл драйв", 1252.330, -1026.330, -89.084, 1391.050, -926.999, 110.916},
+		{"Восточный ЛС", 2266.260, -1494.030, -89.084, 2381.680, -1372.040, 110.916},
+		{"Восточное шоссе ЛВ", 2623.180, 943.235, -89.084, 2749.900, 1055.960, 110.916},
+		{"Уиллоуфилд", 2541.700, -1941.400, -89.084, 2703.580, -1852.870, 110.916},
+		{"Лас-Колинас", 2056.860, -1126.320, -89.084, 2126.860, -920.815, 110.916},
+		{"Восточное шоссе ЛВ", 2625.160, 2202.760, -89.084, 2685.160, 2442.550, 110.916},
+		{"Родео драйв", 225.165, -1501.950, -89.084, 334.503, -1369.620, 110.916},
+		{"Пустынный округ", -365.167, 2123.010, -3.0, -208.570, 2217.680, 200.000},
+		{"Восточное шоссе ЛВ", 2536.430, 2442.550, -89.084, 2685.160, 2542.550, 110.916},
+		{"Родео драйв", 334.503, -1406.050, -89.084, 466.223, -1292.070, 110.916},
+		{"Вайнвуд", 647.557, -1227.280, -89.084, 787.461, -1118.280, 110.916},
+		{"Родео драйв", 422.680, -1684.650, -89.084, 558.099, -1570.200, 110.916},
+		{"Северное шоссе ЛВ", 2498.210, 2542.550, -89.084, 2685.160, 2626.550, 110.916},
+		{"Центральный район СФ", 1724.760, -1430.870, -89.084, 1812.620, -1250.900, 110.916},
+		{"Родео драйв", 225.165, -1684.650, -89.084, 312.803, -1501.950, 110.916},
+		{"Джефферсон", 2056.860, -1449.670, -89.084, 2266.210, -1372.040, 110.916},
+		{"Туманный округ", 603.035, 264.312, 0.000, 761.994, 366.572, 200.000},
+		{"Темпл драйв", 1096.470, -1130.840, -89.084, 1252.330, -1026.330, 110.916},
+		{"Красный ж/д мост", -1087.930, 855.370, -89.084, -961.950, 986.281, 110.916},
+		{"Пляж Верона", 1046.150, -1722.260, -89.084, 1161.520, -1577.590, 110.916},
+		{"Центральный банк ЛС", 1323.900, -1722.260, -89.084, 1440.900, -1577.590, 110.916},
+		{"Гора Вайнвуд", 1357.000, -926.999, -89.084, 1463.900, -768.027, 110.916},
+		{"Родео драйв", 466.223, -1570.200, -89.084, 558.099, -1385.070, 110.916},
+		{"Гора Вайнвуд", 911.802, -860.619, -89.084, 1096.470, -768.027, 110.916},
+		{"Гора Вайнвуд", 768.694, -954.662, -89.084, 952.604, -860.619, 110.916},
+		{"Южное шоссе ЛВ", 2377.390, 788.894, -89.084, 2537.390, 897.901, 110.916},
+		{"Айдлвуд", 1812.620, -1852.870, -89.084, 1971.660, -1742.310, 110.916},
+		{"Порт ЛС", 2089.000, -2394.330, -89.084, 2201.820, -2235.840, 110.916},
+		{"Коммерческий район", 1370.850, -1577.590, -89.084, 1463.900, -1384.950, 110.916},
+		{"Северное шоссе ЛВ", 2121.400, 2508.230, -89.084, 2237.400, 2663.170, 110.916},
+		{"Темпл драйв", 1096.470, -1026.330, -89.084, 1252.330, -910.170, 110.916},
+		{"Глен Парк", 1812.620, -1449.670, -89.084, 1996.910, -1350.720, 110.916},
+		{"Аэропорт ЛВ", -1242.980, -50.096, 0.000, -1213.910, 578.396, 200.000},
+		{"Мост Мартина", -222.179, 293.324, 0.000, -122.126, 476.465, 200.000},
+		{"Стрип", 2106.700, 1863.230, -89.084, 2162.390, 2202.760, 110.916},
+		{"Уиллоуфилд", 2541.700, -2059.230, -89.084, 2703.580, -1941.400, 110.916},
+		{"Канал Марина", 807.922, -1577.590, -89.084, 926.922, -1416.250, 110.916},
+		{"Аэропорт ЛВ", 1457.370, 1143.210, -89.084, 1777.400, 1203.280, 110.916},
+		{"Айдлвуд", 1812.620, -1742.310, -89.084, 1951.660, -1602.310, 110.916},
+		{"Восточная Эспаланда", -1580.010, 1025.980, -6.1, -1499.890, 1274.260, 200.000},
+		{"Центральный район СФ", 1370.850, -1384.950, -89.084, 1463.900, -1170.870, 110.916},
+		{"Мост Мако", 1664.620, 401.750, 0.000, 1785.140, 567.203, 200.000},
+		{"Родео драйв", 312.803, -1684.650, -89.084, 422.680, -1501.950, 110.916},
+		{"Площадь Першинг", 1440.900, -1722.260, -89.084, 1583.500, -1577.590, 110.916},
+		{"Гора Вайнвуд", 687.802, -860.619, -89.084, 911.802, -768.027, 110.916},
+		{"Мост Гант", -2741.070, 1490.470, -6.1, -2616.400, 1659.680, 200.000},
+		{"Лас-Колинас", 2185.330, -1154.590, -89.084, 2281.450, -934.489, 110.916},
+		{"Гора Вайнвуд", 1169.130, -910.170, -89.084, 1318.130, -768.027, 110.916},
+		{"Северное шоссе ЛВ", 1938.800, 2508.230, -89.084, 2121.400, 2624.230, 110.916},
+		{"Коммерческий район", 1667.960, -1577.590, -89.084, 1812.620, -1430.870, 110.916},
+		{"КПП ЛС-СФ", 72.648, -1544.170, -89.084, 225.165, -1404.970, 110.916},
+		{"Рока Эскаланте", 2536.430, 2202.760, -89.084, 2625.160, 2442.550, 110.916},
+		{"КПП ЛС-СФ", 72.648, -1684.650, -89.084, 225.165, -1544.170, 110.916},
+		{"Центральный Рынок", 952.663, -1310.210, -89.084, 1072.660, -1130.850, 110.916},
+		{"Лас-Колинас", 2632.740, -1135.040, -89.084, 2747.740, -945.035, 110.916},
+		{"Гора Вайнвуд", 861.085, -674.885, -89.084, 1156.550, -600.896, 110.916},
+		{"Кингс", -2253.540, 373.539, -9.1, -1993.280, 458.411, 200.000},
+		{"Восточный Редсандс", 1848.400, 2342.830, -89.084, 2011.940, 2478.490, 110.916},
+		{"Центральный район СФ", -1580.010, 744.267, -6.1, -1499.890, 1025.980, 200.000},
+		{"Автовокзал", 1046.150, -1804.210, -89.084, 1323.900, -1722.260, 110.916},
+		{"Гора Вайнвуд", 647.557, -1118.280, -89.084, 787.461, -954.662, 110.916},
+		{"Океанское побережье", -2994.490, 277.411, -9.1, -2867.850, 458.411, 200.000},
+		{"Грингласский колледж", 964.391, 930.890, -89.084, 1166.530, 1044.690, 110.916},
+		{"Глен Парк", 1812.620, -1100.820, -89.084, 1994.330, -973.380, 110.916},
+		{"Грузовой склад ЛВ", 1375.600, 919.447, -89.084, 1457.370, 1203.280, 110.916},
+		{"Пустынный округ", -405.770, 1712.860, -3.0, -276.719, 1892.750, 200.000},
+		{"Пляж Верона", 1161.520, -1722.260, -89.084, 1323.900, -1577.590, 110.916},
+		{"Восточный ЛС", 2281.450, -1372.040, -89.084, 2381.680, -1135.040, 110.916},
+		{"Дворец Калигулы", 2137.400, 1703.230, -89.084, 2437.390, 1783.230, 110.916},
+		{"Айдлвуд", 1951.660, -1742.310, -89.084, 2124.660, -1602.310, 110.916},
+		{"Пилигрим", 2624.400, 1383.230, -89.084, 2685.160, 1783.230, 110.916},
+		{"Айдлвуд", 2124.660, -1742.310, -89.084, 2222.560, -1494.030, 110.916},
+		{"Квинс", -2533.040, 458.411, 0.000, -2329.310, 578.396, 200.000},
+		{"Центральный район СФ", -1871.720, 1176.420, -4.5, -1620.300, 1274.260, 200.000},
+		{"Коммерческий район", 1583.500, -1722.260, -89.084, 1758.900, -1577.590, 110.916},
+		{"Восточный ЛС", 2381.680, -1454.350, -89.084, 2462.130, -1135.040, 110.916},
+		{"Канал Марина", 647.712, -1577.590, -89.084, 807.922, -1416.250, 110.916},
+		{"Гора Вайнвуд", 72.648, -1404.970, -89.084, 225.165, -1235.070, 110.916},
+		{"Вайнвуд", 647.712, -1416.250, -89.084, 787.461, -1227.280, 110.916},
+		{"Восточный ЛС", 2222.560, -1628.530, -89.084, 2421.030, -1494.030, 110.916},
+		{"Родео драйв", 558.099, -1684.650, -89.084, 647.522, -1384.930, 110.916},
+		{"Истерский Тоннель", -1709.710, -833.034, -1.5, -1446.010, -730.118, 200.000},
+		{"Родео драйв", 466.223, -1385.070, -89.084, 647.522, -1235.070, 110.916},
+		{"Восточный Редсандс", 1817.390, 2202.760, -89.084, 2011.940, 2342.830, 110.916},
+		{"Азартный район", 2162.390, 1783.230, -89.084, 2437.390, 1883.230, 110.916},
+		{"БК Рифа", 1971.660, -1852.870, -89.084, 2222.560, -1742.310, 110.916},
+		{"Перекрёсток Монтгомери", 1546.650, 208.164, 0.000, 1745.830, 347.457, 200.000},
+		{"Уиллоуфилд", 2089.000, -2235.840, -89.084, 2201.820, -1989.900, 110.916},
+		{"Темпл драйв", 952.663, -1130.840, -89.084, 1096.470, -937.184, 110.916},
+		{"Прикл Пайн", 1848.400, 2553.490, -89.084, 1938.800, 2863.230, 110.916},
+		{"Аэропорт ЛС", 1400.970, -2669.260, -39.084, 2189.820, -2597.260, 60.916},
+		{"Белый мост", -1213.910, 950.022, -89.084, -1087.930, 1178.930, 110.916},
+		{"Белый мост", -1339.890, 828.129, -89.084, -1213.910, 1057.040, 110.916},
+		{"Красный ж/д мост", -1339.890, 599.218, -89.084, -1213.910, 828.129, 110.916},
+		{"Красный ж/д мост", -1213.910, 721.111, -89.084, -1087.930, 950.022, 110.916},
+		{"Пляж Верона", 930.221, -2006.780, -89.084, 1073.220, -1804.210, 110.916},
+		{"Зелёный утёс", 1073.220, -2006.780, -89.084, 1249.620, -1842.270, 110.916},
+		{"Гора Вайнвуд", 787.461, -1130.840, -89.084, 952.604, -954.662, 110.916},
+		{"Гора Вайнвуд", 787.461, -1310.210, -89.084, 952.663, -1130.840, 110.916},
+		{"Коммерческий район", 1463.900, -1577.590, -89.084, 1667.960, -1430.870, 110.916},
+		{"Центральный Рынок", 787.461, -1416.250, -89.084, 1072.660, -1310.210, 110.916},
+		{"Западный Рокшор", 2377.390, 596.349, -89.084, 2537.390, 788.894, 110.916},
+		{"Северное шоссе ЛВ", 2237.400, 2542.550, -89.084, 2498.210, 2663.170, 110.916},
+		{"Восточный пляж ЛС", 2632.830, -1668.130, -89.084, 2747.740, -1393.420, 110.916},
+		{"Мост Фаллоу", 434.341, 366.572, 0.000, 603.035, 555.680, 200.000},
+		{"Уиллоуфилд", 2089.000, -1989.900, -89.084, 2324.000, -1852.870, 110.916},
+		{"Чайнатаун", -2274.170, 578.396, -7.6, -2078.670, 744.170, 200.000},
+		{"Скалистый массив ЛВ", -208.570, 2337.180, 0.000, 8.430, 2487.180, 200.000},
+		{"БК Ацтеки", 2324.000, -2145.100, -89.084, 2703.580, -2059.230, 110.916},
+		{"Истербэйский химзавод", -1132.820, -768.027, 0.000, -956.476, -578.118, 200.000},
+		{"Казино Висадж", 1817.390, 1703.230, -89.084, 2027.400, 1863.230, 110.916},
+		{"Океанское побережье", -2994.490, -430.276, -1.2, -2831.890, -222.589, 200.000},
+		{"Гора Вайнвуд", 321.356, -860.619, -89.084, 687.802, -768.027, 110.916},
+		{"Нефтяной комплекс", 176.581, 1305.450, -3.0, 338.658, 1520.720, 200.000},
+		{"Гора Вайнвуд", 321.356, -768.027, -89.084, 700.794, -674.885, 110.916},
+		{"Пилигрим", 2162.390, 1883.230, -89.084, 2437.390, 2012.180, 110.916},
+		{"БК Вагос", 2747.740, -1668.130, -89.084, 2959.350, -1498.620, 110.916},
+		{"Джефферсон", 2056.860, -1372.040, -89.084, 2281.450, -1210.740, 110.916},
+		{"Центральный район СФ", 1463.900, -1290.870, -89.084, 1724.760, -1150.870, 110.916},
+		{"Центральный район СФ", 1463.900, -1430.870, -89.084, 1724.760, -1290.870, 110.916},
+		{"Белый мост", -1499.890, 696.442, -179.615, -1339.890, 925.353, 20.385},
+		{"Южное шоссе ЛВ", 1457.390, 823.228, -89.084, 2377.390, 863.229, 110.916},
+		{"Восточный ЛС", 2421.030, -1628.530, -89.084, 2632.830, -1454.350, 110.916},
+		{"Грингласский колледж", 964.391, 1044.690, -89.084, 1197.390, 1203.220, 110.916},
+		{"Лас-Колинас", 2747.740, -1120.040, -89.084, 2959.350, -945.035, 110.916},
+		{"Гора Вайнвуд", 737.573, -768.027, -89.084, 1142.290, -674.885, 110.916},
+		{"Порт ЛС", 2201.820, -2730.880, -89.084, 2324.000, -2418.330, 110.916},
+		{"Восточный ЛС", 2462.130, -1454.350, -89.084, 2581.730, -1135.040, 110.916},
+		{"Грув", 2222.560, -1722.330, -89.084, 2632.830, -1628.530, 110.916},
+		{"Гольф-клуб Ависпа", -2831.890, -430.276, -6.1, -2646.400, -222.589, 200.000},
+		{"Уиллоуфилд", 1970.620, -2179.250, -89.084, 2089.000, -1852.870, 110.916},
+		{"Северная Эспланада", -1982.320, 1274.260, -4.5, -1524.240, 1358.900, 200.000},
+		{"Казино Шулер", 1817.390, 1283.230, -89.084, 2027.390, 1469.230, 110.916},
+		{"Порт ЛС", 2201.820, -2418.330, -89.084, 2324.000, -2095.000, 110.916},
+		{"Мотель Последний грош", 1823.080, 596.349, -89.084, 1997.220, 823.228, 110.916},
+		{"Бэйсайнд-Марина", -2353.170, 2275.790, 0.000, -2153.170, 2475.790, 200.000},
+		{"Кингс", -2329.310, 458.411, -7.6, -1993.280, 578.396, 200.000},
+		{"Эль-Корона", 1692.620, -2179.250, -89.084, 1812.620, -1842.270, 110.916},
+		{"Блэкфилдская часовня", 1375.600, 596.349, -89.084, 1558.090, 823.228, 110.916},
+		{"Казино Розовый клюв", 1817.390, 1083.230, -89.084, 2027.390, 1283.230, 110.916},
+		{"Западное шоссе", 1197.390, 1163.390, -89.084, 1236.630, 2243.230, 110.916},
+		{"Лос-Флорес", 2581.730, -1393.420, -89.084, 2747.740, -1135.040, 110.916},
+		{"Казино Висадж", 1817.390, 1863.230, -89.084, 2106.700, 2011.830, 110.916},
+		{"Прикл Пайн", 1938.800, 2624.230, -89.084, 2121.400, 2861.550, 110.916},
+		{"Пляж Верона", 851.449, -1804.210, -89.084, 1046.150, -1577.590, 110.916},
+		{"Перекрёсток Робада", -1119.010, 1178.930, -89.084, -862.025, 1351.450, 110.916},
+		{"Линден-Сайд", 2749.900, 943.235, -89.084, 2923.390, 1198.990, 110.916},
+		{"Порт ЛС", 2703.580, -2302.330, -89.084, 2959.350, -2126.900, 110.916},
+		{"Уиллоуфилд", 2324.000, -2059.230, -89.084, 2541.700, -1852.870, 110.916},
+		{"Кингс", -2411.220, 265.243, -9.1, -1993.280, 373.539, 200.000},
+		{"Коммерческий район", 1323.900, -1842.270, -89.084, 1701.900, -1722.260, 110.916},
+		{"Гора Вайнвуд", 1269.130, -768.027, -89.084, 1414.070, -452.425, 110.916},
+		{"Канал Марина", 647.712, -1804.210, -89.084, 851.449, -1577.590, 110.916},
+		{"Бэттери Пойнт", -2741.070, 1268.410, -4.5, -2533.040, 1490.470, 200.000},
+		{"Казино 4 Дракона", 1817.390, 863.232, -89.084, 2027.390, 1083.230, 110.916},
+		{"Блэкфилд", 964.391, 1203.220, -89.084, 1197.390, 1403.220, 110.916},
+		{"Северное шоссе ЛВ", 1534.560, 2433.230, -89.084, 1848.400, 2583.230, 110.916},
+		{"Гольф-корт Йеллоубелл", 1117.400, 2723.230, -89.084, 1457.460, 2863.230, 110.916},
+		{"Айдлвуд", 1812.620, -1602.310, -89.084, 2124.660, -1449.670, 110.916},
+		{"Западный Редсандс", 1297.470, 2142.860, -89.084, 1777.390, 2243.230, 110.916},
+		{"Автошкола", -2270.040, -324.114, -1.2, -1794.920, -222.589, 200.000},
+		{"Высокогорная лесопилка", 967.383, -450.390, -3.0, 1176.780, -217.900, 200.000},
+		{"Лас-Барранкас", -926.130, 1398.730, -3.0, -719.234, 1634.690, 200.000},
+		{"Казино Пираты", 1817.390, 1469.230, -89.084, 2027.400, 1703.230, 110.916},
+		{"Зал суда", -2867.850, 277.411, -9.1, -2593.440, 458.411, 200.000},
+		{"Гольф-клуб Ависпа", -2646.400, -355.493, 0.000, -2270.040, -222.589, 200.000},
+		{"Стрип", 2027.400, 863.229, -89.084, 2087.390, 1703.230, 110.916},
+		{"Хашбери", -2593.440, -222.589, -1.0, -2411.220, 54.722, 200.000},
+		{"Аренда авиатранспорта ЛС", 1852.000, -2394.330, -89.084, 2089.000, -2179.250, 110.916},
+		{"Комплекс Уайтвуд", 1098.310, 1726.220, -89.084, 1197.390, 2243.230, 110.916},
+		{"Водохранилище ЛВ", -789.737, 1659.680, -89.084, -599.505, 1929.410, 110.916},
+		{"Эль-Корона", 1812.620, -2179.250, -89.084, 1970.620, -1852.870, 110.916},
+		{"Центральный район СФ", -1700.010, 744.267, -6.1, -1580.010, 1176.520, 200.000},
+		{"Фостерская долина", -2178.690, -1250.970, 0.000, -1794.920, -1115.580, 200.000},
+		{"Лас-Пайасадас", -354.332, 2580.360, 2.0, -133.625, 2816.820, 200.000},
+		{"Валле Окултадо", -936.668, 2611.440, 2.0, -715.961, 2847.900, 200.000},
+		{"Блэкфилдский перекрёсток", 1166.530, 795.010, -89.084, 1375.600, 1044.690, 110.916},
+		{"Гэнтон", 2222.560, -1852.870, -89.084, 2632.830, -1722.330, 110.916},
+		{"АэроВокзал СФ СФ", -1213.910, -730.118, 0.000, -1132.820, -50.096, 200.000},
+		{"Восточный Редсандс", 1817.390, 2011.830, -89.084, 2106.700, 2202.760, 110.916},
+		{"Восточная Эспаланда", -1499.890, 578.396, -79.615, -1339.890, 1274.260, 20.385},
+		{"Дворец Калигулы", 2087.390, 1543.230, -89.084, 2437.390, 1703.230, 110.916},
+		{"Казино Рояль", 2087.390, 1383.230, -89.084, 2437.390, 1543.230, 110.916},
+		{"Гора Вайнвуд", 72.648, -1235.070, -89.084, 321.356, -1008.150, 110.916},
+		{"Азартный район", 2437.390, 1783.230, -89.084, 2685.160, 2012.180, 110.916},
+		{"Гора Вайнвуд", 1281.130, -452.425, -89.084, 1641.130, -290.913, 110.916},
+		{"Центральный район СФ", -1982.320, 744.170, -6.1, -1871.720, 1274.260, 200.000},
+		{"Хэнкипэнки поинт", 2576.920, 62.158, 0.000, 2759.250, 385.503, 200.000},
+		{"Военный склад ГСМ", 2498.210, 2626.550, -89.084, 2749.900, 2861.550, 110.916},
+		{"Шоссе Гарри-Голд", 1777.390, 863.232, -89.084, 1817.390, 2342.830, 110.916},
+		{"Тоннель Бэйсайд", -2290.190, 2548.290, -89.084, -1950.190, 2723.290, 110.916},
+		{"Порт ЛС", 2324.000, -2302.330, -89.084, 2703.580, -2145.100, 110.916},
+		{"Гора Вайнвуд", 321.356, -1044.070, -89.084, 647.557, -860.619, 110.916},
+		{"Промсклад Рэндольфа", 1558.090, 596.349, -89.084, 1823.080, 823.235, 110.916},
+		{"Восточный пляж ЛС", 2632.830, -1852.870, -89.084, 2959.350, -1668.130, 110.916},
+		{"Пролив Флинт-Уотер", -314.426, -753.874, -89.084, -106.339, -463.073, 110.916},
+		{"Блуберри", 19.607, -404.136, 3.8, 349.607, -220.137, 200.000},
+		{"Вокзал ЛВ", 2749.900, 1198.990, -89.084, 2923.390, 1548.990, 110.916},
+		{"Глен Парк", 1812.620, -1350.720, -89.084, 2056.860, -1100.820, 110.916},
+		{"Центральный район СФ", -1993.280, 265.243, -9.1, -1794.920, 578.396, 200.000},
+		{"Западный Редсандс", 1377.390, 2243.230, -89.084, 1704.590, 2433.230, 110.916},
+		{"Гора Вайнвуд", 321.356, -1235.070, -89.084, 647.522, -1044.070, 110.916},
+		{"Мост Гант", -2741.450, 1659.680, -6.1, -2616.400, 2175.150, 200.000},
+		{"Большой кратер ЛВ", -90.218, 1286.850, -3.0, 153.859, 1554.120, 200.000},
+		{"Пересечение Флинт", -187.700, -1596.760, -89.084, 17.063, -1276.600, 110.916},
+		{"Лас-Колинас", 2281.450, -1135.040, -89.084, 2632.740, -945.035, 110.916},
+		{"Ж/Д депо ЛВ", 2749.900, 1548.990, -89.084, 2923.390, 1937.250, 110.916},
+		{"Казино Изумрудный остров", 2011.940, 2202.760, -89.084, 2237.400, 2508.230, 110.916},
+		{"Скалистый массив ЛВ", -208.570, 2123.010, -7.6, 114.033, 2337.180, 200.000},
+		{"Санта-Флора", -2741.070, 458.411, -7.6, -2533.040, 793.411, 200.000},
+		{"Севилльский бульвар", 2703.580, -2126.900, -89.084, 2959.350, -1852.870, 110.916},
+		{"Центральный Рынок", 926.922, -1577.590, -89.084, 1370.850, -1416.250, 110.916},
+		{"Квинс", -2593.440, 54.722, 0.000, -2411.220, 458.411, 200.000},
+		{"Пересечение Пилсон", 1098.390, 2243.230, -89.084, 1377.390, 2507.230, 110.916},
+		{"Спальный район ЛВ", 2121.400, 2663.170, -89.084, 2498.210, 2861.550, 110.916},
+		{"Пилигрим", 2437.390, 1383.230, -89.084, 2624.400, 1783.230, 110.916},
+		{"Блэкфилд", 964.391, 1403.220, -89.084, 1197.390, 1726.220, 110.916},
+		{"Радиотелескоп", -410.020, 1403.340, -3.0, -137.969, 1681.230, 200.000},
+		{"Диллимор", 580.794, -674.885, -9.5, 861.085, -404.790, 200.000},
+		{"Эль-Кебрадос", -1645.230, 2498.520, 0.000, -1372.140, 2777.850, 200.000},
+		{"Северная Эспланада", -2533.040, 1358.900, -4.5, -1996.660, 1501.210, 200.000},
+		{"Аэропорт СФ", -1499.890, -50.096, -1.0, -1242.980, 249.904, 200.000},
+		{"Изумрудная деревня", 1916.990, -233.323, -100.000, 2131.720, 13.800, 200.000},
+		{"КПП ЛС-ЛВ", 1414.070, -768.027, -89.084, 1667.610, -452.425, 110.916},
+		{"Восточный пляж ЛС", 2747.740, -1498.620, -89.084, 2959.350, -1120.040, 110.916},
+		{"Пролив Сан-Андреас", 2450.390, 385.503, -100.000, 2759.250, 562.349, 200.000},
+		{"Тенистые ручьи", -2030.120, -2174.890, -6.1, -1820.640, -1771.660, 200.000},
+		{"Больница ЛС", 1072.660, -1416.250, -89.084, 1370.850, -1130.850, 110.916},
+		{"Западный Рокшор", 1997.220, 596.349, -89.084, 2377.390, 823.228, 110.916},
+		{"Прикл Пайн", 1534.560, 2583.230, -89.084, 1848.400, 2863.230, 110.916},
+		{"Порт Истер Бейзин", -1794.920, -50.096, -1.04, -1499.890, 249.904, 200.000},
+		{"Конопляная долина", -1166.970, -1856.030, 0.000, -815.624, -1602.070, 200.000},
+		{"Грузовой склад ЛВ", 1457.390, 863.229, -89.084, 1777.400, 1143.210, 110.916},
+		{"Прикл Пайн", 1117.400, 2507.230, -89.084, 1534.560, 2723.230, 110.916},
+		{"Блуберри", 104.534, -220.137, 2.3, 349.607, 152.236, 200.000},
+		{"Скалистый массив ЛВ", -464.515, 2217.680, 0.000, -208.570, 2580.360, 200.000},
+		{"Центральный район СФ", -2078.670, 578.396, -7.6, -1499.890, 744.267, 200.000},
+		{"Восточный Рокшор", 2537.390, 676.549, -89.084, 2902.350, 943.235, 110.916},
+		{"Залив СФ", -2616.400, 1501.210, -3.0, -1996.660, 1659.680, 200.000},
+		{"Парадизо", -2741.070, 793.411, -6.1, -2533.040, 1268.410, 200.000},
+		{"Азартный район", 2087.390, 1203.230, -89.084, 2640.400, 1383.230, 110.916},
+		{"Стрип-клуб ЛВ", 2162.390, 2012.180, -89.084, 2685.160, 2202.760, 110.916},
+		{"Джанипер Хилл", -2533.040, 578.396, -7.6, -2274.170, 968.369, 200.000},
+		{"Джанипер Холлоу", -2533.040, 968.369, -6.1, -2274.170, 1358.900, 200.000},
+		{"Банковское отделение ЛВ", 2237.400, 2202.760, -89.084, 2536.430, 2542.550, 110.916},
+		{"Восточное шоссе ЛВ", 2685.160, 1055.960, -89.084, 2749.900, 2626.550, 110.916},
+		{"Пляж Верона", 647.712, -2173.290, -89.084, 930.221, -1804.210, 110.916},
+		{"Фостерская долина", -2178.690, -599.884, -1.2, -1794.920, -324.114, 200.000},
+		{"Арко-дель-оесте", -901.129, 2221.860, 0.000, -592.090, 2571.970, 200.000},
+		{"Автосалон ЛС", -792.254, -698.555, -5.3, -452.404, -380.043, 200.000},
+		{"Зловещий дворец", -1209.670, -1317.100, 114.981, -908.161, -787.391, 251.981},
+		{"Дамба Шермана", -968.772, 1929.410, -3.0, -481.126, 2155.260, 200.000},
+		{"Северная Эспланада", -1996.660, 1358.900, -4.5, -1524.240, 1592.510, 200.000},
+		{"Финансовый район", -1871.720, 744.170, -6.1, -1701.300, 1176.420, 300.000},
+		{"Гарсия", -2411.220, -222.589, -1.14, 2173.040, 265.243, 200.000},
+		{"Монтгомери", 1119.510, 119.526, -3.0, 1451.400, 493.323, 200.000},
+		{"Т/Ц Ручей", 2749.900, 1937.250, -89.084, 2921.620, 2669.790, 110.916},
+		{"Аэропорт ЛС", 1249.620, -2394.330, -89.084, 1852.000, -2179.250, 110.916},
+		{"Пляж Санта-Мария", 72.648, -2173.290, -89.084, 342.648, -1684.650, 110.916},
+		{"КПП ЛС-ЛВ", 1463.900, -1150.870, -89.084, 1812.620, -768.027, 110.916},
+		{"Эйнджел-Пайн", -2324.940, -2584.290, -6.1, -1964.220, -2212.110, 200.000},
+		{"Заброшенный аэродром", 37.032, 2337.180, -3.0, 435.988, 2677.900, 200.000},
+		{"Октан-Спрингс", 338.658, 1228.510, 0.000, 664.308, 1655.050, 200.000},
+		{"Пилигрим Кам-э-Лот", 2087.390, 943.235, -89.084, 2623.180, 1203.230, 110.916},
+		{"Западный Редсандс", 1236.630, 1883.110, -89.084, 1777.390, 2142.860, 110.916},
+		{"Пляж Санта-Мария", 342.648, -2173.290, -89.084, 647.712, -1684.650, 110.916},
+		{"Зелёный утёс", 1249.620, -2179.250, -89.084, 1692.620, -1842.270, 110.916},
+		{"Аэропорт ЛВ", 1236.630, 1203.280, -89.084, 1457.370, 1883.110, 110.916},
+		{"Округ Флинт", -594.191, -1648.550, 0.000, -187.700, -1276.600, 200.000},
+		{"Зелёный утёс", 930.221, -2488.420, -89.084, 1249.620, -2006.780, 110.916},
+		{"Паломино Крик", 2160.220, -149.004, 0.000, 2576.920, 228.322, 200.000},
+		{"Военная база ЛС", 2373.770, -2697.090, -89.084, 2809.220, -2330.460, 110.916},
+		{"Аэропорт СФ", -1213.910, -50.096, -4.5, -947.980, 578.396, 200.000},
+		{"Комплекс Уайтвуд", 883.308, 1726.220, -89.084, 1098.310, 2507.230, 110.916},
+		{"Калтон Хейтс", -2274.170, 744.170, -6.1, -1982.320, 1358.900, 200.000},
+		{"Военная база СФ", -1794.920, 249.904, -9.1, -1242.980, 578.396, 200.000},
+		{"Залив ЛС", -321.744, -2224.430, -89.084, 44.615, -1724.430, 110.916},
+		{"Доэрти", 2173.040, -222.589, -1.0, -1794.920, 265.243, 200.000},
+		{"Гора Чилиад", -2178.690, -2189.910, -47.917, -2030.120, -1771.660, 576.083},
+		{"Форт-Карсон", -376.233, 826.326, -3.0, 123.717, 1220.440, 200.000},
+		{"Автобазар", -2178.690, -1115.580, 0.000, -1794.920, -599.884, 200.000},
+		{"Океанское побережье", -2994.490, -222.589, -1.0, -2593.440, 277.411, 200.000},
+		{"Ферн-Ридж", 508.189, -139.259, 0.000, 1306.660, 119.526, 200.000},
+		{"Бэйсайд", -2741.070, 2175.150, 0.000, -2353.170, 2722.790, 200.000},
+		{"Аэропорт ЛВ", 1457.370, 1203.280, -89.084, 1777.390, 1883.110, 110.916},
+		{"Ферма Блуберри", -319.676, -220.137, 0.000, 104.534, 293.324, 200.000},
+		{"Палисады", -2994.490, 458.411, -6.1, -2741.070, 1339.610, 200.000},
+		{"Скала Норстар", 2285.370, -768.027, 0.000, 2770.590, -269.740, 200.000},
+		{"Карьер Хантер", 337.244, 710.840, -115.239, 860.554, 1031.710, 203.761},
+		{"Аэропорт ЛС", 1382.730, -2730.880, -89.084, 2201.820, -2394.330, 110.916},
+		{"Поклонная гора", -2994.490, -811.276, 0.000, -2178.690, -430.276, 200.000},
+		{"Залив СФ", -2616.400, 1659.680, -3.0, -1996.660, 2175.150, 200.000},
+		{"Тюрьма строгого режима", -91.586, 1655.050, -50.000, 421.234, 2123.010, 250.000},
+		{"Гора Чилиад", -2997.470, -1115.580, -47.917, -2178.690, -971.913, 576.083},
+		{"Гора Чилиад", -2178.690, -1771.660, -47.917, -1936.120, -1250.970, 576.083},
+		{"Аэропорт СФ", -1794.920, -730.118, -3.0, -1213.910, -50.096, 200.000},
+		{"Паноптикум", -947.980, -304.320, -1.1, -319.676, 327.071, 200.000},
+		{"Тенистые ручьи", -1820.640, -2643.680, -8.0, -1226.780, -1771.660, 200.000},
+		{"Бэк-о-Бейонд", -1166.970, -2641.190, 0.000, -321.744, -1856.030, 200.000},
+		{"Гора Чилиад", -2994.490, -2189.910, -47.917, -2178.690, -1115.580, 576.083},
+		{"Тьерра Робада", -1213.910, 596.349, -242.990, -480.539, 1659.680, 900.000},
+		{"Округ Флинт", -1213.910, -2892.970, -242.990, 44.615, -768.027, 900.000},
+		{"Гора Чиллиад", -2997.470, -2892.970, -242.990, -1213.910, -1115.580, 900.000},
+		{"Пустынный округ", -480.539, 596.349, -242.990, 869.461, 2993.870, 900.000},
+		{"Тьерра Робада", -2997.470, 1659.680, -242.990, -480.539, 2993.870, 900.000},
+		{"Окружность СФ", -2997.470, -1115.580, -242.990, -1213.910, 1659.680, 900.000},
+		{"Окружность ЛВ", 869.461, 596.349, -242.990, 2997.060, 2993.870, 900.000},
+		{"Туманный округ", -1213.910, -768.027, -242.990, 2997.060, 596.349, 900.000},
+		{"Окружность ЛС", 44.615, -2892.970, -242.990, 2997.060, -768.027, 900.000}
+	}
     for i, v in ipairs(streets) do
         if (x >= v[2]) and (y >= v[3]) and (z >= v[4]) and (x <= v[5]) and (y <= v[6]) and (z <= v[7]) then
             return v[1]
@@ -3116,6 +3413,7 @@ function info_stop_command()
 		sampAddChatMessage('[Arizona Helper] {ffffff}Чтобы остановить отыгровку команды используйте ' .. message_color_hex .. '/stop', message_color)
 	end
 end
+
 local servers = {
 	{name = 'Phoenix', number = '01'},
 	{name = 'Tucson', number = '02'},
@@ -3148,6 +3446,7 @@ local servers = {
 	{name = 'Mirage', number = '29'},
 	{name = 'Love', number = '30'},
 	{name = 'Drake', number = '31'},
+	{name = 'Space', number = '32'},
 	{name = 'Mobile III', number = '103'},
 	{name = 'Mobile II', number = '102'},
 	{name = 'Mobile I', number = '101'},
@@ -3250,33 +3549,12 @@ else
     end
 end
 function downloadFileFromUrlToPath(url, path)
-	print('[Arizona Helper] Начинаю скачивание файла в ' .. path)
+	print('Начинаю скачивание файла в ' .. path)
 	local function on_finish_download()
 		if download_file == 'update' then
-			sampAddChatMessage('[Arizona Helper] {ffffff}Информация про наличие обновлений получена, проверка..',  message_color)
-			local function check_need_update(updateInfo)
-				local isVip = thisScript().version:find('VIP')
-				local uVer = isVip and updateInfo.vip_current_version or updateInfo.current_version
-				local uText = isVip and updateInfo.vip_update_info or updateInfo.update_info
-				local uUrl = isVip and '' or updateInfo.update_url
-				print("[Arizona Helper] Текущая установленная версия:", thisScript().version)
-				print("[Arizona Helper] Текущая версия в облаке:", uVer)
-				if thisScript().version ~= uVer then
-					print('[Arizona Helper] Доступно обновление!')
-					sampAddChatMessage('[Arizona Helper] {ffffff}Доступно обновление!', message_color)
-					update.is_need_update = true
-					update.url = uUrl
-					update.version = uVer
-					update.info = uText
-					UpdateWindow[0] = true
-				else
-					print('[Arizona Helper] Обновление не нужно!')
-					sampAddChatMessage('[Arizona Helper] {ffffff}Обновление не нужно, у вас актуальная версия!', message_color)
-				end
-			end
 			local function readJsonFile(filePath)
 				if not doesFileExist(filePath) then
-					print("[Arizona Helper] Ошибка: Файл " .. filePath .. " не существует")
+					print('Ошибка: Файл "' .. filePath .. ' не существует')
 					return nil
 				end
 				local file = io.open(filePath, "r")
@@ -3284,14 +3562,32 @@ function downloadFileFromUrlToPath(url, path)
 				file:close()
 				local jsonData = decodeJson(content)
 				if not jsonData then
-					print("[Arizona Helper] Ошибка: Неверный формат JSON в файле " .. filePath)
+					print('Ошибка: Неверный формат JSON в файле ' .. filePath)
 					return nil
 				end
 				return jsonData
 			end
 			local ok, updateInfo = pcall(readJsonFile, path)
 			if updateInfo then
-				check_need_update(updateInfo)
+				local isVip = thisScript().version:find('VIP')
+				local uVer = isVip and updateInfo.vip_current_version or updateInfo.current_version
+				local uText = isVip and updateInfo.vip_update_info or updateInfo.update_info
+				local uUrl = isVip and '' or updateInfo.update_url
+				
+				print('Текущая установленная версия:', thisScript().version)
+				print('Текущая версия в облаке:', uVer)
+				if uVer and thisScript().version ~= uVer then
+					print('Доступно обновление!')
+					sampAddChatMessage('[Arizona Helper] {ffffff}Доступно обновление!', message_color)
+					update.is_need_update = true
+					update.url = uUrl
+					update.version = uVer
+					update.info = uText
+					UpdateWindow[0] = true
+				else
+					print('Обновление не нужно!')
+					sampAddChatMessage('[Arizona Helper] {ffffff}Обновление не нужно, у вас актуальная версия!', message_color)
+				end
 			end
 		elseif download_file == 'helper' then
 			sampAddChatMessage('[Arizona Helper] {ffffff}Загрузка новой версии хелпера успешно завершена! Перезагрузка..',  message_color)
@@ -3312,14 +3608,13 @@ function downloadFileFromUrlToPath(url, path)
 			sampAddChatMessage('[Arizona Helper] {ffffff}Теперь вы можете использовать команду ' .. message_color_hex .. '/pum [ID игрока]', message_color)
 			MainWindow[0] = false
 			load_module('smart_rptp')
-		elseif ddownload_file == 'arz_veh' then
+		elseif download_file == 'arz_veh' then
 			sampAddChatMessage('[Arizona Helper] {ffffff}Загрузка всех кастомных т/с аризоны успешно заверешена!',  message_color)
-			sampAddChatMessage('[Arizona Helper] {ffffff}Повторно используйте команду для определения модели т/c.',  message_color)
+			sampAddChatMessage('[Arizona Helper] {ffffff}Повторно используйте команду которой нужно определение модели т/c.',  message_color)
 			load_module('arz_veh')
 		elseif download_file == 'notify' then
-			if doesFileExist(configDirectory .. "/Resourse_notify.mp3") then
-				print('[Arizona Helper] Звук оповещений успешно загружен!')
-				os.rename(configDirectory .. "/Resourse_notify.mp3", configDirectory .. "/Resourse/notify.mp3")
+			if doesFileExist(configDirectory .. "/Resourse/notify.mp3") then
+				print('Звук оповещений успешно загружен!')
 			end
 		end
 		download_file = ''
@@ -3413,28 +3708,32 @@ function downloadFileFromUrlToPath(url, path)
 	end
 end
 function check_update()
-	-- if string.rupper(settings.general.version):find('VIP') then
-	-- 	sampAddChatMessage('[Arizona Helper] {ffffff}Проверка наличия обновлений недоступна в VIP версии!', message_color)
-	-- else
-		print('[Arizona Helper] Начинаю проверку на наличие обновлений...')
-		sampAddChatMessage('[Arizona Helper] {ffffff}Начинаю проверку на наличие обновлений...', message_color)
-		download_file = 'update'
-		downloadFileFromUrlToPath('https://github.com/MTGMODS/arizona-helper/raw/refs/heads/main/Update_Info.json', configDirectory .. "/Update_Info.json")
-	-- end
+	print('Проверка на наличие обновлений...')
+	sampAddChatMessage('[Arizona Helper] {ffffff}Проверка на наличие обновлений...', message_color)
+	download_file = 'update'
+	-- https://github.com/MTGMODS/arizona-helper/raw/refs/heads/main/Update.json
+	downloadFileFromUrlToPath('https://mtgmods.github.io/arizona-helper/Update.json', configDirectory .. "/Update.json")
 end
 function check_resourses()
-	if not doesFileExist(configDirectory .. '/Resourse/logo1.png') or not doesFileExist(configDirectory .. '/Resourse/logo2.png') then
-		if not doesDirectoryExist(configDirectory .. '/Resourse') then
-			createDirectory(configDirectory .. '/Resourse')
-		end
-		print('[Arizona Helper] Загружаю логотип хелпера (файл .png)...')
-		downloadFileFromUrlToPath('https://github.com/MTGMODS/arizona-helper/raw/refs/heads/main/Resourse/logo1.png', configDirectory .. '/Resourse/logo1.png')
-		downloadFileFromUrlToPath('https://github.com/MTGMODS/arizona-helper/raw/refs/heads/main/Resourse/logo2.png', configDirectory .. '/Resourse/logo2.png')
+	if not doesDirectoryExist(configDirectory .. '/Resourse') then
+		createDirectory(configDirectory .. '/Resourse')
+	end
+	if not doesFileExist(configDirectory .. '/Resourse/logo.png') then
+		print('Подгружаю логотип хелпера...')
+		downloadFileFromUrlToPath('https://mtgmods.github.io/arizona-helper/Resourse/logo.png', configDirectory .. '/Resourse/logo.png')
+		-- https://github.com/MTGMODS/arizona-helper/raw/refs/heads/main/Resourse/logo.png
 	end
 	if not doesFileExist(configDirectory .. "/Resourse/notify.mp3") then
-		print('[Arizona Helper] Загружаю звук для оповещений хелпера (файл .mp3)...')
-		download_file = 'notify'
-		downloadFileFromUrlToPath('https://raw.githubusercontent.com/MTGMODS/arizona-helper/main/Resourse/notify.mp3', configDirectory .. "/Resourse_notify.mp3")
+		print('Подгружаю звук для оповещений хелпера...')
+		-- download_file = 'notify'
+		downloadFileFromUrlToPath('https://mtgmods.github.io/arizona-helper/Resourse/notify.mp3', configDirectory .. "/Resourse/notify.mp3")
+		-- https://raw.githubusercontent.com/MTGMODS/arizona-helper/main/Resourse/notify.mp3
+	end
+	if not doesFileExist(modules.arz_veh.path) then
+		print('Подгружаю список всех кастомных т/с аризоны для определенения моделей...')
+		download_file = 'arz_veh'
+		downloadFileFromUrlToPath('https://mtgmods.github.io/arizona-helper/SmartVEH/Vehicles.json', modules.arz_veh.path)
+		-- https://github.com/MTGMODS/arizona-helper/raw/refs/heads/main/SmartVEH/Vehicles.json
 	end
 end
 check_resourses()
@@ -3483,19 +3782,32 @@ function deleteHelperData(checker)
 	os.remove(configDirectory .. "/Commands.json")
 	os.remove(configDirectory .. "/Notes.json")
 	os.remove(configDirectory .. "/Vehicles.json")
-	os.remove(configDirectory .. "/RP Guns.json")
-	os.remove(configDirectory .. "/SmartRPTP.json")
+	os.remove(configDirectory .. "/Guns.json")
+	os.remove(configDirectory .. "/Update.json")
 	os.remove(configDirectory .. "/SmartUK.json")
 	os.remove(configDirectory .. "/SmartPDD.json")
+	os.remove(configDirectory .. "/SmartRPTP.json")
 	if checker == 'full' then
-		os.remove(getWorkingDirectory():gsub('\\','/') .. "/Arizona Helper.lua")
 		os.remove(configDirectory .. "/Resourse/notify.mp3")
-		os.remove(configDirectory .. "/logo.png")
+		os.remove(configDirectory .. "/Resourse/logo1.png")
+		os.remove(configDirectory .. "/Resourse/logo2.png")
+		os.remove(getWorkingDirectory():gsub('\\','/') .. "/Arizona Helper.lua")
 	end
 end
 
 -- MJ
 
+
+-- LC
+function check(id, message)
+   
+end
+function get_lic_time(message)
+   
+end
+function give_license(id, lic_type)
+	
+end
 
 -- Probiv
 function getPlayerInfo(nickname, serverId)
@@ -3508,7 +3820,8 @@ function getPlayerInfo(nickname, serverId)
             if response.status_code == 200 then
                 local ok, result = pcall(decodeJson, u8:decode(response.text))
                 if ok and result then
-                    sampAddChatMessage('[Arizona Helper] {ffffff}Игрок найден: ' .. (result.nickname or 'N/A'), message_color)
+                    sampAddChatMessage('[Arizona Helper] {ffffff}Игрок найден! Вывожу информацию про него. ', message_color)
+					
 					probiv = result
                 else
                     sampAddChatMessage('[Arizona Helper] {ffffff}Ошибка декодирования ответа.', message_color)
@@ -3530,10 +3843,18 @@ function getPlayerInfo(nickname, serverId)
 end
 function comma_value(n) -- MoneySeparator by Royan_Millans and YarikVL
 	local left,num,right = string.match(n,'^([^%d]*%d)(%d*)(.-)$')
-	return left..(num:reverse():gsub('(%d%d%d)','%1,'):reverse())..right
+	if left and num and right then
+		return left..(num:reverse():gsub('(%d%d%d)','%1,'):reverse())..right
+	else
+		return n
+	end
 end
 
 function sampev.onShowTextDraw(id, data)
+	if debug_mode then
+		sampAddChatMessage('[DEBUG] {ffffff}ShowTextDraw | Id ' .. id .. " | Text " .. data.text .. ' | ModelID ' .. data.modelId .. " |", message_color)
+		print("ShowTextDraw | Id " .. id .. " | Text " .. data.text .. ' | ModelID ' .. data.modelId .. " |")
+	end
 	if data.text:find('~n~~n~~n~~n~~n~~n~~n~~n~~w~Style: ~r~Sport!') then
 		sampAddChatMessage('[Arizona Helper] {ffffff}Активирован режим езды Sport!', message_color)
 		return false
@@ -3542,12 +3863,23 @@ function sampev.onShowTextDraw(id, data)
 		sampAddChatMessage('[Arizona Helper] {ffffff}Активирован режим езды Comfort!', message_color)
 		return false
 	end
-
+	--sampAddChatMessage(data.text .. ' , ' .. data., -1)
 	
-
 end
-
+function sampev.onSendClickTextDraw(textdrawId)
+	if debug_mode then
+		sampAddChatMessage('[DEBUG] {ffffff}ClickTextDraw | Id ' .. textdrawId .. ' |', message_color)
+		print('ClickTextDraw | Id ' .. textdrawId .. ' |')
+	end
+	if asdebug then
+		table.insert(as_debug.clicked, textdrawId)
+	end
+end
 function sampev.onDisplayGameText(style,time,text)
+	if debug_mode then
+		sampAddChatMessage('[DEBUG] {ffffff}GameText | Style ' .. style .. " | Time " .. time .. " | Text - " .. text .. " |", message_color)
+		
+	end
 	if text:find('~n~~n~~n~~n~~n~~n~~n~~n~~w~Style: ~r~Sport!') then
 		sampAddChatMessage('[Arizona Helper] {ffffff}Активирован режим езды Sport!', message_color)
 		return false
@@ -3561,10 +3893,30 @@ function sampev.onSendTakeDamage(playerId,damage,weapon)
 	if playerId ~= 65535 then
 		playerId2 = playerId1
 		playerId1 = playerId
+
+		if debug_mode then
+			sampAddChatMessage('[DEBUG] {ffffff}playerId -' .. playerId .. ", damage - " .. damage .. ", weapon - " .. weapon, message_color)
+		end
+
 		if isParamSampID(playerId) and playerId1 ~= playerId2 and tonumber(playerId) ~= 0 and weapon then
 			local weapon_name = get_name_weapon(weapon)
 			if weapon_name then
 				sampAddChatMessage('[Arizona Helper] {ffffff}Игрок ' .. sampGetPlayerNickname(playerId) .. '[' .. playerId .. '] напал на вас используя ' .. weapon_name .. '['.. weapon .. ']!', message_color)
+				if isMode('police') or isMode('fbi') or isMode('army') or isMode('prison') then
+					if ((PatroolMenu[0] or PostMenu[0]) and (ComboPatroolCode[0] ~= 1)) then
+						sampAddChatMessage('[Arizona Helper - Ассистент] {ffffff}Ваш ситуационный код изменён на CODE 0.', message_color)
+						ComboPatroolCode[0] = 1
+						patrool.code = combo_patrool_code_list[ComboPatroolCode[0] + 1]
+					end
+					if (settings.mj.auto_doklad_damage or settings.md.auto_doklad_damage) then
+						lua_thread.create(function ()
+							wait(50)
+							sampSendChat('/r ' .. binderTags.my_doklad_nick() .. ' на CONTROL. ' .. (weapon ~= 0 and 'Нахожусь под огнём' or 'На меня напали') .. ' в районе ' .. binderTags.get_area() .. ' (' .. binderTags.get_square() .. '), состояние CODE 0!')
+							wait(1000)
+							sampSendChat('/rb Нападающий: ' .. sampGetPlayerNickname(playerId) .. '[' .. playerId .. '], он(-а) использует ' .. weapon_name .. '!')
+						end)
+					end
+				end
 			end
 		end
 	end
@@ -3576,6 +3928,9 @@ function sampev.onSendGiveDamage(playerId, damage, weapon, bodypart)
 			sampAddChatMessage('[Arizona Helper] {ffffff}Bogdan_Martelli - это разработчик Arizona Helper!', message_color)
 			sampAddChatMessage('[Arizona Helper] {ffffff}Не нужно наносить урон разработчику хелпера, АСТАНАВИТЕСЬ :sob: :sob: :sob:', message_color)
 			playNotifySound()
+		end
+		if debug_mode then
+			sampAddChatMessage('[DEBUG] {ffffff}playerId -' .. playerId .. ", damage - " .. damage .. ", weapon - " .. weapon .. ", bodypart - " .. bodypart, message_color)
 		end
 	end
 end
@@ -3602,6 +3957,24 @@ function sampev.onServerMessage(color,text)
 		playNotifySound()
 	end
 
+	if text:find("Вы успешно надели маску") then
+		sampAddChatMessage('[Arizona Helper] {ffffff}Вы надели маску', message_color)
+		return false
+	elseif text:find("Вы успешно выкинули маску") or text:find("Вы сняли маску") then
+		sampAddChatMessage('[Arizona Helper] {ffffff}Вы сняли маску!', message_color)
+		return false
+	elseif text:find('Время действия маски (%d+) минут, после исхода времени ее придётся выбросить.') then
+		local min = text:match('Время действия маски (%d+) минут, после исхода времени ее придётся выбросить.')
+
+			sampAddChatMessage('[Arizona Helper] {ffffff}Время действия маски ' .. min .. ' минут!', message_color)
+
+		return false
+	elseif text:find('Время действия маски истекло, вам пришлось ее выбросить.') then
+		
+			sampAddChatMessage('[Arizona Helper] {ffffff}Время действия маски истекло, вам пришлось ее выбросить.', message_color)
+		return false
+	end
+
 	if (settings.general.auto_uval and settings.player_info.fraction_rank_number >= 9) then
 		if text:find("%[(.-)%] (.-) (.-)%[(.-)%]: (.+)") and color == 766526463 then -- /f /fb или /r /rb без тега 
 			local tag, rank, name, playerID, message = string.match(text, "%[(.-)%] (.+) (.-)%[(.-)%]: (.+)")
@@ -3612,7 +3985,7 @@ function sampev.onServerMessage(color,text)
 				PlayerID = playerID
 				if message3 == text then
 					auto_uval_checker = true
-					sampSendChat('/fmute ' .. playerID .. ' 1 [AutoUval] Ожидайте...')
+					sampSendChat('/fmute ' .. playerID .. ' 1 [AutoUval] Ожидайте')
 				elseif tag == "R" then
 					sampSendChat("/rb "..name.." отправьте /rb +++ чтобы уволится ПСЖ!")
 				elseif tag == "F" then
@@ -3620,7 +3993,7 @@ function sampev.onServerMessage(color,text)
 				end
 			elseif ((message == "(( +++ ))" or message == "(( +++. ))") and (PlayerID == playerID)) then
 				auto_uval_checker = true
-				sampSendChat('/fmute ' .. PlayerID .. ' 1 [AutoUval] Ожидайте...')
+				sampSendChat('/fmute ' .. PlayerID .. ' 1 [AutoUval] Ожидайте')
 			end
 		elseif text:find("%[(.-)%] %[(.-)%] (.+) (.-)%[(.-)%]: (.+)") and color == 766526463 then -- /r или /f с тегом
 			local tag, tag2, rank, name, playerID, message = string.match(text, "%[(.-)%] %[(.-)%] (.+) (.-)%[(.-)%]: (.+)")
@@ -3631,7 +4004,7 @@ function sampev.onServerMessage(color,text)
 				PlayerID = playerID
 				if message3 == text then
 					auto_uval_checker = true
-					sampSendChat('/fmute ' .. playerID .. ' 1 [AutoUval] Ожидайте...')
+					sampSendChat('/fmute ' .. playerID .. ' 1 [AutoUval] Ожидайте')
 				elseif tag == "R" then
 					sampSendChat("/rb "..name.."["..playerID.."], отправьте /rb +++ чтобы уволится ПСЖ!")
 				elseif tag == "F" then
@@ -3639,11 +4012,13 @@ function sampev.onServerMessage(color,text)
 				end
 			elseif ((message == "(( +++ ))" or  message == "(( +++. ))") and (PlayerID == playerID)) then
 				auto_uval_checker = true
-				sampSendChat('/fmute ' .. playerID .. ' 1 [AutoUval] Ожидайте...')
+				sampSendChat('/fmute ' .. playerID .. ' 1 [AutoUval] Ожидайте')
 			end
 		end
-		if text:find("(.+) заглушил%(а%) игрока (.+) на 1 минут. Причина: %[AutoUval%] Ожидайте...") and auto_uval_checker then
-			local Name, PlayerName, Time, Reason = text:match("(.+) заглушил%(а%) игрока (.+) на (%d+) минут. Причина: (.+)")
+		if text:find("(.+) заглушил%(а%) игрока (.+) на 1 минут. Причина: %[AutoUval%] Ожидайте") and auto_uval_checker then
+			local text2 = text:gsub('{......}', '')
+			local DATA, PlayerName, Time, Reason = text2:match("(.+) заглушил%(а%) игрока (.+) на 1 минут. Причина: (.+)")
+			local Name = DATA:match(" ([A-Za-z0-9_]+)%[")
 			local MyName = sampGetPlayerNickname(select(2, sampGetPlayerIdByCharHandle(PLAYER_PED)))
 			if Name == MyName then
 				sampAddChatMessage('[Arizona Helper] {ffffff}Увольняю игрока ' .. sampGetPlayerNickname(PlayerID) .. '!', message_color)
@@ -3664,32 +4039,20 @@ function sampev.onServerMessage(color,text)
 				if message:find('Прошу обьявить в розыск (%d) степени дело N(%d+)%. Причина%: (.+)') and playerID ~= binderTags.my_id() then
 					local lvl, id, reason = message:match('Прошу обьявить в розыск (%d) степени дело N(%d+)%. Причина%: (.+)')
 					form_su = id .. ' ' .. lvl .. ' ' .. reason
-					sampAddChatMessage('[Arizona Helper] {ffffff}Используйте /givefsu ' .. playerID .. ' чтобы выдать розыск по запросу офицера ' .. name, message_color)
+					sampAddChatMessage('[Arizona Helper] {ffffff}Используйте ' .. message_color_hex .. '/givefsu ' .. playerID .. '{ffffff} чтобы выдать розыск по запросу офицера ' .. name, message_color)
+					playNotifySound()
 				end
 			elseif text:find("%[(.-)%] %[(.-)%] (.+) (.-)%[(.-)%]: (.+)") and color == 766526463 then -- /r или /f с тегом
 				local tag, tag2, rank, name, playerID, message = string.match(text, "%[(.-)%] %[(.-)%] (.+) (.-)%[(.-)%]: (.+)")
 				if message:find('Прошу обьявить в розыск (%d) степени дело N(%d+)%. Причина%: (.+)') and playerID ~= binderTags.my_id() then
 					local lvl, id, reason = message:match('Прошу обьявить в розыск (%d) степени дело N(%d+)%. Причина%: (.+)')
 					form_su = id .. ' ' .. lvl .. ' ' .. reason
-					sampAddChatMessage('[Arizona Helper] {ffffff}Используйте /givefsu ' .. playerID .. ' чтобы выдать розыск по запросу офицера ' .. name, message_color)
+					ssampAddChatMessage('[Arizona Helper] {ffffff}Используйте ' .. message_color_hex .. '/givefsu ' .. playerID .. '{ffffff} чтобы выдать розыск по запросу офицера ' .. name, message_color)
 				end
 			end
 		end
-		
 		if text:find('Местоположение (.+) отмечено на карте красным маркером') and afind then
-			printStringNow('FIND', 500)
-			return false
-		end
-		if text:find("Вы успешно надели маску") then
-			maska = true
-			sampAddChatMessage('[Arizona Helper] {ffffff}Вы надели маску', message_color)
-			return false
-		end
-		if text:find("Теперь вы в маске") then
-			return false
-		end
-		if text:find("Вы успешно выкинули маску") or text:find("Вы сняли маску") then
-			sampAddChatMessage('[Arizona Helper] {ffffff}Вы сняли маску!', message_color)
+			printStringNow('AUTO FIND', 500)
 			return false
 		end
 		if text:find('%[Ошибка%] %{FFFFFF%}Используй: %/wanted %[уровень розыска 1%-6%]') and check_wanted then
@@ -3698,30 +4061,22 @@ function sampev.onServerMessage(color,text)
 		if text:find('%[Ошибка%].+Игроков с таким уровнем розыска нету') and check_wanted then 
 			return false 
 		end
+		
 
-		if text:find('На этом автомобиле уже установлена маркировка.') and patrool.active then
-			sampSendChat('/delvdesc')
-			lua_thread.create(function ()
-				wait(5000)
-				sampSendChat('/vdesc ' .. binderTags.get_patrool_mark())
-			end)		
-		end
-		if text:find('Вам поступило предложение от игрока (.+)%/offer') and settings.general.auto_accept_docs then
-			sampSendChat('/offer')
-		end
 	
+	
+		
+
 	end
  	
 	if isMode('hospital') then
-		if ((settings.mh.heal_in_chat or settings.mh.auto_heal) and not heal_in_chat.bool and not isActiveCommand) then	
+		if ((settings.mh.heal_in_chat or settings.mh.auto_heal) and not heal_in_chat.bool and not commands.isActive) then	
 			if (text:find('(.+)%[(%d+)%] говорит:{B7AFAF} (.+)')) then
 				local nick, id, message = text:match('(.+)%[(%d+)%] говорит:{B7AFAF} (.+)')
 				if (nick and id and message and tonumber(id) ~= select(2, sampGetPlayerIdByCharHandle(PLAYER_PED))) then
 					for pon, keyword in ipairs(heal_in_chat.worlds) do
 						if (message:rupper():find(keyword:rupper())) then
-							if settings.mh.heal_in_chat then
-								fast_heal_in_chat(id)
-							end
+							fast_heal_in_chat(id)
 							break
 						end
 					end
@@ -3732,10 +4087,7 @@ function sampev.onServerMessage(color,text)
 				if (nick and id and message and tonumber(id) ~= select(2, sampGetPlayerIdByCharHandle(PLAYER_PED))) then
 					for pon, keyword in ipairs(heal_in_chat.worlds) do
 						if (message:rupper():find(keyword:rupper())) then
-							if settings.mh.heal_in_chat then
-								fast_heal_in_chat(id)
-							
-							end
+							fast_heal_in_chat(id)
 							break
 						end
 					end
@@ -3771,11 +4123,11 @@ function sampev.onServerMessage(color,text)
 			return false
 		end
 		if (auto_healme and text:find('Вы отправили предложение о лечении')) then
-			--sampAddChatMessage('[Arizona Helper] {ffffff}Самохил будет через 7 секунд, ожидайте...', message_color)
+			--sampAddChatMessage('[Arizona Helper] {ffffff}Самохил будет через 7 секунд, Ожидайте', message_color)
 			sampSendChat('/offer')
 			return false
 		end
-		if ((auto_healme) and (text:find('Вас вылечил медик ' .. tagReplacements.my_nick()))) then
+		if ((auto_healme) and (text:find('Вас вылечил медик ' .. binderTags.my_nick()))) then
 			auto_healme = false
 			return false
 		end
@@ -3794,11 +4146,12 @@ function sampev.onServerMessage(color,text)
 			return false
 		end
 		if (text:find('Ошибка(.+)Вы не можете продавать лицензии на такой срок')) and settings.general.auto_lic then
+			givelic.bool = false
 			sampAddChatMessage('[AS Helper] {ffffff}Ошибка, ваш ранг ниже, чем требуется для выдачи данной лицензии!', message_color)
 			sampSendChat('Извините я не могу выдать данную лицензию из-за низкой должности.')
 			return false
 		end
-		
+	
 	end	
 
 	if (text:find('Bogdan_Martelli') and getARZServerNumber():find('20')) or text:find('%[20%]Bogdan_Martelli') then
@@ -3892,7 +4245,11 @@ function sampev.onSendCommand(text)
 	return {text}
 end
 function sampev.onShowDialog(dialogid, style, title, button1, button2, text)
-	
+
+	if debug_mode then
+		sampAddChatMessage('[DEBUG] {ffffff}ShowDialog | id ' .. id, message_color)
+	end
+
 	if title:find('Основная статистика') and check_stats then
 		if text:find("{FFFFFF}Имя: {B83434}%[(.-)]") then
 			settings.player_info.name_surname = TranslateNick(text:match("{FFFFFF}Имя: {B83434}%[(.-)]"))
@@ -3995,12 +4352,12 @@ function sampev.onShowDialog(dialogid, style, title, button1, button2, text)
 		return false
 	end
 
-	if members_info.check and title:find('(.+)%(В сети: (%d+)%)') then
+	if members.info.check and title:find('(.+)%(В сети: (%d+)%)') then
         local count = 0
         local next_page = false
         local next_page_i = 0
-		members_info.fraction = string.match(title, '(.+)%(В сети')
-		members_info.fraction = string.gsub(members_info.fraction, '{(.+)}', '')
+		members.info.fraction = string.match(title, '(.+)%(В сети')
+		members.info.fraction = string.gsub(members.info.fraction, '{(.+)}', '')
         for line in text:gmatch('[^\r\n]+') do
             count = count + 1
             if not line:find('Ник') and not line:find('страница') then
@@ -4035,7 +4392,7 @@ function sampev.onShowDialog(dialogid, style, title, button1, button2, text)
 						if rank_time then
 							rank_number = rank_number .. ') (' .. rank_time
 						end
-						table.insert(members_new, { nick = nickname, id = id, rank = rank, rank_number = rank_number, warns = warns, afk = afk, working = working, info = optional_info})
+						table.insert(members.new, { nick = nickname, id = id, rank = rank, rank_number = rank_number, warns = warns, afk = afk, working = working, info = optional_info})
 					end
 				else
 					local color, nickname, id, rank, rank_number, rank_time, warns, afk = string.match(line, "{(%x%x%x%x%x%x)}%s*([^%(]+)%((%d+)%)%s*([^%(]+)%((%d+)%)%s*([^{}]+){FFFFFF}%s*(%d+)%s*%[%d+%]%s*/%s*(%d+)%s*%d+ шт")
@@ -4045,7 +4402,7 @@ function sampev.onShowDialog(dialogid, style, title, button1, button2, text)
 							working = true
 						end
 
-						table.insert(members_new, { nick = nickname, id = id, rank = rank, rank_number = rank_number, warns = warns, afk = afk, working = working, info = optional_info})
+						table.insert(members.new, { nick = nickname, id = id, rank = rank, rank_number = rank_number, warns = warns, afk = afk, working = working, info = optional_info})
 					end
 				end
             end
@@ -4058,16 +4415,15 @@ function sampev.onShowDialog(dialogid, style, title, button1, button2, text)
             sampSendDialogResponse(dialogid, 1, next_page_i, 0)
             next_page = false
             next_pagei = 0
-		elseif #members_new ~= 0 then
+		elseif #members.new ~= 0 then
             sampSendDialogResponse(dialogid, 0, 0, 0)
-			members = members_new
-			members_info.check = false
-			MembersWindow[0] = true
-			--sampAddChatMessage('[Arizona Helper] {ffffff}Сканирование /members окончено! Для закрытия меню введите команду ещё раз', message_color)
+			members.all = members.new
+			members.info.check = false
+			members.menu[0] = true
 		else
 			sampSendDialogResponse(dialogid, 0, 0, 0)
 			sampAddChatMessage('[Arizona Helper]{ffffff} Список сотрудников пуст!', message_color)
-			members_info.check = false
+			members.info.check = false
         end
         return false
     end
@@ -4139,7 +4495,6 @@ function sampev.onShowDialog(dialogid, style, title, button1, button2, text)
 	end
 
 	
-	
 	if isMode('police') or isMode('fbi') then
 		if text:find('Ник') and text:find('Уровень розыска') and text:find('Расстояние') and check_wanted then
 			local text = string.gsub(text, '%{......}', '')
@@ -4162,15 +4517,15 @@ function sampev.onShowDialog(dialogid, style, title, button1, button2, text)
 	if (isMode('hospital')) then
 		
 		if (auto_healme) then
-			if title:find('Активные предложения') and text:find('Лечение') and text:find('Когда') and text:find(tagReplacements.my_nick()) then
+			if title:find('Активные предложения') and text:find('Лечение') and text:find('Когда') and text:find(binderTags.my_nick()) then
 				sampSendDialogResponse(dialogid, 1, 0, 0)
 				return false
 			end
-			if title:find('Активные предложения') and text:find('Лечение') and not text:find('Когда') and text:find(tagReplacements.my_nick()) then
+			if title:find('Активные предложения') and text:find('Лечение') and not text:find('Когда') and text:find(binderTags.my_nick()) then
 				sampSendDialogResponse(dialogid, 1, 2, 0)
 				return false
 			end
-			if title:find('Подтверждение действия') and text:find('Лечение') and text:find(tagReplacements.my_nick()) then
+			if title:find('Подтверждение действия') and text:find('Лечение') and text:find(binderTags.my_nick()) then
 				sampSendDialogResponse(dialogid, 1, 2, 0)
 				return false
 			end
@@ -4186,7 +4541,9 @@ function sampev.onShowDialog(dialogid, style, title, button1, button2, text)
 		end
 	end
 	
-
+	if (isMode('lc')) then
+		
+	end
 
 end
 function sampev.onCreate3DText(id, color, position, distance, testLOS, attachedPlayerId, attachedVehicleId, text_3d)
@@ -4194,20 +4551,30 @@ function sampev.onCreate3DText(id, color, position, distance, testLOS, attachedP
 		return false
 	end
 end
-
-
-function deleteMjMdSet()
-	-- for key, hObj in pairs(getAllObjects()) do
-    --     if doesObjectExist(hObj) then
-    --         local objModel = getObjectModel(hObj)
-	-- 		if objModel == 19141 or objModel == 18978 then
-	-- 			-- deleteObject(hObj)
-	-- 			sampAddChatMessage('[Arizona Helper - Ассистент] {ffffff}Сет-модификация МЮ/МО удалена с персонажа!', message_color)
-	-- 		end
-	-- 	end
-	-- end
+function sampev.onPlayerChatBubble(player_id, color, distance, duration, message)
+	if isMode('police') or isMode('fbi') then
+		if message:find(" (.+) достал скрепки для взлома наручников") then
+			local nick = message:match(' (.+) достал скрепки для взлома наручников')
+			local result, handle = sampGetCharHandleBySampPlayerId(sampGetPlayerIdByNickname(nick))
+			if result then
+				local x, y, z = getCharCoordinates(handle)
+				local mx, my, mz = getCharCoordinates(PLAYER_PED)
+				local dist = getDistanceBetweenCoords3d(mx, my, mz, x, y, z)
+				if dist <= 1.5 then
+					sampAddChatMessage('[Arizona Helper] {ffffff}Внимание! Игрок ' .. nick .. '[' .. sampGetPlayerIdByNickname(nick) .. '] использует скрепки и начинает взламывать наручники!', message_color)
+					sampAddChatMessage('[Arizona Helper] {ffffff}Пытаюсь изьять скрепки у этого игрока.', message_color)
+					find_and_use_command('/bot {arg_id}', sampGetPlayerIdByNickname(nick))
+				elseif dist > 50 then
+					sampAddChatMessage('[Arizona Helper] {ffffff}Внимание! Игрок ' .. nick .. '[' .. sampGetPlayerIdByNickname(nick) .. '] использует скрепки и начинает взламывать наручники!', message_color)
+					sampAddChatMessage('[Arizona Helper] {ffffff}Подойдите к игроку ' .. nick .. ' и используйте команду /bot ' .. sampGetPlayerIdByNickname(nick), message_color)
+				end
+			end
+		end
+	end
 end
-
+function sampev.onCreateObject(objectId, data)
+	
+end
 -- by cef events wojciech?
 function emulationCEF(str)
 	local bs = raknetNewBitStream()
@@ -4233,22 +4600,95 @@ function visualCEF(str, is_encoded)
 	raknetEmulPacketReceiveBitStream(220, bs)
 	raknetDeleteBitStream(bs)
 end
+function show_arz_sms(title, contactName, user_id, message_id, timeoutMs, image)
+	if isMonetLoader() then
+
+	else
+		local function escape_js(s)
+			return s:gsub("\\", "\\\\"):gsub('"', '\\"')
+		end
+		local safe_title = escape_js(title)
+		local safe_contact = escape_js(contactName)
+		local safe_user_id = tostring(user_id)
+		local safe_message_id = tostring(message_id)
+		local safe_timeout = tostring(timeoutMs)
+		local safe_image = escape_js(image)
+
+		local json_str = string.format(
+			'[{\\"title\\":\\"%s\\",\\"contactName\\":\\"%s\\",\\"user_id\\":%s,\\"message_id\\":%s,\\"timeoutMs\\":%s,\\"image\\":\\"%s\\"}]',
+			safe_title, safe_contact, safe_user_id, safe_message_id, safe_timeout, safe_image
+		)
+
+		local str = string.format("window.executeEvent('event.messenger.notification.update', `%s`);", json_str)
+		visualCEF(str, true)
+	end
+end
+function show_arz_notify(type, title, text, time)
+	if isMonetLoader() then
+		--[[
+		if type == 'info' then
+			type = 3
+		elseif type == 'error' then
+			type = 2
+		elseif type == 'success' then
+			type = 1
+		end
+		local bs = raknetNewBitStream()
+		raknetBitStreamWriteInt8(bs, 62)
+		raknetBitStreamWriteInt8(bs, 6)
+		raknetBitStreamWriteBool(bs, true)
+		raknetEmulPacketReceiveBitStream(220, bs)
+		raknetDeleteBitStream(bs)
+		local json = encodeJson({
+			styleInt = type,
+			title = title,
+			text = text,
+			duration = time
+		})
+		local interfaceid = 6
+		local subid = 0
+		local bs = raknetNewBitStream()
+		raknetBitStreamWriteInt8(bs, 84)
+		raknetBitStreamWriteInt8(bs, interfaceid)
+		raknetBitStreamWriteInt8(bs, subid)
+		raknetBitStreamWriteInt32(bs, #json)
+		raknetBitStreamWriteString(bs, json)
+		raknetEmulPacketReceiveBitStream(220, bs)
+		raknetDeleteBitStream(bs)
+		]]
+	else
+		local function escape_js(s)
+			return s:gsub("\\", "\\\\"):gsub('"', '\\"')
+		end
+		local safe_type = escape_js(type)
+		local safe_title = escape_js(title)
+		local safe_text = escape_js(text)
+		local safe_time = tostring(time)
+		local str = ('window.executeEvent("event.notify.initialize", "[\\"%s\\", \\"%s\\", \\"%s\\", \\"%s\\"]");'):format(safe_type, safe_title, safe_text, safe_time)
+		visualCEF(str, true)
+	end
+end
 addEventHandler('onSendPacket', function(id, bs, priority, reliability, orderingChannel)
 	if id == 220 then
 		local id = raknetBitStreamReadInt8(bs)
 		local packettype = raknetBitStreamReadInt8(bs)
 		if isMonetLoader() then
 			local strlen = raknetBitStreamReadInt8(bs)
-			--print('SEND', packettype, strlen, str)
-			if settings.general.auto_clicker_situation and packettype == 66 and (strlen == 25 or strlen == 8) then
+			if debug_mode then
+				sampAddChatMessage('[DEBUG] {ffffff}SEND | ' .. str, message_color)
+				print(str)
+			end
+			if (settings.mj.auto_clicker_situation or settings.mh.auto_clicker_situation) and packettype == 66 and (strlen == 25 or strlen == 8) then
 				clicked = false
 			end
 		else
 			local strlen = raknetBitStreamReadInt16(bs)
 			local str = raknetBitStreamReadString(bs, strlen)
 			if packettype ~= 0 and packettype ~= 1 and #str > 2 then
-				-- sampAddChatMessage("SEND: " .. str, -1)	
-				--print('SEND', packettype, strlen, str)
+				if debug_mode then
+					sampAddChatMessage('[DEBUG] {ffffff}SEND | ' .. str, message_color)
+					print(str)
+				end
 			end
 		end
 	end
@@ -4257,23 +4697,42 @@ addEventHandler('onReceivePacket', function (id, bs)
 	if id == 220 then
 		local id = raknetBitStreamReadInt8(bs)
         local cmd = raknetBitStreamReadInt8(bs)
-
-		if cmd == 153 then
-			local carId = raknetBitStreamReadInt16(bs)
-			raknetBitStreamIgnoreBits(bs, 8)
-			local numberlen = raknetBitStreamReadInt8(bs) -- plate data
-			raknetBitStreamIgnoreBits(bs, 24)
-			local plate_number = raknetBitStreamReadString(bs, numberlen)
-			local typelen = raknetBitStreamReadInt8(bs) -- plate type
-			raknetBitStreamIgnoreBits(bs, 24)
-			local numType = raknetBitStreamReadString(bs, typelen)
-			modules.arz_veh.cache[carId] = {
-            	carID = carId or 0,
-				number = plate_number or "",
-				type = numType or "",
-        	}
+		local function dumpFullBitStream(bs)
+			local bitsLeft = raknetBitStreamGetNumberOfUnreadBits(bs)
+			if not bitsLeft then
+				print("dumpFullBitStream: raknetBitStreamGetNumberOfUnreadBits не підтримується!")
+				return
+			end
+			local bytesLeft = math.floor(bitsLeft / 8)
+			if bytesLeft == 0 then
+				print("dumpFullBitStream: немає доступних байтів для читання")
+				return
+			end
+			local bytes = {}
+			for i = 1, bytesLeft do
+				bytes[i] = raknetBitStreamReadInt8(bs)
+			end
+			local hexStrParts = {}
+			for i, b in ipairs(bytes) do
+				hexStrParts[i] = string.format("%02X", b)
+			end
+			print("BitStream raw bytes: " .. table.concat(hexStrParts, " "))
 		end
-
+		if cmd == 153 then
+            local carId = raknetBitStreamReadInt16(bs)
+            raknetBitStreamIgnoreBits(bs, 8)
+            local numberlen = raknetBitStreamReadInt8(bs)
+            -- raknetBitStreamIgnoreBits(bs, 24)
+            local plate_number = raknetBitStreamReadString(bs, numberlen)
+            local typelen = raknetBitStreamReadInt8(bs)
+			-- raknetBitStreamIgnoreBits(bs, 24)
+            local numType = raknetBitStreamReadString(bs, typelen)
+            modules.arz_veh.cache[carId] = {
+                carID = carId or 0,
+                number = plate_number or "",
+                region = numType or "",
+            }
+        end
 		if isMonetLoader() then 
 			if cmd == 84 then
 				local unk1 = raknetBitStreamReadInt8(bs)
@@ -4281,11 +4740,11 @@ addEventHandler('onReceivePacket', function (id, bs)
 				local len = raknetBitStreamReadInt16(bs)
 				local encoded = raknetBitStreamReadInt8(bs)
 				local string = encoded == 0 and raknetBitStreamReadString(bs, len) or raknetBitStreamDecodeString(bs, len + encoded)
-				if string:find('{"progress":%d+,"text":"Для взаимодействия, нажимайте на кнопку посередине"}') and settings.general.auto_clicker_situation then
-					--sampAddChatMessage('GET: ' .. string, -1)
-					print('GET', string)
-					clicked = true
+				if debug_mode then
+					sampAddChatMessage('[DEBUG] {ffffff}GET | ' .. string, message_color)
+					print(string)
 				end
+				
 			end
 		else
 			if cmd == 17 then
@@ -4293,15 +4752,27 @@ addEventHandler('onReceivePacket', function (id, bs)
 				local length = raknetBitStreamReadInt16(bs)
 				local encoded = raknetBitStreamReadInt8(bs)
 				local cmd = (encoded ~= 0) and raknetBitStreamDecodeString(bs, length + encoded) or raknetBitStreamReadString(bs, length)
-				--sampAddChatMessage('GET: ' .. cmd, -1)
-				local view = string.match(cmd, "^window.executeEvent%('event%.setActiveView', [`']%[[\"%s]?(.-)[\"%s]?%][`']%);$")
-				if view ~= nil and settings.general.auto_clicker_situation then
-					clicked = (view == "Clicker")
+				if debug_mode then
+					sampAddChatMessage('[DEBUG] {ffffff}GET | ' .. cmd, message_color)
+					print(cmd)
 				end
+				
+
+				if cmd:find('"Проверка документов","Найдите') then
+					local find = cmd:match('%[.+%[(.+)%]%]')
+					-- local find = cmd:match('"Найдите документы в конвертах",%[(.+)%]%]')
+					sampAddChatMessage("[Arizona Helper - Ассистент] {ffffff}Правильные конверты: " .. find:gsub(',', ' '), message_color)
+					sampShowDialog(897124, 'Arizona Helper - Ассистент', "Правильные конверты: " .. find:gsub(',', ' '), '{009EFF}Закрыть', '', 0)
+				end
+				--window.executeEvent('event.findGame.initialize', `["businessCenter","Проверка документов","Найдите документы в конвертах",[7,9,14,21,22]]`);
+				--window.executeEvent('event.findGame.initialize', `["businessCenter","Проверка документов","Найдите налоговые документы в конвертах",[27,26,10,9,11]]`);
+				-- if cmd:find('"businessCenter","Проверка документов","Найдите налоговые документы в конвертах"') then
+				-- 	local find = cmd:match('"Найдите налоговые документы в конвертах",%[(.+)%]%]')
+				-- 	sampAddChatMessage("[Arizona Helper - Ассистент] {ffffff}Правильные конверты: " .. find:gsub(',', ' '), message_color)
+				-- 	sampShowDialog(897124, 'Arizona Helper - Ассистент', "Правильные конверты: " .. find:gsub(',', ' '), '{009EFF}Закрыть', '', 0)
+				-- end
 			end
 		end
-		
-		
 	end
 end)
 addEventHandler('onReceiveRpc', function (id, bs)
@@ -4330,7 +4801,7 @@ function give_rank()
 			modifiedText = modifiedText:gsub('%{get_ru_nick%(%{arg_id%}%)%}', TranslateNick(sampGetPlayerNickname(arg_id)) or "")
 			modifiedText = modifiedText:gsub('%{arg_id%}', arg_id or "")
 			lua_thread.create(function()
-				isActiveCommand = true
+				commands.isActive = true
 				if isMonetLoader() and settings.general.mobile_stop_button then
 					sampAddChatMessage('[Arizona Helper] {ffffff}Чтобы остановить отыгровку команды используйте ' .. message_color_hex .. '/stop {ffffff}или нажмите кнопку внизу экрана', message_color)
 					CommandStopWindow[0] = true
@@ -4344,9 +4815,9 @@ function give_rank()
 					table.insert(lines, line)
 				end
 				for _, line in ipairs(lines) do 
-					if command_stop then 
-						command_stop = false 
-						isActiveCommand = false
+					if commands.isStop then 
+						commands.isStop = false 
+						commands.isActive = false
 						if isMonetLoader() and settings.general.mobile_stop_button then
 							CommandStopWindow[0] = false
 						end
@@ -4371,7 +4842,7 @@ function give_rank()
 						end
 					end
 				end
-				isActiveCommand = false
+				commands.isActive = false
 				if isMonetLoader() and settings.general.mobile_stop_button then
 					CommandStopWindow[0] = false
 				end
@@ -4451,28 +4922,19 @@ imgui.OnFrame(
         imgui.Begin(fa.GEARS .. u8' Первоначальная настройка Arizona Helper ' .. fa.GEARS, InititalWindow, imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoScrollbar + imgui.WindowFlags.AlwaysAutoResize)
         change_dpi()
 		if init.step == 0 then
-			if doesFileExist(configDirectory .. '/Resourse/logo1.png') or doesFileExist(configDirectory .. '/Resourse/logo2.png') then
-				if not helper_logo then
-					local path = ''
-					if doesFileExist(configDirectory .. '/Resourse/logo1.png') and doesFileExist(configDirectory .. '/Resourse/logo2.png') then
-						math.randomseed(os.time())
-						local random = math.random(1,2)
-						path = configDirectory .. '/Resourse/logo' .. random .. '.png'
-					elseif doesFileExist(configDirectory .. '/Resourse/logo1.png') then
-						path = configDirectory .. '/Resourse/logo1.png'
-					elseif doesFileExist(configDirectory .. '/Resourse/logo2.png') then
-						path = configDirectory .. '/Resourse/logo2.png'
-					end
-					helper_logo = imgui.CreateTextureFromFile(path)
+			if (doesFileExist(configDirectory .. '/Resourse/logo.png')) then
+				if (not _G.helper_logo) then
+					local path = configDirectory .. '/Resourse/logo.png'
+					_G.helper_logo = imgui.CreateTextureFromFile(path)
 				else
-					imgui.Image(helper_logo, imgui.ImVec2(520 * settings.general.custom_dpi, 150 * settings.general.custom_dpi))
+					imgui.Image(_G.helper_logo, imgui.ImVec2(520 * settings.general.custom_dpi, 150 * settings.general.custom_dpi))
 				end
 			else
 				if imgui.BeginChild('##init1_1', imgui.ImVec2(520 * settings.general.custom_dpi, 150 * settings.general.custom_dpi), true) then
 					imgui.Text("\n\n\n")
-					imgui.CenterTextDisabled(u8(configDirectory .. '/Resourse/logo1.png'))
-						imgui.CenterTextDisabled(u8("https://github.com/MTGMODS/arizona-helper/raw/refs/heads/main/Resourse/logo1.png"))
-						imgui.CenterTextDisabled(u8('(не удалось загрузить логотип хелпера)'))
+					imgui.CenterTextDisabled(u8('Не удалось автоматически загрузить логотип и другие файлы хелпера!\n\n'))
+					imgui.CenterTextDisabled(u8('На время включите VPN для подгрузки нужных файлов, либо скачайте вручную'))
+					imgui.CenterTextDisabled(u8('https://github.com/MTGMODS/arizona-helper'))
 					imgui.EndChild()
 				end
 			end
@@ -4532,7 +4994,7 @@ imgui.OnFrame(
 					imgui.EndPopup()
 				end
 			end
-			render_org_block(1, fa.BUILDING_SHIELD, 'Мин.Юстиции', 'LSPD/LVPD/SFPD/RCSD/FBI', {"LSPD", "LVPD", "SFPD", "RCSD", "S.W.A.T.", "FBI"})
+			render_org_block(1, fa.BUILDING_SHIELD, 'Мин.Юстиции', 'LSPD/LVPD/SFPD/RCSD/FBI', {"LSPD", "LVPD", "SFPD", "RCSD", "SWAT", "FBI"})
 			imgui.SameLine()
 			render_org_block(2, fa.HOSPITAL, 'Мин.Здрав.', 'LSMC/LVMC/SFMC/JMC', {"LSMC", "LVMC", "SFMC", "JMC"})
 			imgui.SameLine()
@@ -4611,7 +5073,7 @@ imgui.OnFrame(
 				{id = 12, name = "Полиция LV",           mode = "police",    tag = "LVPD"},
 				{id = 13, name = "Полиция SF",           mode = "police",    tag = "SFPD"},
 				{id = 14, name = "Областная полиция",    mode = "police",    tag = "RCSD"},
-				{id = 15, name = "Депортамент S.W.A.T.", mode = "police",    tag = "SWAT"},
+				{id = 15, name = "Депортамент SWAT", mode = "police",    tag = "SWAT"},
 				{id = 16, name = "FBI",                  mode = "fbi",       tag = "FBI"},
 				{id = 21, name = "Больница LS",          mode = "hospital",  tag = "LSMC"},
 				{id = 22, name = "Больница LV",          mode = "hospital",  tag = "LVMC"},
@@ -4676,12 +5138,12 @@ imgui.OnFrame(
     end
 )
 
-function renderSmartSystem(title, icon, downloadPath, editPopupTitle, data, saveFunction, usageText, pathDisplay, download_file_name)
+function renderSmartSystem(title, icon, downloadPath, editPopupTitle, data, saveFunction, usageText, pathDisplay, download_file_name, download_item)
 	if imgui.BeginChild('##smart'..title, imgui.ImVec2(589 * settings.general.custom_dpi, 338 * settings.general.custom_dpi), true) then
 		if #data ~= 0 then
 			imgui.CenterText(u8("Активно - ") .. u8(usageText))
 		else
-			imgui.CenterText(u8("Неактивно - Загрузите из облака или заполните вручную"))
+			imgui.CenterText(u8("Неактивно - Загрузите ") .. u8(download_item) .. u8(" из облака или заполните вручную"))
 		end
 		imgui.Separator()
 		imgui.SetCursorPosY(90 * settings.general.custom_dpi)
@@ -4692,7 +5154,7 @@ function renderSmartSystem(title, icon, downloadPath, editPopupTitle, data, save
 			downloadFileFromUrlToPath(downloadPath, pathDisplay)
 			imgui.OpenPopup(fa.CIRCLE_INFO .. u8' Оповещение ' .. fa.CIRCLE_INFO .. '##downloadsmart'..title)
 		end
-		imgui.CenterText(u8'Данные из облака устарели?')
+		imgui.CenterText(u8'Данные из облака устарели или неактуальные?')
 		imgui.CenterText(u8'Сообщите SMART модерам на нашем Discord сервере.')
 		imgui.SetNextWindowPos(imgui.ImVec2(sizeX / 2, sizeY / 2), imgui.Cond.Always, imgui.ImVec2(0.5, 0.5))
 		if imgui.BeginPopupModal(fa.CIRCLE_INFO .. u8' Оповещение ' .. fa.CIRCLE_INFO .. '##downloadsmart'..title, _, imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoResize) then
@@ -4716,7 +5178,7 @@ function renderSmartSystem(title, icon, downloadPath, editPopupTitle, data, save
 			end
 			imgui.SameLine()
 			if imgui.Button(fa.CIRCLE_PLAY .. u8' Открыть облако ' .. fa.CIRCLE_PLAY .. '##open_web_smart' .. title, imgui.ImVec2(300 * settings.general.custom_dpi, 25 * settings.general.custom_dpi)) then
-				openLink('https://github.com/MTGMODS/arizona-helper/tree/main')
+				openLink(downloadPath)
 				MainWindow[0] = false
 			end
 			imgui.EndPopup()
@@ -4732,7 +5194,7 @@ function renderSmartSystem(title, icon, downloadPath, editPopupTitle, data, save
 			if imgui.BeginChild('##smart'..title..'edit', imgui.ImVec2(589 * settings.general.custom_dpi, 368 * settings.general.custom_dpi), true) then
 				for chapter_index, chapter in ipairs(data) do
 					imgui.Columns(2)
-					imgui.BulletText(u8(chapter.name))
+					imgui.Text("> " .. u8(chapter.name))
 					imgui.SetColumnWidth(-1, 515 * settings.general.custom_dpi)
 					imgui.NextColumn()
 					if imgui.Button(fa.PEN_TO_SQUARE .. '##' .. title .. chapter_index) then
@@ -4766,7 +5228,7 @@ function renderSmartSystem(title, icon, downloadPath, editPopupTitle, data, save
 							if chapter.item then
 								for index, item in ipairs(chapter.item) do
 									imgui.Columns(2)
-									imgui.BulletText(u8(item.text))
+									imgui.Text("> " .. u8(item.text))
 									imgui.SetColumnWidth(-1, 515 * settings.general.custom_dpi)
 									imgui.NextColumn()
 									if imgui.Button(fa.PEN_TO_SQUARE .. '##' .. chapter_index .. '##' .. title .. index) then
@@ -4818,7 +5280,6 @@ function renderSmartSystem(title, icon, downloadPath, editPopupTitle, data, save
 												item[title:find('умного') and 'lvl' or 'amount'] = value
 												item.reason = reason
 												saveFunction()
-												saveFunction()
 												imgui.CloseCurrentPopup()
 											else
 												sampAddChatMessage('[Arizona Helper] {ffffff}Ошибка в указанных данных, исправьте!', message_color)
@@ -4826,7 +5287,6 @@ function renderSmartSystem(title, icon, downloadPath, editPopupTitle, data, save
 										end
 										imgui.EndPopup()
 									end
-									
 									imgui.SameLine()
 									if imgui.Button(fa.TRASH_CAN .. '##' .. chapter_index .. '##' .. title .. index) then
 										imgui.OpenPopup(fa.TRIANGLE_EXCLAMATION .. u8' Предупреждение ' .. fa.TRIANGLE_EXCLAMATION .. '##' .. title .. chapter_index .. '##' .. index)
@@ -4861,6 +5321,7 @@ function renderSmartSystem(title, icon, downloadPath, editPopupTitle, data, save
 							_G['input_'..title:lower()..'_reason'] = imgui.new.char[8192](u8(''))
 							imgui.OpenPopup(fa.CIRCLE_PLUS .. u8(' Добавление нового подпункта ') .. fa.CIRCLE_PLUS .. '##smart_add_subitem' .. chapter_index)
 						end
+						imgui.SetNextWindowPos(imgui.ImVec2(sizeX / 2, sizeY / 2), imgui.Cond.Always, imgui.ImVec2(0.5, 0.5))
 						if imgui.BeginPopupModal(fa.CIRCLE_PLUS .. u8(' Добавление нового подпункта ') .. fa.CIRCLE_PLUS .. '##smart_add_subitem' .. chapter_index, _, imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoResize) then
 							if imgui.BeginChild('##smart'..title..'edititeminput', imgui.ImVec2(489 * settings.general.custom_dpi, 155 * settings.general.custom_dpi), true) then   
 								change_dpi() 
@@ -4952,57 +5413,66 @@ function renderSmartSystem(title, icon, downloadPath, editPopupTitle, data, save
 end
 
 
-
-function render_assist_items(name, config_ref, description, description_hovered)
-    local config = config_ref.value
-
-    imgui.Separator()
-    imgui.Columns(3)
-    imgui.CenterColumnText(u8(name))
-    imgui.NextColumn()
-    imgui.CenterColumnText(u8(description))
-    if description_hovered then
-		imgui.Tooltip(u8(description_hovered))
-        -- imgui.SameLine(nil, 5)
-        -- imgui.TextDisabled("[?]")
-        -- if imgui.IsItemHovered() then
-        --     imgui.SetTooltip(u8(description_hovered))
-        -- end
-    end
-    imgui.NextColumn()
-    if imgui.CenterColumnSmallButton(u8((config and 'Отключить' or 'Включить') .. '##' .. name)) then
-        config_ref = not config
-        save_settings()
-    end
-end
-
-
 if isMode('police') or isMode('fbi') then
 	function render_fractions_functions()
 		if imgui.BeginTabItem(fa.GEARS .. u8' Функции ' .. u8(settings.player_info.fraction_tag)) then
 			if imgui.BeginTabBar('Tabs3') then
-				if imgui.BeginTabItem(fa.BARS..u8' Стандартные') then 
-					imgui.CenterText(u8('В доработке...'))
-					imgui.EndTabItem()
-				end
-				if imgui.BeginTabItem(fa.ROBOT .. u8' Ваш Ассистент') then 
-					imgui.CenterText(u8('В доработке...'))
-					if imgui.ToggleButton("Test##1", checkbox_awanted) then
-						sampAddChatMessage("You change status, new status: " .. tostring(checkbox_awanted[0]), -1)
-					end
+				if imgui.BeginTabItem(fa.ROBOT .. u8' Личный помочник "Ассистент"') then 
+					imgui.Columns(3)
+					imgui.CenterColumnText(u8("Название функции"))
+					imgui.NextColumn()
+					imgui.CenterColumnText(u8("Описание функции"))
+					imgui.NextColumn()
+					imgui.CenterColumnText(u8("Статус"))
+					imgui.NextColumn()
+					imgui.Columns(1)
+
+
+					-- imgui.Separator()
+					-- imgui.Columns(3)
+					-- imgui.CenterColumnText(u8(""))
+					-- imgui.NextColumn()
+					-- imgui.CenterColumnText(u8(""))
+					-- if description_hovered then
+					-- 	imgui.Tooltip(u8(description_hovered))
+					-- 	-- imgui.SameLine(nil, 5)
+					-- 	-- imgui.TextDisabled("[?]")
+					-- 	-- if imgui.IsItemHovered() then
+					-- 	--     imgui.SetTooltip(u8(description_hovered))
+					-- 	-- end
+					-- end
+					-- imgui.NextColumn()
+					-- if imgui.CenterColumnSmallButton(u8((config and 'Отключить' or 'Включить') .. '##' .. name)) then
+					-- 	config = not config
+					-- 	save_settings()
+					-- end
+					-- imgui.Columns(1)
+										
+					-- render_assist_items("RP общение", settings.player_info.rp_chat, 'Как это работает [?]', "Все ваши сообщения в чат автоматически будут с заглавной буквы и с точкой в конце")
+
+					-- local function toggle(text, config_ref)
+					-- 	local bool = imgui.new.bool(config_ref.value)
+					-- 	if imgui.ToggleButton(u8(text), bool) then
+					-- 		config_ref.value = bool[0]
+					-- 	end
+					-- end
+
+					-- toggle("RP общение", { value = settings.player_info.rp_chat })
+
 					imgui.EndTabItem()
 				end
 				if imgui.BeginTabItem(fa.STAR .. u8' Система умного розыска') then 
 					renderSmartSystem(
 						'Система умного розыска',
 						fa.STAR,
-						'https://github.com/MTGMODS/arizona-helper/raw/refs/heads/main/SmartUK/' .. getARZServerNumber() .. '/SmartUK.json', 
+						'https://mtgmods.github.io/arizona-helper/SmartUK/' .. getARZServerNumber() .. '/SmartUK.json', 
 						'системы умного розыска', 
 						modules.smart_uk.data, 
 						function() save_module("smart_uk") end, 
 						'Использование: /sum [ID игрока]', 
 						modules.smart_uk.path,
-						'smart_uk'
+						'smart_uk',
+						'умный розыск'
 					)
 					imgui.EndTabItem()
 				end
@@ -5010,13 +5480,14 @@ if isMode('police') or isMode('fbi') then
 					renderSmartSystem(
 						'Система умных штрафов', 
 						fa.TICKET, 
-						'https://github.com/MTGMODS/arizona-helper/raw/refs/heads/main/SmartPDD/' .. getARZServerNumber() .. '/SmartPDD.json', 
+						'https://mtgmods.github.io/arizona-helper/SmartPDD/' .. getARZServerNumber() .. '/SmartPDD.json', 
 						'системы умных штрафов', 
 						modules.smart_pdd.data, 
 						function() save_module("smart_pdd") end, 
 						'Использование: /tsm [ID игрока]', 
 						modules.smart_pdd.path,
-						'smart_pdd'
+						'smart_pdd',
+						'умные штрафы'
 					)
 					imgui.EndTabItem()
 				end
@@ -5041,27 +5512,30 @@ elseif isMode('army') or isMode('prison') then
 						imgui.CenterColumnText(u8"Управление")
 						imgui.SetColumnWidth(-1, 120 * settings.general.custom_dpi)
 						imgui.Columns(1)
-						render_assist_items("RP общение", { value = settings.player_info.rp_chat }, '...', "роавлІІІІІІІІІІІІІІІІІІІІми у5736423и461419")
+						
 
 						imgui.Separator()
 						imgui.EndChild()	
 					end
 					imgui.EndTabItem()
 				end
-				if imgui.BeginTabItem(fa.STAR .. u8' Система умного продления срока') then 
-					renderSmartSystem(
-						'Система умного продления срока', 
-						fa.TICKET, 
-						'https://github.com/MTGMODS/arizona-helper/raw/refs/heads/main/SmartRPTP/' .. getARZServerNumber() .. '/SmartRPTP.json', 
-						'системы умного срока', 
-						modules.smart_rptp.data, 
-						function() save_module("smart_rptp") end, 
-						'Использование: /pum [ID игрока]', 
-						modules.smart_rptp.path,
-						'smart_rptp'
-					)
-					imgui.EndTabItem()
-				end
+				if isMode('prison') then 
+					if imgui.BeginTabItem(fa.STAR .. u8' Система умного продления срока') then 
+						renderSmartSystem(
+							'Система умного продления срока', 
+							fa.TICKET, 
+							'https://mtgmods.github.io/arizona-helper/SmartRPTP/' .. getARZServerNumber() .. '/SmartRPTP.json', 
+							'системы умного срока', 
+							modules.smart_rptp.data, 
+							function() save_module("smart_rptp") end, 
+							'Использование: /pum [ID игрока]', 
+							modules.smart_rptp.path,
+							'smart_rptp',
+							'умный срок'
+						)
+						imgui.EndTabItem()
+					end
+				end 
 				imgui.EndTabBar() 
 			end
 			imgui.EndTabItem()
@@ -5069,13 +5543,649 @@ elseif isMode('army') or isMode('prison') then
 	end
 else
 	function render_fractions_functions()
-		if imgui.BeginTabItem(fa.GEARS .. u8' Функции орги') then
-			imgui.CenterText(u8('Для вашей организации временно не доступно!'))
+		if imgui.BeginTabItem(fa.GEARS .. u8' Функции ' .. u8(settings.player_info.fraction_tag)) then
+			imgui.CenterText(u8('Временно не доступно'))
 			imgui.EndTabItem()
 		end
 	end
 end
+
+-- function render_fractions_functions()
+-- 	if imgui.BeginTabItem(fa.GEARS .. u8' Функции орги') then
+
+
+-- 		-- if imgui.BeginTabBar('Tabs3') then
+-- 		-- 	if imgui.BeginTabItem(fa.ROBOT .. u8' Личный помочник "Ассистент"') then 
+-- 		-- 		imgui.Columns(3)
+-- 		-- 		imgui.CenterColumnText(u8("Название функции"))
+-- 		-- 		imgui.NextColumn()
+-- 		-- 		imgui.CenterColumnText(u8("Описание функции"))
+-- 		-- 		imgui.NextColumn()
+-- 		-- 		imgui.CenterColumnText(u8("Статус"))
+-- 		-- 		imgui.NextColumn()
+-- 		-- 		imgui.Columns(1)
+
+
+-- 		-- 		-- imgui.Separator()
+-- 		-- 		-- imgui.Columns(3)
+-- 		-- 		-- imgui.CenterColumnText(u8(""))
+-- 		-- 		-- imgui.NextColumn()
+-- 		-- 		-- imgui.CenterColumnText(u8(""))
+-- 		-- 		-- if description_hovered then
+-- 		-- 		-- 	imgui.Tooltip(u8(description_hovered))
+-- 		-- 		-- 	-- imgui.SameLine(nil, 5)
+-- 		-- 		-- 	-- imgui.TextDisabled("[?]")
+-- 		-- 		-- 	-- if imgui.IsItemHovered() then
+-- 		-- 		-- 	--     imgui.SetTooltip(u8(description_hovered))
+-- 		-- 		-- 	-- end
+-- 		-- 		-- end
+-- 		-- 		-- imgui.NextColumn()
+-- 		-- 		-- if imgui.CenterColumnSmallButton(u8((config and 'Отключить' or 'Включить') .. '##' .. name)) then
+-- 		-- 		-- 	config = not config
+-- 		-- 		-- 	save_settings()
+-- 		-- 		-- end
+-- 		-- 		-- imgui.Columns(1)
+									
+-- 		-- 		render_assist_items("RP общение", settings.player_info.rp_chat, 'Как это работает [?]', "Все ваши сообщения в чат автоматически будут с заглавной буквы и с точкой в конце")
+
+-- 		-- 		-- local function toggle(text, config_ref)
+-- 		-- 		-- 	local bool = imgui.new.bool(config_ref.value)
+-- 		-- 		-- 	if imgui.ToggleButton(u8(text), bool) then
+-- 		-- 		-- 		config_ref.value = bool[0]
+-- 		-- 		-- 	end
+-- 		-- 		-- end
+
+-- 		-- 		-- toggle("RP общение", { value = settings.player_info.rp_chat })
+
+-- 		-- 		imgui.EndTabItem()
+-- 		-- 	end
+-- 		-- 	if imgui.BeginTabItem(fa.STAR .. u8' Система умного розыска') then 
+-- 		-- 		renderSmartSystem(
+-- 		-- 			'Система умного розыска',
+-- 		-- 			fa.STAR,
+-- 		-- 			'https://mtgmods.github.io/arizona-helper/SmartUK/' .. getARZServerNumber() .. '/SmartUK.json', 
+-- 		-- 			'системы умного розыска', 
+-- 		-- 			modules.smart_uk.data, 
+-- 		-- 			function() save_module("smart_uk") end, 
+-- 		-- 			'Использование: /sum [ID игрока]', 
+-- 		-- 			modules.smart_uk.path,
+-- 		-- 			'smart_uk',
+-- 		-- 			'умный розыск'
+-- 		-- 		)
+-- 		-- 		imgui.EndTabItem()
+-- 		-- 	end
+-- 		-- 	if imgui.BeginTabItem(fa.TICKET .. u8' Система умных штрафов') then 
+-- 		-- 		renderSmartSystem(
+-- 		-- 			'Система умных штрафов', 
+-- 		-- 			fa.TICKET, 
+-- 		-- 			'https://mtgmods.github.io/arizona-helper/SmartPDD/' .. getARZServerNumber() .. '/SmartPDD.json', 
+-- 		-- 			'системы умных штрафов', 
+-- 		-- 			modules.smart_pdd.data, 
+-- 		-- 			function() save_module("smart_pdd") end, 
+-- 		-- 			'Использование: /tsm [ID игрока]', 
+-- 		-- 			modules.smart_pdd.path,
+-- 		-- 			'smart_pdd',
+-- 		-- 			'умные штрафы'
+-- 		-- 		)
+-- 		-- 		imgui.EndTabItem()
+-- 		-- 	end
+-- 		-- 	imgui.EndTabBar() 
+-- 		-- end
+
+-- 		if isMode('police') or isMode('fbi') then
+
+-- 		elseif isMode('army') or isMode('prison') then
+
+-- 		elseif isMode('hospital') then
+
+
+
+-- 		else
+-- 			imgui.CenterText(u8('Для вашей организации временно не доступно!'))
+-- 		end
+-- 		imgui.EndTabItem()
+-- 	end
+-- end
 			
+
+			-- if imgui.BeginTabItem(fa.MONEY_CHECK_DOLLAR..u8' Ценовая политика') then 
+			-- 	imgui.PushItemWidth(65 * settings.general.custom_dpi)
+			-- 	if imgui.InputText(u8'  Лечение игрока (SA $)', input_heal, 8) then
+			-- 		settings.mh.price.heal = u8:decode(ffi.string(input_heal))
+			-- 		save_settings()
+			-- 	end
+			-- 	imgui.SameLine()
+			-- 	imgui.SetCursorPosX(300 * settings.general.custom_dpi)
+			-- 	imgui.PushItemWidth(65 * settings.general.custom_dpi)
+			-- 	if imgui.InputText(u8'  Лечение игрока (VC $)', input_heal_vc, 8) then
+			-- 		settings.mh.price.heal_vc = u8:decode(ffi.string(input_heal_vc))
+			-- 		save_settings()
+			-- 	end
+			-- 	imgui.Separator()
+			-- 	imgui.PushItemWidth(65 * settings.general.custom_dpi)
+			-- 	if imgui.InputText(u8'  Лечение охранника (SA $)', input_healactor, 8) then
+			-- 		settings.mh.price.healactor = u8:decode(ffi.string(input_healactor))
+			-- 		save_settings()
+			-- 	end
+			-- 	imgui.SameLine()
+			-- 	imgui.SetCursorPosX(300 * settings.general.custom_dpi)
+			-- 	imgui.PushItemWidth(65 * settings.general.custom_dpi)
+			-- 	if imgui.InputText(u8'  Лечение охранника (VC $)', input_healactor_vc, 8) then
+			-- 		settings.mh.price.healactor_vc = u8:decode(ffi.string(input_healactor_vc))
+			-- 		save_settings()
+			-- 	end
+			-- 	imgui.Separator()
+			-- 	imgui.PushItemWidth(65 * settings.general.custom_dpi)
+			-- 	if imgui.InputText(u8'  Проведение мед. осмотра для пилотов', input_medosm, 8) then
+			-- 		settings.mh.price.medosm = u8:decode(ffi.string(input_medosm))
+			-- 		save_settings()
+			-- 	end
+			-- 	imgui.Separator()
+			-- 	imgui.PushItemWidth(65 * settings.general.custom_dpi)
+			-- 	if imgui.InputText(u8'  Проведение мед. осмотра для военного билета', input_mticket, 8) then
+			-- 		settings.mh.price.mticket = u8:decode(ffi.string(input_mticket))
+			-- 		save_settings()
+			-- 	end
+			-- 	imgui.Separator()
+			-- 	imgui.PushItemWidth(65 * settings.general.custom_dpi)
+			-- 	if imgui.InputText(u8'  Проведение сеанса лечения наркозависимости', input_healbad, 8) then
+			-- 		settings.mh.price.healbad = u8:decode(ffi.string(input_healbad))
+			-- 		save_settings()
+			-- 	end
+			-- 	imgui.Separator()
+			-- 	imgui.PushItemWidth(65 * settings.general.custom_dpi)
+			-- 	if imgui.InputText(u8'  Выдача рецепта', input_recept, 8) then
+			-- 		settings.mh.price.recept = u8:decode(ffi.string(input_recept))
+			-- 		save_settings()
+			-- 	end
+			-- 	imgui.Separator()
+			-- 	imgui.PushItemWidth(65 * settings.general.custom_dpi)
+			-- 	if imgui.InputText(u8'  Выдача антибиотика', input_ant, 8) then
+			-- 		settings.mh.price.ant = u8:decode(ffi.string(input_ant))
+			-- 		save_settings()
+			-- 	end
+			-- 	imgui.Separator()
+			-- 	imgui.PushItemWidth(65 * settings.general.custom_dpi)
+			-- 	if imgui.InputText(u8'  Выдача мед.карты на 7 дней', input_med7, 8) then
+			-- 		settings.mh.price.med7 = u8:decode(ffi.string(input_med7))
+			-- 		save_settings()
+			-- 	end
+			-- 	imgui.PushItemWidth(65 * settings.general.custom_dpi)
+			-- 	if imgui.InputText(u8'  Выдача мед.карты на 14 дней', input_med14, 8) then
+			-- 		settings.mh.price.med14 = u8:decode(ffi.string(input_med14))
+			-- 		save_settings()
+			-- 	end
+			-- 	imgui.Separator()
+			-- 	imgui.PushItemWidth(65 * settings.general.custom_dpi)
+			-- 	if imgui.InputText(u8'  Выдача мед.карты на 30 дней', input_med30, 8) then
+			-- 		settings.mh.price.med30 = u8:decode(ffi.string(input_med30))
+			-- 		save_settings()
+			-- 	end
+			-- 	imgui.Separator()
+			-- 	imgui.PushItemWidth(65 * settings.general.custom_dpi)
+			-- 	if imgui.InputText(u8'  Выдача мед.карты на 60 дней', input_med60, 8) then
+			-- 		settings.mh.price.med60 = u8:decode(ffi.string(input_med60))
+			-- 		save_settings()
+			-- 	end
+			-- imgui.EndTabItem()
+			-- end
+
+
+			-- if imgui.BeginTabItem(fa.MONEY_CHECK_DOLLAR..u8' Ценовая политика') then 
+			-- 	local input_prices = {
+			-- 		avto = { imgui.new.char[256](u8(settings.lc.price.avto1)), imgui.new.char[256](u8(settings.lc.price.avto2)), imgui.new.char[256](u8(settings.lc.price.avto3},
+			-- 		moto = { imgui.new.char[256](u8(settings.lc.price.moto1)), imgui.new.char[256](u8(settings.lc.price.moto2)), imgui.new.char[256](u8(settings.lc.price.moto3},
+			-- 		fish = { imgui.new.char[256](u8(settings.lc.price.fish1)), imgui.new.char[256](u8(settings.lc.price.fish2)), imgui.new.char[256](u8(settings.lc.price.fish3},
+			-- 		swim = { imgui.new.char[256](u8(settings.lc.price.swim1)), imgui.new.char[256](u8(settings.lc.price.swim2)), imgui.new.char[256](u8(settings.lc.price.swim3},
+			-- 		gun = { imgui.new.char[256](u8(settings.lc.price.gun1)), imgui.new.char[256](u8(settings.lc.price.gun2)), imgui.new.char[256](u8(settings.lc.price.gun3},
+			-- 		hunt = { imgui.new.char[256](u8(settings.lc.price.hunt1)), imgui.new.char[256](u8(settings.lc.price.hunt2)), imgui.new.char[256](u8(settings.lc.price.hunt3},
+			-- 		klad = { imgui.new.char[256](u8(settings.lc.price.klad1)), imgui.new.char[256](u8(settings.lc.price.klad2)), imgui.new.char[256](u8(settings.lc.price.klad3},
+			-- 		taxi = { imgui.new.char[256](u8(settings.lc.price.taxi1)), imgui.new.char[256](u8(settings.lc.price.taxi2)), imgui.new.char[256](u8(settings.lc.price.taxi3},
+			-- 		mexa = { imgui.new.char[256](u8(settings.lc.price.mexa1)), imgui.new.char[256](u8(settings.lc.price.mexa2)), imgui.new.char[256](u8(settings.lc.price.mexa3},
+			-- 		fly = { imgui.new.char[256](u8(settings.lc.price.fly1)), imgui.new.char[256](u8(settings.lc.price.fly2)), imgui.new.char[256](u8(settings.lc.price.fly3}
+			-- 	}
+			-- 	local license_types = {
+			-- 		{ name = 'Авто', key = 'avto' },
+			-- 		{ name = 'Мото', key = 'moto' },
+			-- 		{ name = 'Лодки', key = 'swim' },
+			-- 		{ name = 'Полеты', key = 'fly' },
+			-- 		{ name = 'Оружие', key = 'gun' },
+			-- 		{ name = 'Охота', key = 'hunt' },
+			-- 		{ name = 'Рыбалка', key = 'fish' },
+			-- 		{ name = 'Раскопки', key = 'klad' },
+			-- 		{ name = 'Такси', key = 'taxi' },
+			-- 		{ name = 'Механик', key = 'mexa' },
+			-- 	}
+			-- 	for _, license in ipairs(license_types) do
+			-- 		for month = 1, 3 do
+			-- 			imgui.PushItemWidth(65 * settings.general.custom_dpi)
+			-- 			if imgui.InputText(u8(string.format('  %s (%d месяц%s)', license.name, month, month == 1 and '' or 'а')), input_prices[license.key][month], 9) then
+			-- 				settings.price[license.key .. month] = u8:decode(ffi.string(input_prices[license.key][month]))
+			-- 				save_settings()
+			-- 			end
+			-- 			if month == 1 then
+			-- 				imgui.SameLine()
+			-- 				imgui.SetCursorPosX(200 * settings.general.custom_dpi)
+			-- 			elseif month == 2 then
+			-- 				imgui.SameLine()
+			-- 				imgui.SetCursorPosX(400 * settings.general.custom_dpi)
+			-- 			else
+			-- 				imgui.Separator()
+			-- 			end
+			-- 		end
+			-- 	end
+			-- imgui.EndTabItem()
+			-- end
+
+
+
+			-- if imgui.BeginChild('##2', imgui.ImVec2(589 * settings.general.custom_dpi, 58 * settings.general.custom_dpi), true) then
+				-- 	imgui.CenterText(fa.ROBOT .. u8' Ассистент')
+				-- 	imgui.Separator()
+				-- 	imgui.Columns(2)
+				-- 	imgui.CenterColumnText(u8("Ваш незаменимый помощник для автоматизации некоторых действий"))
+				-- 	imgui.SetColumnWidth(-1, 480 * settings.general.custom_dpi)
+				-- 	imgui.NextColumn()
+				-- 	if imgui.CenterColumnSmallButton(u8'Управление') then
+				-- 		--imgui.OpenPopup(fa.ROBOT .. u8' Ассистент автоматизирует (сам делает) некоторые ваши действия')
+				-- 	end
+				-- 	-- if imgui.BeginPopupModal(fa.ROBOT .. u8' Ассистент автоматизирует (сам делает) некоторые ваши действия', _, imgui.WindowFlags.NoCollapse  + imgui.WindowFlags.NoResize ) then
+				-- 	-- 	change_dpi()
+				-- 	-- 	imgui.BeginChild('##ai', imgui.ImVec2(589 * settings.general.custom_dpi, 350 * settings.general.custom_dpi), true)
+				-- 	-- 	if imgui.Checkbox(u8(' [В патруле] Доклад в рацию каждые 10 минут патруля'), checkbox.patrool_autodoklad) then
+				-- 	-- 		settings.general.auto_doklad_patrool = checkbox.patrool_autodoklad[0]
+				-- 	-- 		save_settings()
+				-- 	-- 	end
+				-- 	-- 	if imgui.Checkbox(u8(' [В патруле] Изменение ситуационного кода на CODE 3/4 при вкл/выкл мигалок'), checkbox.change_code_siren) then
+				-- 	-- 		settings.general.auto_change_code_siren = checkbox.change_code_siren[0]
+				-- 	-- 		save_settings()
+				-- 	-- 	end
+				-- 	-- 	if imgui.Checkbox(u8(' [При получении урона] Доклад в рацию про CODE 0 и указание ника в нрп рацию'), checkbox.autodoklad_damage) then
+				-- 	-- 		settings.general.auto_doklad_damage = checkbox.autodoklad_damage[0]
+				-- 	-- 		save_settings()
+				-- 	-- 	end
+				-- 	-- 	if imgui.Checkbox(u8(' [Проверка документов] Принятие паспорта/мед.карты/лицензий из /offer с рп отыгровкой'), checkbox.auto_accept_docs) then
+				-- 	-- 		settings.general.auto_accept_docs = checkbox.auto_accept_docs[0]
+				-- 	-- 		save_settings()
+				-- 	-- 	end	
+				-- 	-- 	if imgui.Checkbox(u8(' [Завершенный арест] Доклад в рацию с именем арестованого'), checkbox.autodoklad_arrest) then
+				-- 	-- 		settings.general.auto_doklad_arrest = checkbox.autodoklad_arrest[0]
+				-- 	-- 		save_settings()
+				-- 	-- 	end
+				-- 	-- 	if imgui.Checkbox(u8(' [При обыске, выдачи розыска, аресте] Пробив /time для скриншотов'), checkbox.auto_time) then
+				-- 	-- 		settings.general.auto_time = checkbox.auto_time[0]
+				-- 	-- 		save_settings()
+				-- 	-- 	end	
+				-- 	-- 	if imgui.Checkbox(u8(' [Расследования] Заполнение всех нужных данных в диалогах'), checkbox.autodocumentation) then
+				-- 	-- 		settings.mj.auto_case_documentation = checkbox.autodocumentation[0]
+				-- 	-- 		save_settings()
+				-- 	-- 	end
+				-- 	-- 	if imgui.Checkbox(u8(' [Меню /wanteds] Обновление списка преступников каждые 15 секунд'), checkbox.update_wanteds) then
+				-- 	-- 		settings.mj.auto_update_wanteds = checkbox.update_wanteds[0]
+				-- 	-- 		save_settings()
+				-- 	-- 	end
+				-- 	-- 	if imgui.Checkbox(u8(' [Меню /mb] Обновление списка сотрудников каждые 2 секунды'), checkbox.update_members) then
+				-- 	-- 		settings.general.auto_update_members = checkbox.update_members[0]
+				-- 	-- 		save_settings()
+				-- 	-- 	end
+				-- 	-- 	if imgui.Checkbox(u8(' [При слете маски с лица] Моментальное надевание новой маски'), checkbox.auto_mask) then
+				-- 	-- 		settings.general.auto_mask = checkbox.auto_mask[0]
+				-- 	-- 		save_settings()
+				-- 	-- 	end
+				-- 	-- 	if imgui.Checkbox(u8(' [Случайные Ситуации] Автокликер на сбор камней (') .. fa.TRIANGLE_EXCLAMATION .. u8(' может быть запрещено!)'), checkbox.auto_clicker) then
+				-- 	-- 		(settings.mj.auto_clicker_situation or settings.mh.auto_clicker_situation) = checkbox.auto_clicker[0]
+				-- 	-- 		save_settings()
+				-- 	-- 	end
+				-- 	-- 	if imgui.Checkbox(u8(' [AWANTED] Оповещение если преступник в зоне прорисовки (') .. fa.TRIANGLE_EXCLAMATION .. u8(' может быть запрещено!)'), checkbox.awanted) then
+				-- 	-- 		settings.mj.awanted = checkbox.awanted[0]
+				-- 	-- 		save_settings()
+				-- 	-- 	end
+				-- 	-- 	imgui.EndChild()
+		
+				-- 	-- 	imgui.EndPopup()
+				-- 	-- end
+				-- 	imgui.SetColumnWidth(-1, 100 * settings.general.custom_dpi)
+				-- 	imgui.Columns(1)
+				-- imgui.EndChild()
+				-- end
+
+				-- if imgui.BeginChild('##2', imgui.ImVec2(589 * settings.general.custom_dpi, 150 * settings.general.custom_dpi), true) then
+				-- 	imgui.CenterText(fa.SITEMAP .. u8' Дополнительные функции')
+				-- 	imgui.Separator()
+				-- 	imgui.Columns(3)
+				-- 	imgui.CenterColumnText(u8"Анти Тревожная Кнопка")
+				-- 	imgui.SameLine(nil, 5) imgui.TextDisabled("[?]")
+				-- 	if imgui.IsItemHovered() then
+				-- 		imgui.SetTooltip(u8"Убирает тревожную кнопку которая находится за стойкой на 1 этаже\nТем самым вы не будете случайно вызывать МЮ из-за этой кнопки")
+				-- 	end
+				-- 	imgui.SetColumnWidth(-1, 230 * settings.general.custom_dpi)
+				-- 	imgui.NextColumn()
+				-- 	if settings.general.anti_trivoga then
+				-- 		imgui.CenterColumnText(u8'Включено')
+				-- 	else
+				-- 		imgui.CenterColumnText(u8'Отключено')
+				-- 	end
+				-- 	imgui.SetColumnWidth(-1, 250 * settings.general.custom_dpi)
+				-- 	imgui.NextColumn()
+				-- 	if settings.general.anti_trivoga then
+				-- 		if imgui.CenterColumnSmallButton(u8'Отключить##anti_trivoga') then
+				-- 			settings.general.anti_trivoga = false
+				-- 			save_settings()
+				-- 		end
+				-- 		else
+				-- 		if imgui.CenterColumnSmallButton(u8'Включить##anti_trivoga') then
+				-- 			settings.general.anti_trivoga = true
+				-- 			save_settings()
+				-- 		end
+				-- 	end
+				-- 	imgui.SetColumnWidth(-1, 100 * settings.general.custom_dpi)
+				-- 	imgui.Columns(1)
+				-- 	imgui.Separator()
+				-- 	imgui.Columns(3)
+				-- 	imgui.CenterColumnText(u8"Хил из чата (нажатие кнопки)")
+				-- 	imgui.SameLine(nil, 5) imgui.TextDisabled("[?]")
+				-- 	if imgui.IsItemHovered() then
+				-- 		imgui.SetTooltip(u8"Позволяет нажатием одной кнопки быстро, по РП, лечить пациентов которые просят чтоб их вылечили")
+				-- 	end
+				-- 	imgui.NextColumn()
+				-- 	if settings.mh.heal_in_chat then
+				-- 		imgui.CenterColumnText(u8'Включено')
+				-- 	else
+				-- 		imgui.CenterColumnText(u8'Отключено')
+				-- 	end
+				-- 	imgui.NextColumn()
+				-- 	if settings.mh.heal_in_chat then
+				-- 		if imgui.CenterColumnSmallButton(u8'Отключить##heal_in_chat') then
+				-- 			settings.mh.heal_in_chat = false
+				-- 			save_settings()
+				-- 		end
+				-- 	else
+				-- 		if imgui.CenterColumnSmallButton(u8'Включить##heal_in_chat') then
+				-- 			if not isMonetLoader() and not hotkey_no_errors then
+				-- 				sampAddChatMessage('[Arizona Helper] {ffffff}Ошибка, нельзя включить "Хил из чата" так как у вас нету Mimgui Hotkeys!', message_color)
+				-- 			else
+				-- 				settings.mh.heal_in_chat = true
+				-- 				settings.mh.auto_heal = false
+				-- 				save_settings()
+				-- 			end
+							
+				-- 		end
+				-- 	end
+				-- 	imgui.Columns(1)
+				-- 	imgui.Separator()
+				-- 	imgui.Columns(3)
+				-- 	imgui.CenterColumnText(u8"Хил из чата (автоматически)")
+				-- 	imgui.SameLine(nil, 5) imgui.TextDisabled("[?]")
+				-- 	if imgui.IsItemHovered() then
+				-- 		imgui.SetTooltip(u8"Автоматически, без РП, лечит пациентов которые просят чтоб их вылечили")
+				-- 	end
+				-- 	imgui.NextColumn()
+				-- 	if settings.mh.auto_heal then
+				-- 		imgui.CenterColumnText(u8'Включено')
+				-- 	else
+				-- 		imgui.CenterColumnText(u8'Отключено')
+				-- 	end
+				-- 	imgui.NextColumn()
+				-- 	if settings.mh.auto_heal then
+				-- 		if imgui.CenterColumnSmallButton(u8'Отключить##auto_heal') then
+				-- 			settings.mh.auto_heal = false
+				-- 			save_settings()
+				-- 		end
+				-- 	else
+				-- 		if imgui.CenterColumnSmallButton(u8'Включить##auto_heal') then
+				-- 			settings.mh.auto_heal = true
+				-- 			settings.mh.heal_in_chat = false
+				-- 			save_settings()
+				-- 		end
+				-- 	end
+				-- 	imgui.Columns(1)
+				-- 	imgui.Separator()
+				
+				-- 	imgui.Columns(1)
+				-- 	imgui.Separator()
+				-- 	imgui.Columns(3)
+				-- 	imgui.CenterColumnText(u8"Кликер на ГРП (СС)")
+				-- 	imgui.SameLine(nil, 5) imgui.TextDisabled("[?]")
+				-- 	if imgui.IsItemHovered() then
+				-- 		imgui.SetTooltip(u8"Автокликер в менюшках на серверных ГРП (носилки и тд)")
+				-- 	end
+				-- 	imgui.NextColumn()
+				-- 	if settings.general.auto_clicker then
+				-- 		imgui.CenterColumnText(u8'Включено')
+				-- 	else
+				-- 		imgui.CenterColumnText(u8'Отключено')
+				-- 	end
+				-- 	imgui.NextColumn()
+				-- 	if settings.general.auto_clicker then
+				-- 		if imgui.CenterColumnSmallButton(u8'Отключить##auto_clicker') then
+				-- 			settings.general.auto_clicker = false
+				-- 			save_settings()
+				-- 		end
+				-- 		else
+				-- 		if imgui.CenterColumnSmallButton(u8'Включить##auto_clicker') then
+				-- 			settings.general.auto_clicker = true
+				-- 			save_settings()
+				-- 		end
+				-- 	end
+				-- 	imgui.Columns(1)
+				-- imgui.EndChild()
+				-- end
+
+				-- if imgui.BeginChild('##2', imgui.ImVec2(589 * settings.general.custom_dpi, 150 * settings.general.custom_dpi), true) then
+				-- 	imgui.CenterText(fa.SITEMAP .. u8' Дополнительные функции')
+				-- 	imgui.Separator()
+				-- 	imgui.Columns(3)
+				-- 	imgui.CenterColumnText(u8"RP Общение")
+				-- 	imgui.SameLine(nil, 5) imgui.TextDisabled("[?]")
+				-- 	if imgui.IsItemHovered() then
+				-- 		imgui.SetTooltip(u8"Все ваши сообщения в чат автоматически будут с заглавной буквы и с точкой в конце")
+				-- 	end
+				-- 	imgui.SetColumnWidth(-1, 230 * settings.general.custom_dpi)
+				-- 	imgui.NextColumn()
+				-- 	if settings.general.rp_chat then
+				-- 		imgui.CenterColumnText(u8'Включено')
+				-- 	else
+				-- 		imgui.CenterColumnText(u8'Отключено')
+				-- 	end
+				-- 	imgui.SetColumnWidth(-1, 250 * settings.general.custom_dpi)
+				-- 	imgui.NextColumn()
+				-- 	if settings.general.rp_chat then
+				-- 		if imgui.CenterColumnSmallButton(u8'Отключить##rp_chat') then
+				-- 			settings.general.rp_chat = false
+				-- 			save_settings()
+				-- 		end
+				-- 		else
+				-- 		if imgui.CenterColumnSmallButton(u8'Включить##rp_chat') then
+				-- 			settings.general.rp_chat = true
+				-- 			save_settings()
+				-- 		end
+				-- 	end
+				-- 	imgui.SetColumnWidth(-1, 100 * settings.general.custom_dpi)
+				-- 	imgui.Columns(1)
+				-- 	imgui.Separator()
+				-- 	imgui.Columns(3)
+				-- 	imgui.CenterColumnText(u8"RP дубинка")
+				-- 	imgui.SameLine(nil, 5) imgui.TextDisabled("[?]")
+				-- 	if imgui.IsItemHovered() then
+				-- 		imgui.SetTooltip(u8"При использовании/скролле дубинки в чате будут RP отыгровки.")
+				-- 	end
+				-- 	imgui.NextColumn()
+				-- 	if settings.general.rp_gun then
+				-- 		imgui.CenterColumnText(u8'Включено')
+				-- 	else
+				-- 		imgui.CenterColumnText(u8'Отключено')
+				-- 	end
+				-- 	imgui.NextColumn()
+				-- 	if settings.general.rp_gun then
+				-- 		if imgui.CenterColumnSmallButton(u8'Отключить##rp_gun') then
+				-- 			settings.general.rp_gun = false
+				-- 			save_settings()
+				-- 		end
+				-- 	else
+				-- 		if imgui.CenterColumnSmallButton(u8'Включить##rp_gun') then
+				-- 			settings.general.rp_gun = true
+				-- 			save_settings()
+				-- 		end
+				-- 	end
+				-- 	imgui.Columns(1)
+				-- 	imgui.Separator()
+				-- 	imgui.Columns(3)
+				-- 	imgui.CenterColumnText(u8"Авто-выдача лицензий")
+				-- 	imgui.SameLine(nil, 5) imgui.TextDisabled("[?]")
+				-- 	if imgui.IsItemHovered() then
+				-- 		imgui.SetTooltip(u8'Автоматечески выдаёт лицензии игрокам пока вы стоите за стойкой\nИгроки должны написать в чат тип лицензии (частоиспользуемые фразы) и срок\nЕсли не напишут срок, а просто например "права", то автовыдача на 1 месяц')
+				-- 	end
+				-- 	imgui.NextColumn()
+				-- 	if settings.general.auto_lic then
+				-- 		imgui.CenterColumnText(u8'Включено')
+				-- 	else
+				-- 		imgui.CenterColumnText(u8'Отключено')
+				-- 	end
+				-- 	imgui.NextColumn()
+				-- 	if settings.general.auto_lic then
+				-- 		if imgui.CenterColumnSmallButton(u8'Отключить##auto_lic') then
+				-- 			settings.general.auto_lic = false
+				-- 			save_settings()
+				-- 		end
+				-- 		else
+				-- 		if imgui.CenterColumnSmallButton(u8'Включить##auto_lic') then
+				-- 			settings.general.auto_lic = true
+				-- 			save_settings()
+				-- 		end
+				-- 	end
+				-- 	imgui.Columns(1)
+				-- 	imgui.Separator()
+				-- 	imgui.Columns(3)
+				-- 	imgui.CenterColumnText(u8"Авто-ремонт дорожых знаков")
+				-- 	imgui.SameLine(nil, 5) imgui.TextDisabled("[?]")
+				-- 	if imgui.IsItemHovered() then
+				-- 		imgui.SetTooltip(u8'Автоматически ремонтирует дорожные знаки которым нужен ремонт')
+				-- 	end
+				-- 	imgui.NextColumn()
+				-- 	if settings.general.auto_repair then
+				-- 		imgui.CenterColumnText(u8'Включено')
+				-- 	else
+				-- 		imgui.CenterColumnText(u8'Отключено')
+				-- 	end
+				-- 	imgui.NextColumn()
+				-- 	if settings.general.auto_repair then
+				-- 		if imgui.CenterColumnSmallButton(u8'Отключить##auto_repair') then
+				-- 			settings.general.auto_repair = false
+				-- 			save_settings()
+				-- 		end
+				-- 		else
+				-- 		if imgui.CenterColumnSmallButton(u8'Включить##auto_repair') then
+				-- 			settings.general.auto_repair = true
+				-- 			save_settings()
+				-- 		end
+				-- 	end
+				-- 	imgui.Columns(1)
+			
+				-- imgui.EndChild()
+				-- end
+
+				-- if imgui.BeginChild('##3', imgui.ImVec2(589 * settings.general.custom_dpi, 98 * settings.general.custom_dpi), true) then
+				-- 	imgui.CenterText(fa.SITEMAP .. u8' Дополнительные функции хелпера')
+				-- 	imgui.Separator()
+				-- 	imgui.Columns(3)
+				-- 	imgui.CenterColumnText(u8"Информационное меню")
+				-- 	imgui.SameLine(nil, 5) imgui.TextDisabled("[?]")
+				-- 	if imgui.IsItemHovered() then
+				-- 		imgui.SetTooltip(u8"Отображение на экране менюшки с информацией")
+				-- 	end
+				-- 	imgui.SetColumnWidth(-1, 230 * settings.general.custom_dpi)
+				-- 	imgui.NextColumn()
+				-- 	if settings.general.use_info_menu then
+				-- 		imgui.CenterColumnText(u8'Включено')
+				-- 	else
+				-- 		imgui.CenterColumnText(u8'Отключено')
+				-- 	end
+				-- 	imgui.SetColumnWidth(-1, 250 * settings.general.custom_dpi)
+				-- 	imgui.NextColumn()
+				-- 	if settings.general.use_info_menu then
+				-- 		if imgui.CenterColumnSmallButton(u8'Отключить##info_menu') then
+				-- 			settings.general.use_info_menu = false
+				-- 			InformationWindow[0] = false
+				-- 			save_settings()
+				-- 		end
+				-- 		else
+				-- 		if imgui.CenterColumnSmallButton(u8'Включить##info_menu') then
+				-- 			settings.general.use_info_menu = true
+				-- 			InformationWindow[0] = true
+				-- 			save_settings()
+				-- 		end
+				-- 	end
+				-- 	imgui.SetColumnWidth(-1, 100 * settings.general.custom_dpi)
+				-- 	imgui.Columns(1)
+				-- 	imgui.Separator()
+				-- 	imgui.Columns(3)
+				-- 	imgui.CenterColumnText(u8"Режим RP отыгровки оружия")
+				-- 	imgui.SameLine(nil, 5) imgui.TextDisabled("[?]")
+				-- 	if imgui.IsItemHovered() then
+				-- 		imgui.SetTooltip(u8"При использовании/скролле оружия в чате будут RP отыгровки.")
+				-- 	end
+				-- 	imgui.NextColumn()
+				-- 	if settings.general.rp_gun then
+				-- 		imgui.CenterColumnText(u8'Включено')
+				-- 	else
+				-- 		imgui.CenterColumnText(u8'Отключено')
+				-- 	end
+				-- 	imgui.NextColumn()
+				-- 	if imgui.CenterColumnSmallButton(u8'Настроить##rp_gun') then
+				-- 		imgui.OpenPopup(fa.GUN .. u8' Настроить RP оружие##weapon_name')
+				-- 	end
+				-- 	if imgui.BeginPopupModal(fa.GUN .. u8' Настроить RP оружие##weapon_name', _, imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoResize + imgui.WindowFlags.AlwaysAutoResize ) then
+				-- 		change_dpi()
+				-- 		if imgui.Button((settings.general.rp_gun and u8'Отключить##rp_gun' or u8'Включить##rp_gun'), imgui.ImVec2(200 * settings.general.custom_dpi, 25 * settings.general.custom_dpi)) then
+				-- 			settings.general.rp_gun = not settings.general.rp_gun
+				-- 			save_settings()
+				-- 			imgui.CloseCurrentPopup()
+				-- 		end
+				-- 		imgui.SameLine()
+				-- 		if imgui.Button(fa.GEAR .. u8' Настоить RP ганы', imgui.ImVec2(200 * settings.general.custom_dpi, 25 * settings.general.custom_dpi)) then
+				-- 			RPWeaponWindow[0] = true
+				-- 			if not settings.general.rp_gun then
+				-- 				settings.general.rp_gun = true
+				-- 				save_settings()
+				-- 			end
+				-- 			imgui.CloseCurrentPopup()
+				-- 		end
+				-- 		imgui.End()
+				-- 	end
+				-- 	imgui.Columns(1)
+				-- 	imgui.Separator()
+				-- 	imgui.Columns(3)
+				-- 	imgui.CenterColumnText(u8"Режим RP общения в чатах")
+				-- 	imgui.SameLine(nil, 5) imgui.TextDisabled("[?]")
+				-- 	if imgui.IsItemHovered() then
+				-- 		imgui.SetTooltip(u8"Все ваши сообщения будут с заглавной буквы и с точкой в конце.\nРаботает в обычном чате и некоторых часто используемых командах:\n/r /rb /j /jb /m /s /b /n /do /vr /fam /al")
+				-- 	end
+				-- 	imgui.NextColumn()
+				-- 	if settings.player_info.rp_chat then
+				-- 		imgui.CenterColumnText(u8'Включено')
+				-- 	else
+				-- 		imgui.CenterColumnText(u8'Отключено')
+				-- 	end
+				-- 	imgui.NextColumn()
+				-- 	if settings.player_info.rp_chat then
+				-- 		if imgui.CenterColumnSmallButton(u8'Отключить##rp_chat') then
+				-- 			settings.player_info.rp_chat = false
+				-- 			save_settings()
+				-- 		end
+				-- 		else
+				-- 		if imgui.CenterColumnSmallButton(u8'Включить##rp_chat') then
+				-- 			settings.player_info.rp_chat = true
+				-- 			save_settings()
+				-- 		end
+				-- 	end
+				-- 	imgui.Columns(1)
+				-- imgui.EndChild()
+				-- end
+
+
+
+-- end
+
 imgui.OnFrame(
     function() return MainWindow[0] end,
     function(player)
@@ -5085,28 +6195,19 @@ imgui.OnFrame(
 		change_dpi()
 		if imgui.BeginTabBar('чё код смотришь, а?') then	
 			if imgui.BeginTabItem(fa.HOUSE..u8' Главное меню') then
-				if doesFileExist(configDirectory .. '/Resourse/logo1.png') or doesFileExist(configDirectory .. '/Resourse/logo2.png') then
-					if not helper_logo then
-						local path = ''
-						if doesFileExist(configDirectory .. '/Resourse/logo1.png') and doesFileExist(configDirectory .. '/Resourse/logo2.png') then
-							math.randomseed(os.time())
-							local random = math.random(1,2)
-							path = configDirectory .. '/Resourse/logo' .. random .. '.png'
-						elseif doesFileExist(configDirectory .. '/Resourse/logo1.png') then
-							path = configDirectory .. '/Resourse/logo1.png'
-						elseif doesFileExist(configDirectory .. '/Resourse/logo2.png') then
-							path = configDirectory .. '/Resourse/logo2.png'
-						end
-						helper_logo = imgui.CreateTextureFromFile(path)
+				if (doesFileExist(configDirectory .. '/Resourse/logo.png')) then
+					if (not _G.helper_logo) then
+						local path = configDirectory .. '/Resourse/logo.png'
+						_G.helper_logo = imgui.CreateTextureFromFile(path)
 					else
-						imgui.Image(helper_logo, imgui.ImVec2(589 * settings.general.custom_dpi, 161 * settings.general.custom_dpi))
+						imgui.Image(_G.helper_logo, imgui.ImVec2(589 * settings.general.custom_dpi, 161 * settings.general.custom_dpi))
 					end
 				else
-					if imgui.BeginChild('##1', imgui.ImVec2(589 * settings.general.custom_dpi, 161 * settings.general.custom_dpi), true) then
-						imgui.Text("\n\n\n\n")
-						imgui.CenterTextDisabled(u8(configDirectory .. '/Resourse/logo1.png'))
-						imgui.CenterTextDisabled(u8("https://github.com/MTGMODS/arizona-helper/raw/refs/heads/main/Resourse/logo1.png"))
-						imgui.CenterTextDisabled(u8('(не удалось загрузить логотип хелпера)'))
+					if imgui.BeginChild('##1000000000000', imgui.ImVec2(589 * settings.general.custom_dpi, 161 * settings.general.custom_dpi), true) then
+						imgui.Text("\n\n\n")
+						imgui.CenterTextDisabled(u8('Не удалось автоматически загрузить логотип и другие файлы хелпера!\n\n'))
+						imgui.CenterTextDisabled(u8('На время включите VPN для подгрузки нужных файлов, либо скачайте вручную'))
+						imgui.CenterTextDisabled(u8('https://github.com/MTGMODS/arizona-helper'))
 						imgui.EndChild()
 					end
 				end
@@ -5148,7 +6249,7 @@ imgui.OnFrame(
 					imgui.Columns(3)
 					imgui.CenterColumnText(u8"Акцент персонажа:")
 					imgui.NextColumn()
-					if checkbox_accent_enable[0] then
+					if checkbox.accent_enable[0] then
 						imgui.CenterColumnText(u8(settings.player_info.accent))
 					else 
 						imgui.CenterColumnText(u8'Отключено')
@@ -5161,8 +6262,8 @@ imgui.OnFrame(
 					imgui.SetNextWindowPos(imgui.ImVec2(sizeX / 2, sizeY / 2), imgui.Cond.Always, imgui.ImVec2(0.5, 0.5))
 					if imgui.BeginPopupModal(getUserIcon() .. u8' Акцент персонажа ' .. getUserIcon() .. '##accent', _, imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoResize + imgui.WindowFlags.NoScrollbar) then
 						change_dpi()
-						if imgui.Checkbox('##checkbox_accent_enable', checkbox_accent_enable) then
-							settings.player_info.accent_enable = checkbox_accent_enable[0]
+						if imgui.Checkbox('##checkbox.accent_enable', checkbox.accent_enable) then
+							settings.player_info.accent_enable = checkbox.accent_enable[0]
 							save_settings()
 						end
 						imgui.SameLine()
@@ -5236,7 +6337,7 @@ imgui.OnFrame(
 						end
 						imgui.SameLine()
 						if imgui.Button(fa.GEARS .. u8' Сбросить ' .. fa.GEARS .. '##reset_fraction', imgui.ImVec2(200 * settings.general.custom_dpi, 25 * settings.general.custom_dpi)) then
-							modules.commands.data.commands.my = {{ cmd = 'time' , description = 'Посмотреть время' ,  text = '/me взглянул{sex} на свои часы с гравировкой Arizona Helper и посмотрел{sex} время&/time&/do На часах видно время {get_time}.' , arg = '' , enable = true, waiting = '1.5' , bind = "{}" }}
+							modules.commands.data.commands.my = {{cmd = 'time' , description = 'Посмотреть время' ,  text = '/me взглянул{sex} на свои часы с гравировкой Arizona Helper и посмотрел{sex} время&/time&/do На часах видно время {get_time}.' , arg = '' , enable = true, waiting = '1.5', bind = "{}" }}
 							modules.commands.data.commands_manage.my = {}
 							InititalWindow[0] = true
 							MainWindow[0] = false
@@ -5363,9 +6464,9 @@ imgui.OnFrame(
 							imgui.Columns(1)
 							imgui.Separator()
 							imgui.Columns(2)
-							imgui.CenterColumnText(u8"/probiv")
+							imgui.CenterColumnText(u8"/rpguns")
 							imgui.NextColumn()
-							imgui.CenterColumnText(u8"Узнать статистику другого игрока")
+							imgui.CenterColumnText(u8"Меню RP оружия")
 							imgui.Columns(1)
 							imgui.Separator()
 							imgui.Columns(2)
@@ -5377,14 +6478,14 @@ imgui.OnFrame(
 							imgui.Columns(2)
 							imgui.CenterColumnText(u8"/irv")
 							imgui.NextColumn()
-							imgui.CenterColumnText(u8"Надеть/снять инфакрасные очки")
+							imgui.CenterColumnText(u8"Надеть/снять инфракрасные очки")
 							imgui.Columns(1)
 							imgui.Separator()
 							if not isMode('none') then
 								imgui.Columns(2)
 								imgui.CenterColumnText(u8"/mb")
 								imgui.NextColumn()
-								imgui.CenterColumnText(u8"Меню улучшенного /members")
+								imgui.CenterColumnText(u8"Меню доработанного /members")
 								imgui.Columns(1)
 								imgui.Separator()
 								imgui.Columns(2)
@@ -5399,28 +6500,20 @@ imgui.OnFrame(
 								imgui.CenterColumnText(u8"Меню проведения собеседования")
 								imgui.Columns(1)
 								imgui.Separator()
-							end
-							imgui.Columns(2)
-							imgui.CenterColumnText(u8"/rpguns")
-							imgui.NextColumn()
-							imgui.CenterColumnText(u8"Меню настройки RP отыгровок оружия")
-							imgui.Columns(1)
-							imgui.Separator()
-							if isMode('army') or isMode('prison') then
 								imgui.Columns(2)
 								imgui.CenterColumnText(u8"/post")
 								imgui.NextColumn()
 								imgui.CenterColumnText(u8"Меню системы постов")
 								imgui.Columns(1)
 								imgui.Separator()
-								if isMode('prison') then
-									imgui.Columns(2)
-									imgui.CenterColumnText(u8"/pum")
-									imgui.NextColumn()
-									imgui.CenterColumnText(u8"Меню умного повышения срока")
-									imgui.Columns(1)
-									imgui.Separator()
-								end
+							end
+							if isMode('prison') then
+								imgui.Columns(2)
+								imgui.CenterColumnText(u8"/pum")
+								imgui.NextColumn()
+								imgui.CenterColumnText(u8"Меню умного повышения срока")
+								imgui.Columns(1)
+								imgui.Separator()
 							end
 							if isMode('police') or isMode('fbi') then
 								imgui.Columns(2)
@@ -5727,23 +6820,23 @@ imgui.OnFrame(
 							if isMonetLoader() then
 								imgui.CenterText(u8('Наэкранные кнопочки для работы функций хелпера'))
 								imgui.Separator()
-								if imgui.Checkbox(u8(' Отображение кнопки "Взаимодействие" (аналог /hm ID)'), checkbox_mobile_fastmenu_button) then
-									settings.general.mobile_fastmenu_button = checkbox_mobile_fastmenu_button[0]
-									FastMenuButton[0] = checkbox_mobile_fastmenu_button[0]
+								if imgui.Checkbox(u8(' Отображение кнопки "Взаимодействие" (аналог /hm ID)'), checkbox.mobile_fastmenu_button) then
+									settings.general.mobile_fastmenu_button = checkbox.mobile_fastmenu_button[0]
+									FastMenuButton[0] = checkbox.mobile_fastmenu_button[0]
 									save_settings()
 								end
-								if imgui.Checkbox(u8(' Отображение кнопки "Остановить" (аналог /stop)'), checkbox_mobile_stop_button) then
-									settings.general.mobile_stop_button = checkbox_mobile_stop_button[0]
+								if imgui.Checkbox(u8(' Отображение кнопки "Остановить" (аналог /stop)'), checkbox.mobile_stop_button) then
+									settings.general.mobile_stop_button = checkbox.mobile_stop_button[0]
 									save_settings()
 								end
-								if imgui.Checkbox(u8(' Отображение кнопки "10-55 10-66"'), checkbox_mobile_meg_button) then
-									settings.general.mobile_meg_button = checkbox_mobile_meg_button[0]
+								if imgui.Checkbox(u8(' Отображение кнопки "10-55 10-66"'), checkbox.mobile_meg_button) then
+									settings.general.mobile_meg_button = checkbox.mobile_meg_button[0]
 									MegafonWindow[0] = settings.general.mobile_meg_button
 									save_settings()
 								end
-								if imgui.Checkbox(u8(' Отображение кнопки "Taser" (аналог /taser)'), checkbox_mobile_taser_button) then
-									settings.general.use_taser_menu = checkbox_mobile_taser_button[0]
-									TaserWindow[0] = settings.general.use_taser_menu
+								if imgui.Checkbox(u8(' Отображение кнопки "Taser" (аналог /taser)'), checkbox.mobile_taser_button) then
+									settings.general.mobile_taser_button = checkbox.mobile_taser_button[0]
+									TaserWindow[0] = settings.general.mobile_taser_button
 									save_settings()
 								end
 							else
@@ -5958,53 +7051,35 @@ imgui.OnFrame(
 					imgui.Separator()
 					imgui.Columns(3)
 					if monet_no_errors then
-						if theme[0] == 0 then
-							imgui.SetCursorPosX(55 * settings.general.custom_dpi)
-							if imgui.RadioButtonIntPtr(u8" Custom", theme, 0) then
-								local r,g,b = mmcolor[0] * 255, mmcolor[1] * 255, mmcolor[2] * 255
-								local argb = join_argb(0, r, g, b)
-								settings.general.helper_theme = 0
-								settings.general.moonmonet_theme_color = argb
-								settings.general.message_color = argb
-								message_color = "0x" .. argbToHexWithoutAlpha(0, r, g, b)
-								message_color_hex = '{' .. argbToHexWithoutAlpha(0, r, g, b) .. '}'
-								local tmp = imgui.ColorConvertU32ToFloat4(settings.general.message_color)
-								msgcolor = imgui.new.float[3](tmp.z, tmp.y, tmp.x)
-								apply_moonmonet_theme()
-								save_settings()
-							end
-							imgui.SameLine()
-							if imgui.ColorEdit3('## COLOR1', mmcolor, imgui.ColorEditFlags.NoInputs) then
-								local r,g,b = mmcolor[0] * 255, mmcolor[1] * 255, mmcolor[2] * 255
-								local argb = join_argb(0, r, g, b)
-								settings.general.moonmonet_theme_color = argb
-								settings.general.message_color = argb
-								message_color = "0x" .. argbToHexWithoutAlpha(0, r, g, b)
-								message_color_hex = '{' .. argbToHexWithoutAlpha(0, r, g, b) .. '}'
-								local tmp = imgui.ColorConvertU32ToFloat4(settings.general.message_color)
-								msgcolor = imgui.new.float[3](tmp.z, tmp.y, tmp.x)
-								if theme[0] == 0 then
-									apply_moonmonet_theme()
-									save_settings()
-								end
-							end
-						else
-							if imgui.CenterColumnRadioButtonIntPtr(u8" Custom", theme, 0) then
-								local r,g,b = mmcolor[0] * 255, mmcolor[1] * 255, mmcolor[2] * 255
-								local argb = join_argb(0, r, g, b)
-								settings.general.helper_theme = 0
-								settings.general.moonmonet_theme_color = argb
-								settings.general.message_color = argb
-								message_color = "0x" .. argbToHexWithoutAlpha(0, r, g, b)
-								message_color_hex = '{' .. argbToHexWithoutAlpha(0, r, g, b) .. '}'
-								local tmp = imgui.ColorConvertU32ToFloat4(settings.general.message_color)
-								msgcolor = imgui.new.float[3](tmp.z, tmp.y, tmp.x)
+						imgui.SetCursorPosX(55 * settings.general.custom_dpi)
+						if imgui.RadioButtonIntPtr(u8" Custom", theme, 0) then
+							local r,g,b = mmcolor[0] * 255, mmcolor[1] * 255, mmcolor[2] * 255
+							local argb = join_argb(0, r, g, b)
+							settings.general.helper_theme = 0
+							settings.general.moonmonet_theme_color = argb
+							settings.general.message_color = argb
+							message_color = "0x" .. argbToHexWithoutAlpha(0, r, g, b)
+							message_color_hex = '{' .. argbToHexWithoutAlpha(0, r, g, b) .. '}'
+							local tmp = imgui.ColorConvertU32ToFloat4(settings.general.message_color)
+							msgcolor = imgui.new.float[3](tmp.z, tmp.y, tmp.x)
+							apply_moonmonet_theme()
+							save_settings()
+						end
+						imgui.SameLine()
+						if imgui.ColorEdit3('## COLOR1', mmcolor, imgui.ColorEditFlags.NoInputs) then
+							local r,g,b = mmcolor[0] * 255, mmcolor[1] * 255, mmcolor[2] * 255
+							local argb = join_argb(0, r, g, b)
+							settings.general.moonmonet_theme_color = argb
+							settings.general.message_color = argb
+							message_color = "0x" .. argbToHexWithoutAlpha(0, r, g, b)
+							message_color_hex = '{' .. argbToHexWithoutAlpha(0, r, g, b) .. '}'
+							local tmp = imgui.ColorConvertU32ToFloat4(settings.general.message_color)
+							msgcolor = imgui.new.float[3](tmp.z, tmp.y, tmp.x)
+							if theme[0] == 0 then
 								apply_moonmonet_theme()
 								save_settings()
 							end
 						end
-
-						
 					else
 						if imgui.CenterColumnRadioButtonIntPtr(u8" Сustom ", theme, 0) then
 							theme[0] = settings.general.helper_theme
@@ -6067,11 +7142,17 @@ imgui.OnFrame(
 						end
 						imgui.SameLine()
 						if imgui.Button(fa.CIRCLE_ARROW_RIGHT .. u8' Да, изменить ' .. fa.CIRCLE_ARROW_LEFT .. "##change_size", imgui.ImVec2(200 * settings.general.custom_dpi, 25 * settings.general.custom_dpi)) then
-							settings.general.custom_dpi = tonumber(string.format('%.3f', slider_dpi[0]))
-							save_settings()
-							sampAddChatMessage('[Arizona Helper] {ffffff}Перезагрузка скрипта для пременения размера окон...', message_color)
-							reload_script = true
-							thisScript():reload()
+							local new_dpi = tonumber(string.format('%.3f', slider_dpi[0]))
+							if isMonetLoader() and new_dpi < MONET_DPI_SCALE then
+								sampAddChatMessage('[Arizona Helper] {ffffff}Для вашего дисплея нельзя сделать размер меньше ' .. MONET_DPI_SCALE, message_color)
+								imgui.CloseCurrentPopup()
+							else
+								settings.general.custom_dpi = new_dpi
+								save_settings()
+								sampAddChatMessage('[Arizona Helper] {ffffff}Перезагрузка скрипта для пременения размера окон...', message_color)
+								reload_script = true
+								thisScript():reload()
+							end
 						end
 						imgui.End()
 					end
@@ -6125,7 +7206,7 @@ imgui.OnFrame(
 						if imgui.Button(fa.TRASH_CAN .. u8' Да, удалить ' .. fa.TRASH_CAN .. '##delete_helper', imgui.ImVec2(200 * settings.general.custom_dpi, 25 * settings.general.custom_dpi)) then
 							reload_script = true
 							deleteHelperData('full')
-							sampAddChatMessage('[Arizona Helper] {ffffff}Хелпер полностю удалён из вашего устройства!', message_color)
+							sampAddChatMessage('[Arizona Helper] {ffffff}Хелпер полностью удалён из вашего устройства!', message_color)
 							thisScript():unload()
 						end
 						imgui.End()
@@ -6176,7 +7257,7 @@ imgui.OnFrame(
 									imgui.CenterText(u8('Если нужен переход на следущую'))
 									imgui.CenterText(u8('строку, вместо тега укажите skip'))
 									imgui.PushItemWidth(215 * settings.general.custom_dpi)
-									imgui.InputText('##input_dep_new_tag', input_dep_new_tag, 256) 
+									imgui.InputText('##inputs_dep.new_tag', inputs_dep.new_tag, 256) 
 									if imgui.Button(fa.CIRCLE_XMARK .. u8' Отмена ' .. fa.CIRCLE_XMARK .. '##dep_add_tag'..tag_type, 
 										imgui.ImVec2(imgui.GetMiddleButtonX(2), 25 * settings.general.custom_dpi)) then
 										imgui.CloseCurrentPopup()
@@ -6184,7 +7265,7 @@ imgui.OnFrame(
 									imgui.SameLine()
 									if imgui.Button(fa.FLOPPY_DISK .. u8' Сохранить ' .. fa.FLOPPY_DISK .. '##dep_add_tag'..tag_type, 
 										imgui.ImVec2(imgui.GetMiddleButtonX(2), 25 * settings.general.custom_dpi)) then
-										table.insert(settings.deportament.dep_tags_custom, u8:decode(ffi.string(input_dep_new_tag)))
+										table.insert(settings.deportament.dep_tags_custom, u8:decode(ffi.string(inputs_dep.new_tag)))
 										save_settings()
 										imgui.CloseCurrentPopup()
 									end
@@ -6210,8 +7291,8 @@ imgui.OnFrame(
                 for i, tag in ipairs(settings.deportament.dep_fms) do
                     imgui.SameLine()
                     if imgui.Button(' ' .. u8(tag) .. ' ##' .. i) then
-                        input_dep_fm = imgui.new.char[256](u8(tag))
-                        settings.deportament.dep_fm = u8:decode(ffi.string(input_dep_fm))
+                        inputs_dep.fm = imgui.new.char[256](u8(tag))
+                        settings.deportament.dep_fm = u8:decode(ffi.string(inputs_dep.fm))
                         save_settings()
                         imgui.CloseCurrentPopup()
                     end
@@ -6222,7 +7303,7 @@ imgui.OnFrame(
                 end
                 if imgui.BeginPopupModal(fa.TAG .. u8' Добавление новой частоты##2', _, imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoResize) then
                     imgui.PushItemWidth(215 * settings.general.custom_dpi)
-                    imgui.InputText('##input_dep_new_tag', input_dep_new_tag, 256) 
+                    imgui.InputText('##inputs_dep.new_tag', inputs_dep.new_tag, 256) 
                     imgui.Separator()
                     if imgui.Button(fa.CIRCLE_XMARK .. u8' Отмена ' .. fa.CIRCLE_XMARK .. '##dep_add_fm', 
                         imgui.ImVec2(imgui.GetMiddleButtonX(2), 25 * settings.general.custom_dpi)) then
@@ -6231,7 +7312,7 @@ imgui.OnFrame(
                     imgui.SameLine()
                     if imgui.Button(fa.FLOPPY_DISK .. u8' Сохранить ' .. fa.FLOPPY_DISK .. '##dep_add_fm', 
                         imgui.ImVec2(imgui.GetMiddleButtonX(2), 25 * settings.general.custom_dpi)) then
-                        table.insert(settings.deportament.dep_fms, u8:decode(ffi.string(input_dep_new_tag)))
+                        table.insert(settings.deportament.dep_fms, u8:decode(ffi.string(inputs_dep.new_tag)))
                         save_settings()
                         imgui.CloseCurrentPopup()
                     end
@@ -6251,20 +7332,20 @@ imgui.OnFrame(
             imgui.Columns(3)
             imgui.CenterColumnText(u8('Ваш тег:'))
             imgui.PushItemWidth(155 * settings.general.custom_dpi)
-            if imgui.InputText('##input_dep_tag1', input_dep_tag1, 256) then
-                settings.deportament.dep_tag1 = u8:decode(ffi.string(input_dep_tag1))
+            if imgui.InputText('##inputs_dep.tag1', inputs_dep.tag1, 256) then
+                settings.deportament.dep_tag1 = u8:decode(ffi.string(inputs_dep.tag1))
                 save_settings()
             end
             if imgui.CenterColumnButton(u8('Выбрать тег##1')) then
                 imgui.OpenPopup(fa.TAG .. u8' Теги организаций##1')
             end
-            createTagPopup('1', input_dep_tag1, 'dep_tag1')
+            createTagPopup('1', inputs_dep.tag1, 'dep_tag1')
             
             imgui.NextColumn()
             imgui.CenterColumnText(u8('Частота рации:'))
             imgui.PushItemWidth(155 * settings.general.custom_dpi)
-            if imgui.InputText('##input_dep_fm', input_dep_fm, 256) then
-                settings.deportament.dep_fm = u8:decode(ffi.string(input_dep_fm))
+            if imgui.InputText('##inputs_dep.fm', inputs_dep.fm, 256) then
+                settings.deportament.dep_fm = u8:decode(ffi.string(inputs_dep.fm))
                 save_settings()
             end
             if imgui.CenterColumnButton(u8('Выбрать частоту##1')) then
@@ -6274,29 +7355,29 @@ imgui.OnFrame(
             imgui.NextColumn()
             imgui.CenterColumnText(u8('Тег получателя:'))
             imgui.PushItemWidth(155 * settings.general.custom_dpi)
-            if imgui.InputText('##input_dep_tag2', input_dep_tag2, 256) then
-                settings.deportament.dep_tag2 = u8:decode(ffi.string(input_dep_tag2))
+            if imgui.InputText('##inputs_dep.tag2', inputs_dep.tag2, 256) then
+                settings.deportament.dep_tag2 = u8:decode(ffi.string(inputs_dep.tag2))
                 save_settings()
             end
             if imgui.CenterColumnButton(u8('Выбрать тег##2')) then
                 imgui.OpenPopup(fa.TAG .. u8' Теги организаций##2')
             end
-            createTagPopup('2', input_dep_tag2, 'dep_tag2')
+            createTagPopup('2', inputs_dep.tag2, 'dep_tag2')
             imgui.Columns(1)
             imgui.Separator()
             imgui.CenterText(u8('Текст:'))
             imgui.PushItemWidth(405 * settings.general.custom_dpi)
-            imgui.InputText(u8'##dep_input_text', input_dep_text, 256)
+            imgui.InputText(u8'##dep_input_text', inputs_dep.text, 256)
             imgui.SameLine()
             if imgui.Button(u8' Отправить ') then
-                local tag1 = settings.deportament.anti_skobki and u8:decode(ffi.string(input_dep_tag1)):gsub("[%[%]]", "") or u8:decode(ffi.string(input_dep_tag1))
-                local tag2 = settings.deportament.anti_skobki and u8:decode(ffi.string(input_dep_tag2)):gsub("[%[%]]", "") or u8:decode(ffi.string(input_dep_tag2))
-                sampSendChat('/d ' .. tag1 .. ' ' .. u8:decode(ffi.string(input_dep_fm)) .. ' ' .. tag2 .. ': ' .. u8:decode(ffi.string(input_dep_text)))
+                local tag1 = settings.deportament.anti_skobki and u8:decode(ffi.string(inputs_dep.tag1)):gsub("[%[%]]", "") or u8:decode(ffi.string(inputs_dep.tag1))
+                local tag2 = settings.deportament.anti_skobki and u8:decode(ffi.string(inputs_dep.tag2)):gsub("[%[%]]", "") or u8:decode(ffi.string(inputs_dep.tag2))
+                sampSendChat('/d ' .. tag1 .. ' ' .. u8:decode(ffi.string(inputs_dep.fm)) .. ' ' .. tag2 .. ': ' .. u8:decode(ffi.string(inputs_dep.text)))
             end
-            local tag1 = ffi.string(input_dep_tag1)
-			local tag2 = ffi.string(input_dep_tag2)
-			local fm = ffi.string(input_dep_fm)
-			local text = ffi.string(input_dep_text)
+            local tag1 = ffi.string(inputs_dep.tag1)
+			local tag2 = ffi.string(inputs_dep.tag2)
+			local fm = ffi.string(inputs_dep.fm)
+			local text = ffi.string(inputs_dep.text)
 			if settings.deportament.anti_skobki then
 				tag1 = tag1:gsub("[%[%]]", "")
 				tag2 = tag2:gsub("[%[%]]", "")
@@ -6304,8 +7385,8 @@ imgui.OnFrame(
 			local preview_text = ('/d ' .. tag1 .. ' ' .. fm .. ' ' .. tag2 .. ': ' .. text)
 			imgui.CenterText(preview_text)
             imgui.Separator()
-            if imgui.Checkbox(u8(' Отключить использование символов [] (скобок) в тегах организаций'), checkbox_dep_anti_skobki) then
-                settings.deportament.anti_skobki = checkbox_dep_anti_skobki[0]
+            if imgui.Checkbox(u8(' Отключить использование символов [] (скобок) в тегах организаций'), checkbox.dep_anti_skobki) then
+                settings.deportament.anti_skobki = checkbox.dep_anti_skobki[0]
                 save_settings()
             end
             imgui.EndChild()
@@ -6517,19 +7598,19 @@ imgui.OnFrame(
 )
 
 imgui.OnFrame(
-    function() return MembersWindow[0] end,
+    function() return members.menu[0] end,
     function(player)
-		if #members == 0 then
+		if #members.all == 0 then
 			sampAddChatMessage('[Arizona Helper] {ffffff}Ошибка, список сотрудников пустой!', message_color)
-			MembersWindow[0] = false
-		elseif #members >= 16 then 
+			members.menu[0] = false
+		elseif #members.all >= 16 then 
 			sizeYY = 413 + 21
 		else
-			sizeYY = 24.5 * (#members + 1) + 21
+			sizeYY = 24.5 * (#members.all + 1) + 21
 		end
 		imgui.SetNextWindowPos(imgui.ImVec2(sizeX / 2, sizeY / 2), imgui.Cond.FirstUseEver, imgui.ImVec2(0.5, 0.5))
 		imgui.SetNextWindowSize(imgui.ImVec2(730 * settings.general.custom_dpi, sizeYY * settings.general.custom_dpi), imgui.Cond.FirstUseEver)
-		imgui.Begin(getHelperIcon() .. " " ..  u8(members_info.fraction) .. " - " .. #members .. u8' сотрудников онлайн ' .. getHelperIcon(), MembersWindow, imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoResize)
+		imgui.Begin(getHelperIcon() .. " " ..  u8(members.info.fraction) .. " - " .. #members.all .. u8' сотрудников онлайн ' .. getHelperIcon(), members.menu, imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoResize)
 		change_dpi()
 		imgui.Columns(4)
 		imgui.CenterColumnText(getUserIcon() .. u8(" Cотрудник"))
@@ -6544,7 +7625,7 @@ imgui.OnFrame(
 		imgui.CenterColumnText(fa.INFO .. u8(" Инфо"))
 		imgui.SetColumnWidth(-1, 100 * settings.general.custom_dpi)
 		imgui.Columns(1)
-		for i, v in ipairs(members) do
+		for i, v in ipairs(members.all) do
 			imgui.Separator()
 			imgui.Columns(4)
 			if v.working then
@@ -6566,7 +7647,7 @@ imgui.OnFrame(
 			imgui.CenterColumnColorText(imgui_RGBA, text)
 			if (imgui.IsItemClicked() and settings.player_info.fraction_rank_number >= 9) then 
 				show_leader_fast_menu(v.id)
-				MembersWindow[0] = false
+				members.menu[0] = false
 			end
 			imgui.NextColumn()
 			imgui.CenterColumnText(u8(v.rank) .. ' (' .. u8(v.rank_number) .. ')')
@@ -6599,12 +7680,21 @@ imgui.OnFrame(
 		end
 
 		if not isMonetLoader() and not sampIsChatInputActive() and not sampIsDialogActive() and not isSampfuncsConsoleActive() then player.HideCursor = true else player.HideCursor = false end
-		if imgui.Button(u8'Обновить список преступников', imgui.ImVec2(340 * settings.general.custom_dpi, 25 * settings.general.custom_dpi)) then
+		if settings.mj.auto_update_wanteds then
+			local text_time_wait = 15 - tonumber(updwanteds.time)
+			if text_time_wait < 10 then
+				text_time_wait = '0' .. text_time_wait
+			end
+			imgui.Text(u8('Обновление списка преступников будет через ') .. text_time_wait .. u8(' секунд'))
+			imgui.Separator()
+		else
+			if imgui.Button(u8'Обновить список преступников', imgui.ImVec2(340 * settings.general.custom_dpi, 25 * settings.general.custom_dpi)) then
 				WantedWindow[0] = false
 				sampAddChatMessage('[Arizona Helper] {ffffff}Вы можете включить авто-обновление /wanteds в настройках Ассистента!', message_color)
 				sampProcessChatInput('/wanteds')
 			end
 			imgui.Separator()
+		end	
 		imgui.Columns(3)
 		imgui.CenterColumnText(u8("Никнейм"))
 		imgui.SetColumnWidth(-1, 200 * settings.general.custom_dpi)
@@ -6668,10 +7758,6 @@ imgui.OnFrame(
     end
 )
 
--- if not settings.windows_pos.taser then
--- 	settings.windows_pos.taser = default_settings.windows_pos.taser
--- end
-
 imgui.OnFrame(
     function() return TaserWindow[0] end,
     function(player)
@@ -6720,7 +7806,7 @@ imgui.OnFrame(
 								local popup_id = fa.TRIANGLE_EXCLAMATION .. u8' Перепроверьте данные перед выдачей розыска##' .. item.text .. item.lvl .. item.reason
 								imgui.GetStyle().ButtonTextAlign = imgui.ImVec2(0.0, 0.5)
 								imgui.PushStyleColor(imgui.Col.ButtonHovered, imgui.ImVec4(1.00, 0.00, 0.00, 0.65))
-								if imgui.Button(u8(split_text_into_lines(item.text, 85))..'##' .. item.text .. item.lvl .. item.reason, imgui.ImVec2(imgui.GetMiddleButtonX(1), (25 * count_lines_in_text(item.text, 85)) * settings.general.custom_dpi)) then
+								if imgui.Button("> " .. u8(split_text_into_lines(item.text, 85))..'##' .. item.text .. item.lvl .. item.reason, imgui.ImVec2(imgui.GetMiddleButtonX(1), (25 * count_lines_in_text(item.text, 85)) * settings.general.custom_dpi)) then
 									imgui.OpenPopup(popup_id)
 								end
 								imgui.PopStyleColor()
@@ -6887,7 +7973,6 @@ imgui.OnFrame(
     end
 )
 
-
 imgui.OnFrame(
     function() return NoteWindow[0] end,
     function(player)
@@ -7004,9 +8089,9 @@ imgui.OnFrame(
 		imgui.SetNextWindowPos(imgui.ImVec2(sizeX / 2, sizeY - 50 * settings.general.custom_dpi), imgui.Cond.FirstUseEver, imgui.ImVec2(0.5, 0.5))
 		imgui.Begin(getHelperIcon() .. " Arizona Helper " .. getHelperIcon() .. "##CommandStopWindow", _, imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoResize + imgui.WindowFlags.NoScrollbar + imgui.WindowFlags.AlwaysAutoResize )
 		change_dpi()
-		if isMonetLoader() and isActiveCommand then
+		if isMonetLoader() and commands.isActive then
 			if imgui.Button(fa.CIRCLE_STOP..u8' Остановить отыгровку ') then
-				command_stop = true 
+				commands.isStop = true 
 				CommandStopWindow[0] = false
 			end
 		else
@@ -7022,15 +8107,15 @@ imgui.OnFrame(
 		imgui.SetNextWindowPos(imgui.ImVec2(sizeX / 2, sizeY - 50 * settings.general.custom_dpi), imgui.Cond.FirstUseEver, imgui.ImVec2(0.5, 0.5))
 		imgui.Begin(getHelperIcon() .." Arizona Helper " .. getHelperIcon() .. "##CommandPauseWindow", _, imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoResize + imgui.WindowFlags.NoScrollbar + imgui.WindowFlags.AlwaysAutoResize)
 		change_dpi()
-		if command_pause then
+		if commands.isPause then
 			if imgui.Button(fa.CIRCLE_ARROW_RIGHT .. u8' Продолжить ', imgui.ImVec2(150 * settings.general.custom_dpi, 25 * settings.general.custom_dpi)) then
-				command_pause = false
+				commands.isPause = false
 				CommandPauseWindow[0] = false
 			end
 			imgui.SameLine()
 			if imgui.Button(fa.CIRCLE_XMARK .. u8' Полный STOP ', imgui.ImVec2(150 * settings.general.custom_dpi, 25 * settings.general.custom_dpi)) then
-				command_stop = true 
-				command_pause = false
+				commands.isStop = true 
+				commands.isPause = false
 				CommandPauseWindow[0] = false
 			end
 		else
@@ -7066,22 +8151,18 @@ imgui.OnFrame(
     function() return UpdateWindow[0] end,
     function(player)
 		imgui.SetNextWindowPos(imgui.ImVec2(sizeX / 2, sizeY / 2), imgui.Cond.Always, imgui.ImVec2(0.5, 0.5))
-		imgui.Begin(fa.CIRCLE_INFO .. u8" Оповещение " .. fa.CIRCLE_INFO .. "##update_window", _, imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoResize + imgui.WindowFlags.AlwaysAutoResize )
+		imgui.Begin(fa.CIRCLE_INFO .. u8" Доступно обновление хелпера ".. fa.CIRCLE_INFO .. "##update_window", _, imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoResize + imgui.WindowFlags.AlwaysAutoResize )
 		if not isMonetLoader() then change_dpi() end
-		imgui.CenterText(u8'У вас сейчас установлена версия хелпера ' .. u8(tostring(thisScript().version)) .. ".")
-		imgui.CenterText(u8'В базе данных найдена новая версия хелпера - ' .. u8(update.version) .. ".")
-		imgui.CenterText(u8'Рекомендуется обновить скрипт для доступа к актуальному функционалу.')
-		imgui.Separator()
-		imgui.CenterText(u8('Что нового в версии ') .. u8(update.version) .. ':')
+		imgui.CenterText(u8("Список изменений в новой версии:"))
 		imgui.Text(u8(update.info))
 		imgui.Separator()
-		if imgui.Button(fa.CIRCLE_XMARK .. u8' Не обновлять ',  imgui.ImVec2(250 * settings.general.custom_dpi, 25 * settings.general.custom_dpi)) then
+		if imgui.Button(fa.CIRCLE_XMARK .. u8' Не обновлять ' .. fa.CIRCLE_XMARK, imgui.ImVec2(250 * settings.general.custom_dpi, 25 * settings.general.custom_dpi)) then
 			UpdateWindow[0] = false
 		end
 		imgui.SameLine()
-		if imgui.Button(fa.DOWNLOAD ..u8' Загрузить новую версию',  imgui.ImVec2(250 * settings.general.custom_dpi, 25 * settings.general.custom_dpi)) then
+		if imgui.Button(fa.DOWNLOAD ..u8' Загрузить ' .. u8(update.version) .. ' ' .. fa.DOWNLOAD, imgui.ImVec2(250 * settings.general.custom_dpi, 25 * settings.general.custom_dpi)) then
 			if thisScript().version:find('VIP') then
-				sampAddChatMessage('[Arizona Helper] {ffffff}Загрузите новую версию из VIP чата!', message_color)
+				sampAddChatMessage('[Arizona Helper] {ffffff}Перейдите в VIP чат и вручную скачайте актуальную версию!', message_color)
 			else
 				download_file = 'helper'
 				downloadFileFromUrlToPath(update.url, getWorkingDirectory():gsub('\\','/') .. "/Arizona Helper.lua")
@@ -7091,7 +8172,6 @@ imgui.OnFrame(
 		imgui.End()
     end
 )
-
 imgui.OnFrame(
     function() return SobesMenu[0] end,
     function(player)
@@ -7115,7 +8195,7 @@ imgui.OnFrame(
 						wait(1500)
 						sampSendChat("Мне нужен ваш Паспорт, Мед.карта и Лицензии.")
 						wait(1500)
-						sampSendChat("/n " .. sampGetPlayerNickname(player_id) .. ", используйте /showpass [ID] , /showmc [ID] , /showlic [ID]")
+						sampSendChat("/n " .. sampGetPlayerNickname(player_id) .. ", используйте /showpass")
 						wait(1500)
 						sampSendChat("/n Обязательно с RP отыгровками!")
 					end)
@@ -7198,7 +8278,6 @@ imgui.OnFrame(
     end
 )
 
--- MJ
 imgui.OnFrame(
     function() return RPWeaponWindow[0] end,
     function(player)
@@ -7213,14 +8292,14 @@ imgui.OnFrame(
 			for index, value in ipairs(modules.rpgun.data.rp_guns) do
 				value.enable = true
 			end
-			save_module('rp_gun')
+			save_module('rpgun')
 		end		
 		imgui.SameLine()
 		if imgui.Button(u8("Отключить всё")) then
 			for index, value in ipairs(modules.rpgun.data.rp_guns) do
 				value.enable = false
 			end
-			save_module('rp_gun')
+			save_module('rpgun')
 		end		
 		if imgui.BeginChild('rpguns1', imgui.ImVec2(588 * settings.general.custom_dpi, 361 * settings.general.custom_dpi), true) then
 			imgui.Columns(3)
@@ -7234,8 +8313,9 @@ imgui.OnFrame(
 			imgui.SetColumnWidth(-1, 150 * settings.general.custom_dpi)
 			imgui.Columns(1)
 			imgui.Separator()
+			local decoded_input = u8:decode(ffi.string(input or ""))
 			for index, value in ipairs(modules.rpgun.data.rp_guns) do
-				if u8:decode(ffi.string(input)) == '' or value.name:rupper():find(u8:decode(ffi.string(input)):rupper()) or value.id == tonumber(u8:decode(ffi.string(input)))  then
+				if decoded_input == '' or (value.name and value.name:upper():find(decoded_input:upper())) or value.id == tonumber(decoded_input) then
 					imgui.Columns(3)
 					if value.enable then
 						if imgui.CenterColumnSmallButton(fa.SQUARE_CHECK .. u8'  (работает)##' .. index, imgui.ImVec2(imgui.GetMiddleButtonX(5), 0)) then
@@ -7252,18 +8332,23 @@ imgui.OnFrame(
 					imgui.CenterColumnText('[' .. value.id .. '] ' .. u8(value.name))
 					imgui.SameLine()
 					if imgui.SmallButton(fa.PEN_TO_SQUARE .. '##weapon_name' .. index) then
-						imgui.StrCopy(input, u8(value.name))
+						_G.weapon_input = imgui.new.char[256]()
+						imgui.StrCopy(_G.weapon_input, u8(value.name))
 						imgui.OpenPopup(fa.GUN .. u8' Название оружия ' .. fa.GUN .. '##weapon_name' .. index)
 					end
 					if imgui.BeginPopupModal(fa.GUN .. u8' Название оружия ' .. fa.GUN .. '##weapon_name' .. index, _, imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoResize + imgui.WindowFlags.AlwaysAutoResize ) then
+						change_dpi()
 						imgui.PushItemWidth(400 * settings.general.custom_dpi)
-						imgui.InputText(u8'##weapon_name', input, 256) 
+						imgui.InputText(u8'##weapon_name', _G.weapon_input, 256) 
 						if imgui.Button(fa.CIRCLE_XMARK .. u8' Отмена ' .. fa.CIRCLE_XMARK, imgui.ImVec2(200 * settings.general.custom_dpi, 25 * settings.general.custom_dpi)) then
 							imgui.CloseCurrentPopup()
 						end
 						imgui.SameLine()
 						if imgui.Button(fa.FLOPPY_DISK .. u8' Сохранить ' .. fa.FLOPPY_DISK, imgui.ImVec2(200 * settings.general.custom_dpi, 25 * settings.general.custom_dpi)) then
-							sampAddChatMessage('НЕДОСТУПНО В ФРИ ВЕРСИИ', -1)
+							value.name = u8:decode(ffi.string(_G.weapon_input))
+							save_module('rpgun')
+							initialize_guns()
+							_G.weapon_input = nil
 							imgui.CloseCurrentPopup()
 						end
 						imgui.End()
@@ -7286,6 +8371,7 @@ imgui.OnFrame(
 						imgui.OpenPopup(fa.GUN .. u8' Расположение оружия##weapon_name' .. index)
 					end
 					if imgui.BeginPopupModal(fa.GUN .. u8' Расположение оружия##weapon_name' .. index, _, imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoResize + imgui.WindowFlags.AlwaysAutoResize ) then
+						change_dpi()
 						imgui.PushItemWidth(400 * settings.general.custom_dpi)
 						imgui.Combo(u8'##' .. index, ComboTags2, ImItems2, #item_list2)
 						if imgui.Button(fa.CIRCLE_XMARK .. u8' Отмена ' .. fa.CIRCLE_XMARK, imgui.ImVec2(200 * settings.general.custom_dpi, 25 * settings.general.custom_dpi)) then
@@ -7293,7 +8379,9 @@ imgui.OnFrame(
 						end
 						imgui.SameLine()
 						if imgui.Button(fa.FLOPPY_DISK .. u8' Сохранить ' .. fa.FLOPPY_DISK, imgui.ImVec2(200 * settings.general.custom_dpi, 25 * settings.general.custom_dpi)) then
-							sampAddChatMessage('НЕДОСТУПНО В ФРИ ВЕРСИИ', -1)
+							value.rpTake = ComboTags2[0] + 1
+							save_module('rpgun')
+							initialize_guns()
 							imgui.CloseCurrentPopup()
 						end
 						imgui.End()
@@ -7311,42 +8399,42 @@ imgui.OnFrame(
 
 -- MH
 imgui.OnFrame(
-    function() return MedCardMenu[0] end,
+    function() return medCard.menu[0] end,
     function(player)
 		imgui.SetNextWindowPos(imgui.ImVec2(sizeX / 2, sizeY / 2), imgui.Cond.FirstUseEver, imgui.ImVec2(0.5, 0.5))
-		imgui.Begin(fa.HOSPITAL.." Arizona Helper " .. fa.HOSPITAL .. "##medcard", MedCardMenu, imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoResize  + imgui.WindowFlags.NoScrollbar + imgui.WindowFlags.AlwaysAutoResize)
+		imgui.Begin(fa.HOSPITAL.." Arizona Helper " .. fa.HOSPITAL .. "##medcard", medCard.menu, imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoResize  + imgui.WindowFlags.NoScrollbar + imgui.WindowFlags.AlwaysAutoResize)
 		change_dpi()
 		imgui.CenterText(u8'Срок действия мед.карты:')
-		if imgui.RadioButtonIntPtr(u8" 7 дней ##0",medcard_days,0) then
-			medcard_days[0] = 0
+		if imgui.RadioButtonIntPtr(u8" 7 дней ##0",medCard.days,0) then
+			medCard.days[0] = 0
 		end
-		if imgui.RadioButtonIntPtr(u8" 14 дней ##1",medcard_days,1) then
-			medcard_days[0] = 1
+		if imgui.RadioButtonIntPtr(u8" 14 дней ##1",medCard.days,1) then
+			medCard.days[0] = 1
 		end
-		if imgui.RadioButtonIntPtr(u8" 30 дней ##2",medcard_days,2) then
-			medcard_days[0] = 2
+		if imgui.RadioButtonIntPtr(u8" 30 дней ##2",medCard.days,2) then
+			medCard.days[0] = 2
 		end
-		if imgui.RadioButtonIntPtr(u8" 60 дней ##3",medcard_days,3) then
-			medcard_days[0] = 3
+		if imgui.RadioButtonIntPtr(u8" 60 дней ##3",medCard.days,3) then
+			medCard.days[0] = 3
 		end
 		imgui.Separator()
 		imgui.CenterText(u8'Cтатус здоровья пациента:')
-		if imgui.RadioButtonIntPtr(u8" Не определен ##0",medcard_status,0) then
-			medcard_status[0] = 0
+		if imgui.RadioButtonIntPtr(u8" Не определен ##0", medCard.status,0) then
+			medCard.status[0] = 0
 		end
-		if imgui.RadioButtonIntPtr(u8" Психически не здоров ##1",medcard_status,1) then
-			medcard_status[0] = 1
+		if imgui.RadioButtonIntPtr(u8" Психически не здоров ##1", medCard.status,1) then
+			medCard.status[0] = 1
 		end
-		if imgui.RadioButtonIntPtr(u8" Наблюдаются отклонения ##2",medcard_status,2) then
-			medcard_status[0] = 2
+		if imgui.RadioButtonIntPtr(u8" Наблюдаются отклонения ##2", medCard.status,2) then
+			medCard.status[0] = 2
 		end
-		if imgui.RadioButtonIntPtr(u8" Полностью здоров ##3",medcard_status,3) then
-			medcard_status[0] = 3
+		if imgui.RadioButtonIntPtr(u8" Полностью здоров ##3", medCard.status,3) then
+			medCard.status[0] = 3
 		end
 		imgui.Separator()
 		if imgui.Button(fa.ID_CARD_CLIP..u8" Выдать мед.карту", imgui.ImVec2(imgui.GetMiddleButtonX(1), 0)) then
 			local command_find = false
-			for _, command in ipairs(settings.commands) do
+			for _, command in ipairs(modules.commands.data.commands.my) do
 				if command.enable and command.text:find('/medcard') then
 					command_find = true
 					local modifiedText = command.text
@@ -7357,8 +8445,8 @@ imgui.OnFrame(
 					modifiedText = modifiedText:gsub('%{get_ru_nick%(%{arg_id%}%)%}', TranslateNick(sampGetPlayerNickname(arg_id)) or "")
 					modifiedText = modifiedText:gsub('%{arg_id%}', arg_id or "")
 					lua_thread.create(function()
-						isActiveCommand = true
-						command_pause = false
+						commands.isActive = true
+						commands.isPause = false
 						if modifiedText:find('&.+&') then
 							if isMonetLoader() and settings.general.mobile_stop_button then
 								sampAddChatMessage('[Arizona Helper] {ffffff}Чтобы остановить отыгровку команды используйте ' .. message_color_hex .. '/stop {ffffff}или нажмите кнопку внизу экрана', message_color)
@@ -7374,9 +8462,9 @@ imgui.OnFrame(
 							table.insert(lines, line)
 						end
 						for line_index, line in ipairs(lines) do 
-							if command_stop then 
-								command_stop = false 
-								isActiveCommand = false
+							if commands.isStop then 
+								commands.isStop = false 
+								commands.isActive = false
 								if isMonetLoader() and settings.general.mobile_stop_button then
 									CommandStopWindow[0] = false
 								end
@@ -7384,7 +8472,7 @@ imgui.OnFrame(
 								return 
 							end
 							if wait_tag then
-								for tag, replacement in pairs(tagReplacements) do
+								for tag, replacement in pairs(binderTags) do
 									if line:find("{" .. tag .. "}") then
 										local success, result = pcall(string.gsub, line, "{" .. tag .. "}", replacement())
 										if success then
@@ -7394,12 +8482,12 @@ imgui.OnFrame(
 								end
 								if line == "{pause}" then
 									sampAddChatMessage('[Arizona Helper] {ffffff}Команда /' .. command.cmd .. ' поставлена на паузу!', message_color)
-									command_pause = true
+									commands.isPause = true
 									CommandPauseWindow[0] = true
-									while command_pause do
+									while commands.isPause do
 										wait(0)
 									end
-									if not command_stop then
+									if not commands.isStop then
 										sampAddChatMessage('[Arizona Helper] {ffffff}Продолжаю отыгровку команды /' .. command.cmd, message_color)	
 									end					
 								else
@@ -7414,7 +8502,7 @@ imgui.OnFrame(
 								end
 							end
 						end
-						isActiveCommand = false
+						commands.isActive = false
 						if isMonetLoader() and settings.general.mobile_stop_button then
 							CommandStopWindow[0] = false
 						end
@@ -7425,24 +8513,24 @@ imgui.OnFrame(
 				sampAddChatMessage('[Arizona Helper] {ffffff}Бинд для выдачи мед.карты отсутствует либо отключён!', message_color)
 				sampAddChatMessage('[Arizona Helper] {ffffff}Попробуйте сбросить настройки хелпера!', message_color)
 			end
-			MedCardMenu[0] = false
+			medCard.menu[0] = false
 		end
 		imgui.End()
     end
 )
 imgui.OnFrame(
-    function() return ReceptMenu[0] end,
+    function() return recept.menu[0] end,
     function(player)
 		imgui.SetNextWindowPos(imgui.ImVec2(sizeX / 2, sizeY / 2), imgui.Cond.FirstUseEver, imgui.ImVec2(0.5, 0.5))
-		imgui.Begin(fa.HOSPITAL.." Arizona Helper " .. fa.HOSPITAL .. "##recept", ReceptMenu, imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoResize  + imgui.WindowFlags.NoScrollbar + imgui.WindowFlags.AlwaysAutoResize)
+		imgui.Begin(fa.HOSPITAL.." Arizona Helper " .. fa.HOSPITAL .. "##recept", recept.menu, imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoResize  + imgui.WindowFlags.NoScrollbar + imgui.WindowFlags.AlwaysAutoResize)
 		change_dpi()
 		imgui.CenterText(u8'Количество рецептов для выдачи:')
 		imgui.PushItemWidth(250 * settings.general.custom_dpi)
-		imgui.SliderInt('', recepts, 1, 5)
+		imgui.SliderInt('', recept.recepts, 1, 5)
 		imgui.Separator()
-		if imgui.Button(fa.CAPSULES..u8" Выдать рецепты" , imgui.ImVec2(imgui.GetMiddleButtonX(1), 0)) then
+		if imgui.Button(fa.CAPSULES .. u8" Выдать рецепты " .. fa.CAPSULES, imgui.ImVec2(imgui.GetMiddleButtonX(1), 0)) then
 			local command_find = false
-			for _, command in ipairs(settings.commands) do
+			for _, command in ipairs(modules.commands.data.commands.my) do
 				if command.enable and command.text:find('/recept') then
 					command_find = true
 					local modifiedText = command.text
@@ -7453,8 +8541,8 @@ imgui.OnFrame(
 					modifiedText = modifiedText:gsub('%{get_ru_nick%(%{arg_id%}%)%}', TranslateNick(sampGetPlayerNickname(arg_id)) or "")
 					modifiedText = modifiedText:gsub('%{arg_id%}', arg_id or "")
 					lua_thread.create(function()
-						isActiveCommand = true
-						command_pause = false
+						commands.isActive = true
+						commands.isPause = false
 						if modifiedText:find('&.+&') then
 							if isMonetLoader() and settings.general.mobile_stop_button then
 								sampAddChatMessage('[Arizona Helper] {ffffff}Чтобы остановить отыгровку команды используйте ' .. message_color_hex .. '/stop {ffffff}или нажмите кнопку внизу экрана', message_color)
@@ -7470,9 +8558,9 @@ imgui.OnFrame(
 							table.insert(lines, line)
 						end
 						for line_index, line in ipairs(lines) do 
-							if command_stop then 
-								command_stop = false 
-								isActiveCommand = false
+							if commands.isStop then 
+								commands.isStop = false 
+								commands.isActive = false
 								if isMonetLoader() and settings.general.mobile_stop_button then
 									CommandStopWindow[0] = false
 								end
@@ -7480,7 +8568,7 @@ imgui.OnFrame(
 								return 
 							end
 							if wait_tag then
-								for tag, replacement in pairs(tagReplacements) do
+								for tag, replacement in pairs(binderTags) do
 									if line:find("{" .. tag .. "}") then
 										local success, result = pcall(string.gsub, line, "{" .. tag .. "}", replacement())
 										if success then
@@ -7490,12 +8578,12 @@ imgui.OnFrame(
 								end
 								if line == "{pause}" then
 									sampAddChatMessage('[Arizona Helper] {ffffff}Команда /' .. command.cmd .. ' поставлена на паузу!', message_color)
-									command_pause = true
+									commands.isPause = true
 									CommandPauseWindow[0] = true
-									while command_pause do
+									while commands.isPause do
 										wait(0)
 									end
-									if not command_stop then
+									if not commands.isStop then
 										sampAddChatMessage('[Arizona Helper] {ffffff}Продолжаю отыгровку команды /' .. command.cmd, message_color)	
 									end					
 								else
@@ -7510,7 +8598,7 @@ imgui.OnFrame(
 								end
 							end
 						end
-						isActiveCommand = false
+						commands.isActive = false
 						if isMonetLoader() and settings.general.mobile_stop_button then
 							CommandStopWindow[0] = false
 						end
@@ -7521,24 +8609,24 @@ imgui.OnFrame(
 				sampAddChatMessage('[Arizona Helper] {ffffff}Бинд для выдачи рецептов отсутствует либо отключён!', message_color)
 				sampAddChatMessage('[Arizona Helper] {ffffff}Попробуйте сбросить настройки хелпера!', message_color)
 			end
-			ReceptMenu[0] = false
+			recept.menu[0] = false
 		end
 		imgui.End()
     end
 )
 imgui.OnFrame(
-    function() return AntibiotikMenu[0] end,
+    function() return antibiotik.menu[0] end,
     function(player)
 		imgui.SetNextWindowPos(imgui.ImVec2(sizeX / 2, sizeY / 2), imgui.Cond.FirstUseEver, imgui.ImVec2(0.5, 0.5))
-		imgui.Begin(fa.HOSPITAL.." Arizona Helper " .. fa.HOSPITAL .. "##ant", AntibiotikMenu, imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoResize  + imgui.WindowFlags.NoScrollbar + imgui.WindowFlags.AlwaysAutoResize)
+		imgui.Begin(fa.HOSPITAL.." Arizona Helper " .. fa.HOSPITAL .. "##ant", antibiotik.menu, imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoResize  + imgui.WindowFlags.NoScrollbar + imgui.WindowFlags.AlwaysAutoResize)
 		change_dpi()
 		imgui.CenterText(u8'Количество антибиотиков для выдачи:')
 		imgui.PushItemWidth(250 * settings.general.custom_dpi)
-		imgui.SliderInt('', antibiotiks, 1, 20)
+		imgui.SliderInt('', antibiotik.ants, 1, 20)
 		imgui.Separator()
 		if imgui.Button(fa.CAPSULES..u8" Выдать антибиотики" , imgui.ImVec2(imgui.GetMiddleButtonX(1), 0)) then
 			local command_find = false
-			for _, command in ipairs(settings.commands) do
+			for _, command in ipairs(modules.commands.data.commands.my) do
 				if command.enable and command.text:find('/antibiotik') then
 					command_find = true
 					local modifiedText = command.text
@@ -7549,8 +8637,8 @@ imgui.OnFrame(
 					modifiedText = modifiedText:gsub('%{get_ru_nick%(%{arg_id%}%)%}', TranslateNick(sampGetPlayerNickname(arg_id)) or "")
 					modifiedText = modifiedText:gsub('%{arg_id%}', arg_id or "")
 					lua_thread.create(function()
-						isActiveCommand = true
-						command_pause = false
+						commands.isActive = true
+						commands.isPause = false
 						if modifiedText:find('&.+&') then
 							if isMonetLoader() and settings.general.mobile_stop_button then
 								sampAddChatMessage('[Arizona Helper] {ffffff}Чтобы остановить отыгровку команды используйте ' .. message_color_hex .. '/stop {ffffff}или нажмите кнопку внизу экрана', message_color)
@@ -7566,9 +8654,9 @@ imgui.OnFrame(
 							table.insert(lines, line)
 						end
 						for line_index, line in ipairs(lines) do 
-							if command_stop then 
-								command_stop = false 
-								isActiveCommand = false
+							if commands.isStop then 
+								commands.isStop = false 
+								commands.isActive = false
 								if isMonetLoader() and settings.general.mobile_stop_button then
 									CommandStopWindow[0] = false
 								end
@@ -7576,7 +8664,7 @@ imgui.OnFrame(
 								return 
 							end
 							if wait_tag then
-								for tag, replacement in pairs(tagReplacements) do
+								for tag, replacement in pairs(binderTags) do
 									if line:find("{" .. tag .. "}") then
 										local success, result = pcall(string.gsub, line, "{" .. tag .. "}", replacement())
 										if success then
@@ -7586,12 +8674,12 @@ imgui.OnFrame(
 								end
 								if line == "{pause}" then
 									sampAddChatMessage('[Arizona Helper] {ffffff}Команда /' .. command.cmd .. ' поставлена на паузу!', message_color)
-									command_pause = true
+									commands.isPause = true
 									CommandPauseWindow[0] = true
-									while command_pause do
+									while commands.isPause do
 										wait(0)
 									end
-									if not command_stop then
+									if not commands.isStop then
 										sampAddChatMessage('[Arizona Helper] {ffffff}Продолжаю отыгровку команды /' .. command.cmd, message_color)	
 									end					
 								else
@@ -7606,7 +8694,7 @@ imgui.OnFrame(
 								end
 							end
 						end
-						isActiveCommand = false
+						commands.isActive = false
 						if isMonetLoader() and settings.general.mobile_stop_button then
 							CommandStopWindow[0] = false
 						end
@@ -7617,22 +8705,22 @@ imgui.OnFrame(
 				sampAddChatMessage('[Arizona Helper] {ffffff}Бинд для выдачи антибиотиков отсутствует либо отключён!', message_color)
 				sampAddChatMessage('[Arizona Helper] {ffffff}Попробуйте сбросить настройки хелпера!', message_color)
 			end
-			AntibiotikMenu[0] = false
+			antibiotik.menu[0] = false
 		end
 		imgui.End()
     end
 )
 imgui.OnFrame(
-    function() return FastHealMenu[0] end,
+    function() return heal_in_chat.fast_menu[0] end,
     function(player)
 		imgui.SetNextWindowPos(imgui.ImVec2(sizeX / 8.5, sizeY / 1.9), imgui.Cond.FirstUseEver, imgui.ImVec2(0.5, 0.5))
-		imgui.Begin(fa.HOSPITAL.." Arizona Helper " .. fa.HOSPITAL .. "##fast_heal", FastHealMenu, imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoResize  + imgui.WindowFlags.NoScrollbar + imgui.WindowFlags.NoTitleBar +  imgui.WindowFlags.AlwaysAutoResize )
+		imgui.Begin(fa.HOSPITAL.." Arizona Helper " .. fa.HOSPITAL .. "##fast_heal", heal_in_chat.fast_menu, imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoResize  + imgui.WindowFlags.NoScrollbar + imgui.WindowFlags.NoTitleBar +  imgui.WindowFlags.AlwaysAutoResize )
 		change_dpi()
 		if imgui.Button(fa.KIT_MEDICAL..u8' Вылечить '..sampGetPlayerNickname(heal_in_chat.player_id)) then
 			find_and_use_command("/heal {arg_id}", heal_in_chat.player_id)
 			heal_in_chat.bool = false
 			heal_in_chat.player_id = nil
-			FastHealMenu[0] = false
+			heal_in_chat.fast_menu[0] = false
 		end
 		imgui.End()
     end
@@ -7838,29 +8926,22 @@ imgui.OnFrame(
 		change_dpi()
 		
 		if probiv ~= nil then
-			if imgui.BeginChild('##probiv_2', imgui.ImVec2(400 * settings.general.custom_dpi, 350 * settings.general.custom_dpi), true) then
-				imgui.CenterText(u8" Игрок " .. u8(u8:decode(ffi.string(input))) .. " [UID " .. tostring(probiv.id or 'nil') .. u8"] из сервера " .. (probiv.server and probiv.server.name and probiv.server.id and (u8(probiv.server.name) .. " (" .. tostring(probiv.server.id) .. ")") or "nil"))
+			if imgui.BeginChild('##probiv_2', imgui.ImVec2(400 * settings.general.custom_dpi, 405 * settings.general.custom_dpi), true) then
+				imgui.CenterText(u8" Игрок " .. u8(u8:decode(ffi.string(input))) .. " [UID " .. tostring(probiv.id or '0') .. u8"] из сервера " .. (probiv.server and probiv.server.name and probiv.server.id and (u8(probiv.server.name) .. " (" .. tostring(probiv.server.id) .. ")") or "nil"))
 				imgui.Separator()
-				imgui.Text(fa.SIGNAL .. u8(' Уровень: ') ..  (probiv.level and probiv.level.level or "nil") .. ' (' .. (probiv.level and probiv.level.current_exp or 0) .. '/' .. (probiv.level and probiv.level.next_exp or 0) .. ' exp)')
-				imgui.Text(fa.CIRCLE .. u8' Отыграно всего: ' .. (probiv.hours_played or "nil") .. u8" часов")
+				imgui.Text(fa.SIGNAL .. u8(' Уровень: ') ..  (probiv.level and probiv.level.level or "0") .. ' (' .. (probiv.level and probiv.level.current_exp or 0) .. '/' .. (probiv.level and probiv.level.next_exp or 0) .. ' exp)')
+				imgui.Text(fa.CIRCLE .. u8' Отыграно всего: ' .. (probiv.hours_played or "0") .. u8" часов")
 				imgui.Text(fa.CROWN .. u8(' VIP статус: ') ..  (probiv.vip_info and u8(probiv.vip_info.level) or u8"Отсуствует"))
-				imgui.Text(fa.VAULT .. u8(' AZ монеты: ') .. comma_value(probiv.money and probiv.money.donate_currency or "nil"))
-				imgui.Text(fa.PHONE .. u8' Номер телефона: ' .. u8(probiv.phone_number or "nil"))			
-				imgui.SameLine()
-				if imgui.SmallButton(fa.PHONE .. '##probiv_call') then
-					sampSendChat("/call "..probiv.phone_number)
-				end
-				imgui.SameLine()
-				if imgui.SmallButton(fa.COMMENT .. '##probiv_sms') then
-					sampSendChat("/sms "..probiv.phone_number)
-				end
-				imgui.Text(fa.STAR .. u8(' Уровень розыска: ') .. comma_value(probiv.wanted_level or "nil"))
-				imgui.Text(fa.VAULT .. u8(' Варны: ') .. ((probiv.warnings .. "/3") or "nil"))
+				imgui.Text(fa.VAULT .. u8(' AZ монеты: ') .. comma_value(probiv.money and probiv.money.donate_currency or "0"))
+				imgui.Text(fa.PHONE .. u8' Номер телефона: ' .. u8(probiv.phone_number or "0"))			
+				imgui.Text(fa.STAR .. u8(' Уровень розыска: ') .. comma_value(probiv.wanted_level or "0"))
+				imgui.Text(fa.TRIANGLE_EXCLAMATION .. u8(' Варны: ') .. (tostring(probiv.warnings or "0") .. "/3"))
+
 				imgui.Separator()
-				imgui.CenterText(fa.MONEY_CHECK_DOLLAR .. u8(' Деньги ') .. fa.MONEY_CHECK_DOLLAR)
-				imgui.Text(fa.HAND_HOLDING_DOLLAR .. u8(' На руках: $') .. comma_value(probiv.money and probiv.money.hand or "nil"))
-				imgui.Text(fa.LANDMARK .. u8(' На банковском счету: $') .. comma_value(probiv.money and probiv.money.bank or "nil"))
-				imgui.Text(fa.VAULT .. u8(' На депозите в банке: $') .. comma_value(probiv.money and probiv.money.deposit or "nil"))
+				imgui.CenterText(fa.MONEY_CHECK_DOLLAR .. u8(' Деньги игрока ') .. fa.MONEY_CHECK_DOLLAR)
+				imgui.Text(fa.HAND_HOLDING_DOLLAR .. u8(' На руках: $') .. comma_value(probiv.money and probiv.money.hand or "0"))
+				imgui.Text(fa.LANDMARK .. u8(' На банковском счету: $') .. comma_value(probiv.money and probiv.money.bank or "0"))
+				imgui.Text(fa.VAULT .. u8(' На депозите в банке: $') .. comma_value(probiv.money and probiv.money.deposit or "0"))
 				local function get_personal_money() 
 					local money = 0
 					if probiv.money and probiv.money.personal_accounts then
@@ -7877,11 +8958,11 @@ imgui.OnFrame(
 				end
 				imgui.Text(fa.VAULT .. u8(' На личных счетах в банке: $') .. (get_personal_money()))
 				imgui.Separator()
-				imgui.CenterText(fa.BUILDING .. u8(' Организация ') .. fa.BUILDING)
+				imgui.CenterText(fa.BUILDING .. u8(' Организация игрока ') .. fa.BUILDING)
 				imgui.Text(fa.CIRCLE .. u8" Название: " .. u8(probiv.organization and probiv.organization.name or "Нету"))
 				imgui.Text(fa.CIRCLE .. u8" Должность: " .. u8(probiv.organization and probiv.organization.rank or "Нету"))
 				imgui.Separator()
-				imgui.CenterText(fa.HOUSE .. u8(' Личные дома ') .. fa.HOUSE)
+				imgui.CenterText(fa.HOUSE .. u8(' Личные дома игрока ') .. fa.HOUSE)
 				if probiv.property and probiv.property.houses and #probiv.property.houses > 0 then
 					local house_ids = {}
 					for i, house in ipairs(probiv.property.houses) do
@@ -7892,7 +8973,7 @@ imgui.OnFrame(
 					imgui.Text(fa.CIRCLE .. u8(' Нет домов'))
 				end
 				imgui.Separator()
-				imgui.CenterText(fa.BUSINESS_TIME .. u8(' Личные бизнесы ') .. fa.BUSINESS_TIME)
+				imgui.CenterText(fa.BUSINESS_TIME .. u8(' Личные бизнесы игрока ') .. fa.BUSINESS_TIME)
 				if probiv.property and probiv.property.businesses and #probiv.property.businesses > 0 then
 					local business_ids = {}
 					for i, biz in ipairs(probiv.property.businesses) do
@@ -7905,24 +8986,32 @@ imgui.OnFrame(
 				imgui.EndChild()
 			end
 		else
-			if imgui.BeginChild('##probiv_1', imgui.ImVec2(300 * settings.general.custom_dpi, 205 * settings.general.custom_dpi), true) then
+			if imgui.BeginChild('##probiv_1', imgui.ImVec2(300 * settings.general.custom_dpi, 230 * settings.general.custom_dpi), true) then
+				imgui.CenterText(u8('Получение инфы через сторонний Deps API'))
+				imgui.CenterText(u8('MTG MODS не отвечает за работу сервиса'))
+				imgui.Separator()
 				imgui.CenterText(fa.KEY .. u8(' API key для пробива'))
 				imgui.PushItemWidth(290 * settings.general.custom_dpi)
-				if imgui.InputText(u8'##probiv_apikey', input_probiv_key, 256) then
+				if imgui.InputText(u8'##probiv_apikey', input_probiv_key, 256, imgui.InputTextFlags.Password) then
 					settings.general.probiv_api_key = u8:decode(ffi.string(input_probiv_key))
 					save_settings()
 				end
-				imgui.Separator()
-				imgui.CenterText(u8('Получение API ключа - БЕСПЛАТНОЕ!'))
-				imgui.CenterText(u8('Отправьте боту команду /new'))
-				if imgui.CenterButton(u8('https://t.me/DepsAPI_bot')) then
+				imgui.CenterText(u8('Нету API key? Отправьте боту команду /new'))
+				if imgui.CenterButton(fa.CIRCLE_ARROW_RIGHT .. u8(' Получить API ключ в Telegram боте ') .. fa.CIRCLE_ARROW_LEFT) then
 					openLink('https://t.me/DepsAPI_bot')
 				end
+				imgui.Separator()
 				imgui.CenterText(fa.USER .. u8(' Ник игрока для пробива'))
 				imgui.PushItemWidth(290 * settings.general.custom_dpi)
 				imgui.InputText(u8'##probiv_nick', input, 256)
 				imgui.Separator()
+				-- imgui.CenterText(fa.USER .. u8(' Номер сервера игрока'))
+				-- imgui.PushItemWidth(290 * settings.general.custom_dpi)
+				-- imgui.InputText(u8'##probiv_server', input, 256)
+				-- imgui.Separator()
 				if imgui.CenterButton(fa.CIRCLE_ARROW_RIGHT .. u8(' Узнать инфу об игроке ') .. fa.CIRCLE_ARROW_LEFT) then
+					sampAddChatMessage('[Arizona Helper] {ffffff}Получение информации про игрока ' .. ffi.string(input) .. "...", message_color)
+					sampAddChatMessage('[Arizona Helper] {ffffff}Внимание! Это данные от стороннего API, и MTG MODS не имеет к этому отношения.', message_color)
 					getPlayerInfo(u8:decode(ffi.string(input)), getARZServerNumber())
 				end
 				imgui.EndChild()
@@ -8353,7 +9442,7 @@ function main()
 		InititalWindow[0] = true
 		return
 	end
-
+	
 	load_module('commands')
 	load_module('notes')
 	load_module('rpgun')
@@ -8362,7 +9451,7 @@ function main()
 	if (settings.general.fraction_mode == 'police' or settings.general.fraction_mode == 'fbi') then
 		load_module('smart_uk')
 		load_module('smart_pdd')
-		if settings.general.use_taser_menu and isMonetLoader() then
+		if settings.general.mobile_taser_button and isMonetLoader() then
 			TaserWindow[0] = true
 		end	
 		if settings.general.mobile_meg_button and isMonetLoader() then
@@ -8370,7 +9459,7 @@ function main()
 		end	
 	elseif (settings.general.fraction_mode == 'prison') then
 		load_module('smart_rptp')
-		if settings.general.use_taser_menu and isMonetLoader() then
+		if settings.general.mobile_taser_button and isMonetLoader() then
 			TaserWindow[0] = true
 		end	
 	end
@@ -8398,12 +9487,99 @@ function main()
 		if (isMode('police') or isMode('fbi') or isMode('army') or isMode('prison')) then
 			if patrool.active then
 				patrool.time = os.difftime(os.time(), patrool.start_time)
-				
+				if (settings.general.auto_doklad_patrool) and (tonumber(patrool.time) ~= 0 and patrool.time % 600 == 0) then
+					commands.isActive = true
+					if isMode('police') or isMode('fbi') then
+						sampSendChat('/r ' .. binderTags.my_doklad_nick() .. ' на CONTROL.')
+						wait(1500)
+						sampSendChat('/r Продолжаю патруль, нахожусь в районе ' .. binderTags.get_area() .. " (" .. binderTags.get_square() .. ').')
+						wait(1500)
+						if binderTags.get_car_units() ~= 'Нету' then
+							sampSendChat('/r Патрулирую уже ' .. binderTags.get_patrool_format_time() .. ' в составе юнита ' .. binderTags.get_car_units() .. ', состояние ' .. u8(binderTags.get_patrool.code()) .. '.')
+						else
+							sampSendChat('/r Патрулирую уже ' .. format_patrool_time(patrool.time) .. ', состояние ' .. u8(binderTags.get_patrool.code()) .. '.')
+						end
+					elseif isMode('army') or isMode('prison') then
+						sampSendChat('/r ' .. binderTags.my_doklad_nick() .. ' на CONTROL. Пост: ' .. binderTags.get_patrool_name() .. ', состояние ' .. binderTags.get_patrool_code())
+						wait(1500)
+						sampSendChat('/r Нахожусь на посту уже ' .. binderTags.get_patrool_format_time(), -1)
+					end
+					commands.isActive = false
+				end
 			end
-			
+			if patrool.active and isCharInAnyCar(PLAYER_PED) and settings.general.auto_change_code_siren then
+				local currentSirenState = isCarSirenOn(storeCarCharIsInNoSave(PLAYER_PED))
+				if firstCheck then
+					lastSirenState = currentSirenState
+					firstCheck = false
+				end
+				if currentSirenState ~= lastSirenState then
+					lastSirenState = currentSirenState
+					if currentSirenState then
+						sampAddChatMessage("[Arizona Helper - Ассистент] {ffffff}В вашем т/с была включена сирена, изменяю ситуационный код на CODE 3!", message_color)
+						ComboPatroolCode[0] = 4
+						patrool.code = combo_patrool_code_list[ComboPatroolCode[0] + 1]
+					else
+						sampAddChatMessage("[Arizona Helper - Ассистент] {ffffff}В вашем т/с была отключена сирена, изменяю ситуационный код на CODE 4.", message_color)
+						ComboPatroolCode[0] = 5
+						patrool.code = combo_patrool_code_list[ComboPatroolCode[0] + 1]
+					end
+				end
+			end
 		end
 
-		
+		if (isMode('police') or isMode('fbi')) then
+			if (settings.mj.awanted and search_awanted) then
+				if #wanted ~= 0 then
+					for i, v in ipairs(wanted) do
+						local id = v.id
+						local _, ped = sampGetCharHandleBySampPlayerId(id)
+						if sampIsPlayerConnected(id) and _ then
+							search_awanted = false
+							sampAddChatMessage('[Arizona Helper - Ассистент] {ffffff}Недалеко от вас обнаружен(-а) ' .. v.nick .. " с " .. v.lvl .. '-м уровнем розыска!', message_color)
+							show_arz_notify('info', 'Arizona Helper', 'Обнаружен игрок в розыске недалеко от вас!', 2500)
+							playNotifySound()
+							sampSendChat("/pursuit " .. id)
+							wait(1000)
+							sampSendChat("/z "..id)
+							break
+						end
+					end
+				end
+			end
+			if (settings.mj.auto_update_wanteds and WantedWindow[0]) then
+				if (updwanteds.check) then
+					updwanteds.time = os.difftime(os.time(), updwanteds.last_time)
+					if tonumber(updwanteds.time) >= (isMode('fbi') and 8 or 9) then
+						updwanteds.check = false
+					end
+				else
+					wanted_new = {}
+					check_wanted = true
+					updwanteds.stop = false
+					for i = (isMode('fbi') and 7 or 6), 1, -1 do
+						if WantedWindow[0] then
+							updwanteds.time = os.difftime(os.time(), updwanteds.last_time)
+							sampSendChat('/wanted ' .. i)
+							wait(1000)
+						else
+							updwanteds.stop = true
+							sampProcessChatInput('/wanteds')
+							break
+						end
+					end
+					if not stop_checker then
+						check_wanted = false
+						updwanteds.time = 0
+						updwanteds.last_time = os.time()
+						WantedWindow[0] = false
+						wanted = wanted_new
+						WantedWindow[0] = true
+						updwanteds.check = true
+					end
+				end
+			end
+		end
 
 		if (modules.rpgun.data.nowGun ~= getCurrentCharWeapon(PLAYER_PED)) then
             modules.rpgun.data.oldGun = modules.rpgun.data.nowGun
@@ -8416,6 +9592,53 @@ function main()
             processWeaponChange(modules.rpgun.data.oldGun, modules.rpgun.data.nowGun)
         end
 
+		if (clicked and (settings.mj.auto_clicker_situation or settings.mh.auto_clicker_situation)) then
+			if isMonetLoader() then
+				local bs = raknetNewBitStream()
+				raknetBitStreamWriteInt8(bs, 220)
+				raknetBitStreamWriteInt8(bs, 63)
+				raknetBitStreamWriteInt8(bs, 25)
+				raknetBitStreamWriteInt32(bs, 0)
+				raknetBitStreamWriteInt8(bs, 255)
+				raknetBitStreamWriteInt8(bs, 255)
+				raknetBitStreamWriteInt8(bs, 255)
+				raknetBitStreamWriteInt8(bs, 255)
+				raknetBitStreamWriteInt32(bs, 0)
+				raknetSendBitStream(bs)
+				raknetDeleteBitStream(bs)
+				wait(0)
+			else
+				emulationCEF("clickMinigame")
+
+				
+				-- local cmd = "clickMinigame"
+				-- local bs = raknetNewBitStream()
+				-- raknetBitStreamWriteInt8(bs, 220)
+				-- raknetBitStreamWriteInt8(bs, 18)
+				-- raknetBitStreamWriteInt16(bs, #cmd)
+				-- raknetBitStreamWriteString(bs, cmd)
+				-- raknetBitStreamWriteInt32(bs, 0)
+				-- raknetSendBitStream(bs)
+				-- raknetDeleteBitStream(bs)
+				wait(0)
+			end
+		end
+
+		if (settings.general.auto_update_members and members.menu[0]) then
+			if (members.upd.check) then
+				members.upd.time = os.difftime(os.time(), members.upd.last_time)
+				if tonumber(members.upd.time) > 8.5 then
+					members.upd.time = 0
+					members.upd.last_time = os.time()
+					members.upd.check = false
+				end
+			elseif (not members.upd.check) then 
+				members.new = {}
+				members.info.check = true
+				sampSendChat("/members")
+				members.upd.check = true
+			end
+		end
 
 		if (settings.general.auto_notify_payday) then
 			local currentMinute = os.date("%M", os.time())
@@ -8428,9 +9651,11 @@ function main()
 				end
 			end
 		end
+		
+		if (debug_mode) then
+			-- sampAddChatMessage(sampGetPlayerAnimationId(binderTags.my_id()), -1)
+		end
 
-		
-		
 	end
 
 end
@@ -8841,6 +10066,9 @@ if (not isMonetLoader()) then
 		end
 	)
 end
+
+-- вывод инфы про краш хелпера в диалог юзеру
+
 
 function onScriptTerminate(script, game_quit)
     if script == thisScript() and not game_quit and not reload_script then

@@ -48,7 +48,7 @@ local hotkey_no_errors, hotkey = pcall(require, 'mimgui_hotkeys')
 local sizeX, sizeY = getScreenResolution()
 print('Библиотеки успешно покдючены!')
 ----------------------------------------- JSON SETTINGS -----------------------------------------
-local configDirectory = getWorkingDirectory():gsub('\\','/') .. "/Arizona Helper"
+local configDirectory = getWorkingDirectory():gsub('\\','/') .. "/ArizonaHelper"
 local settings = {}
 local default_settings = {
 	general = {

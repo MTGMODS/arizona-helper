@@ -48,7 +48,7 @@ local hotkey_no_errors, hotkey = pcall(require, 'mimgui_hotkeys')
 local sizeX, sizeY = getScreenResolution()
 print('Библиотеки успешно покдючены!')
 ----------------------------------------- JSON SETTINGS -----------------------------------------
-local configDirectory = getWorkingDirectory():gsub('\\','/') .. "/ArizonaHelper"
+local configDirectory = getWorkingDirectory():gsub('\\','/') .. "/Arizona Helper"
 local settings = {}
 local default_settings = {
 	general = {
@@ -2117,6 +2117,8 @@ function welcome_message()
 	show_arz_notify('info', 'Arizona Helper', "Загрузка хелпера прошла успешно!", 3000)
 	print('Полная загрузка хелпера прошла успешно!')
 
+	show_arz_sms("Привет!", "MTG MODS", 815168, 120012, 2000, "https://mtgmods.github.io/arizona-helper/Resourse/logo.gif")
+
 	if isMonetLoader() or settings.general.bind_mainmenu == nil then	
 		sampAddChatMessage('[Arizona Helper] {ffffff}Чтоб открыть меню хелпера введите команду ' .. message_color_hex .. '/helper', message_color)
 	elseif hotkey_no_errors and settings.general.bind_mainmenu then
@@ -2999,8 +3001,8 @@ function getNameOfARZVehicleModel(id)
 		sampAddChatMessage('[Arizona Helper] {ffffff}Нет названия модели т/c с ID ' .. id .. ", так как отсуствует файл Vehicles.json", message_color)
 		sampAddChatMessage('[Arizona Helper] {ffffff}Использую просто "транспортного средства", и пытаюсь скачать файл...', message_color)
 		download_file = 'arz_veh'
-		downloadFileFromUrlToPath('https://github.com/MTGMODS/arizona-helper/raw/refs/heads/main/SmartVEH/Vehicles.json', modules.arz_veh.path)
-		-- downloadFileFromUrlToPath('https://mtgmods.github.io/arizona-helper/SmartVEH/Vehicles.json', modules.arz_veh.path)
+		-- downloadFileFromUrlToPath('https://github.com/MTGMODS/arizona-helper/raw/refs/heads/main/SmartVEH/Vehicles.json', modules.arz_veh.path)
+		downloadFileFromUrlToPath('https://mtgmods.github.io/arizona-helper/SmartVEH/Vehicles.json', modules.arz_veh.path)
 		return 'транспортного средства'
 	end
 end
@@ -3611,13 +3613,9 @@ function downloadFileFromUrlToPath(url, path)
 			sampAddChatMessage('[Arizona Helper] {ffffff}Повторно используйте команду которой нужно определение модели т/c.',  message_color)
 			load_module('arz_veh')
 		elseif download_file == 'notify' then
-			if doesFileExist(configDirectory .. "/Resourse_notify.mp3") then
+			if doesFileExist(configDirectory .. "/Resourse/notify.mp3") then
 				print('Звук оповещений успешно загружен!')
-				os.rename(configDirectory .. "/Resourse_notify.mp3", configDirectory .. "/Resourse/notify.mp3")
 			end
-			-- if doesFileExist(configDirectory .. "/Resourse/notify.mp3") then
-			-- 	print('Звук оповещений успешно загружен!')
-			-- end
 		end
 		download_file = ''
 	end
@@ -3713,8 +3711,8 @@ function check_update()
 	print('Проверка на наличие обновлений...')
 	sampAddChatMessage('[Arizona Helper] {ffffff}Проверка на наличие обновлений...', message_color)
 	download_file = 'update'
-	-- https://mtgmods.github.io/arizona-helper/Update.json
-	downloadFileFromUrlToPath('https://github.com/MTGMODS/arizona-helper/raw/refs/heads/main/Update.json', configDirectory .. "/Update.json")
+	-- https://github.com/MTGMODS/arizona-helper/raw/refs/heads/main/Update.json
+	downloadFileFromUrlToPath('https://mtgmods.github.io/arizona-helper/Update.json', configDirectory .. "/Update.json")
 end
 function check_resourses()
 	if not doesDirectoryExist(configDirectory .. '/Resourse') then
@@ -3722,20 +3720,20 @@ function check_resourses()
 	end
 	if not doesFileExist(configDirectory .. '/Resourse/logo.png') then
 		print('Подгружаю логотип хелпера...')
-		downloadFileFromUrlToPath('https://github.com/MTGMODS/arizona-helper/raw/refs/heads/main/Resourse/logo.png', configDirectory .. '/Resourse/logo.png')
-		-- https://mtgmods.github.io/arizona-helper/Resourse/logo.png
+		downloadFileFromUrlToPath('https://mtgmods.github.io/arizona-helper/Resourse/logo.png', configDirectory .. '/Resourse/logo.png')
+		-- https://github.com/MTGMODS/arizona-helper/raw/refs/heads/main/Resourse/logo.png
 	end
 	if not doesFileExist(configDirectory .. "/Resourse/notify.mp3") then
 		print('Подгружаю звук для оповещений хелпера...')
-		download_file = 'notify'
-		downloadFileFromUrlToPath('https://github.com/MTGMODS/arizona-helper/raw/refs/heads/main/Resourse/notify.mp3', configDirectory .. "/Resourse/notify.mp3")
-		-- https://mtgmods.github.io/arizona-helper/Resourse/notify.mp3
+		-- download_file = 'notify'
+		downloadFileFromUrlToPath('https://mtgmods.github.io/arizona-helper/Resourse/notify.mp3', configDirectory .. "/Resourse/notify.mp3")
+		-- https://raw.githubusercontent.com/MTGMODS/arizona-helper/main/Resourse/notify.mp3
 	end
 	if not doesFileExist(modules.arz_veh.path) then
 		print('Подгружаю список всех кастомных т/с аризоны для определенения моделей...')
 		download_file = 'arz_veh'
-		downloadFileFromUrlToPath('https://github.com/MTGMODS/arizona-helper/raw/refs/heads/main/SmartVEH/Vehicles.json', modules.arz_veh.path)
-		-- https://mtgmods.github.io/arizona-helper/SmartVEH/Vehicles.json
+		downloadFileFromUrlToPath('https://mtgmods.github.io/arizona-helper/SmartVEH/Vehicles.json', modules.arz_veh.path)
+		-- https://github.com/MTGMODS/arizona-helper/raw/refs/heads/main/SmartVEH/Vehicles.json
 	end
 end
 check_resourses()
@@ -5467,8 +5465,7 @@ if isMode('police') or isMode('fbi') then
 					renderSmartSystem(
 						'Система умного розыска',
 						fa.STAR,
-						-- https://mtgmods.github.io/arizona-helper/SmartUK/
-						'https://github.com/MTGMODS/arizona-helper/raw/refs/heads/main/SmartUK/' .. getARZServerNumber() .. '/SmartUK.json', 
+						'https://mtgmods.github.io/arizona-helper/SmartUK/' .. getARZServerNumber() .. '/SmartUK.json', 
 						'системы умного розыска', 
 						modules.smart_uk.data, 
 						function() save_module("smart_uk") end, 
@@ -5483,8 +5480,7 @@ if isMode('police') or isMode('fbi') then
 					renderSmartSystem(
 						'Система умных штрафов', 
 						fa.TICKET, 
-						-- https://mtgmods.github.io/arizona-helper/SmartPDD/
-						'https://github.com/MTGMODS/arizona-helper/raw/refs/heads/main/' .. getARZServerNumber() .. '/SmartPDD.json', 
+						'https://mtgmods.github.io/arizona-helper/SmartPDD/' .. getARZServerNumber() .. '/SmartPDD.json', 
 						'системы умных штрафов', 
 						modules.smart_pdd.data, 
 						function() save_module("smart_pdd") end, 
@@ -5528,8 +5524,7 @@ elseif isMode('army') or isMode('prison') then
 						renderSmartSystem(
 							'Система умного продления срока', 
 							fa.TICKET, 
-							-- https://mtgmods.github.io/arizona-helper/SmartRPTP/
-							'https://github.com/MTGMODS/arizona-helper/raw/refs/heads/main/SmartRPTP/' .. getARZServerNumber() .. '/SmartRPTP.json', 
+							'https://mtgmods.github.io/arizona-helper/SmartRPTP/' .. getARZServerNumber() .. '/SmartRPTP.json', 
 							'системы умного срока', 
 							modules.smart_rptp.data, 
 							function() save_module("smart_rptp") end, 

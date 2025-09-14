@@ -2533,22 +2533,7 @@ function initialize_commands()
 			MegafonWindow[0] = not MegafonWindow[0]
 		end)
 		sampRegisterChatCommand("afind", function (arg)
-			if isParamSampID(arg) then
-				afind = not afind
-				if afind then
-					lua_thread.create(function ()
-						sampAddChatMessage('[Arizona Helper]{ffffff} Начинаю поиск игрока ' .. sampGetPlayerNickname(arg) .. '. Деактивация: ' .. message_color_hex .. '/afind', message_color)
-						while afind do
-							sampSendChat('/find ' .. arg)
-							wait(3000)
-						end
-					end)
-				else
-					sampAddChatMessage('[Arizona Helper]{ffffff} Отключаю поиск игрока ' .. sampGetPlayerNickname(arg), message_color)
-				end
-			else
-				sampAddChatMessage('[Arizona Helper]{ffffff} Используйте ' .. message_color_hex .. '/afind [ID игрока]', message_color)
-			end
+			sampAddChatMessage('[Arizona Helper] {ffffff}Только в VIP версии!', message_color)
 		end)
 		sampRegisterChatCommand("wanted", function(arg)
 			sampSendChat('/wanted ' .. arg)
@@ -3773,9 +3758,7 @@ function count_lines_in_text(text, max_length)
 	return tonumber(#lines)
 end
 function change_dpi()
-	if not isMonetLoader() then
-		imgui.SetWindowFontScale(settings.general.custom_dpi)
-	end
+	imgui.PushFont(font_dpi)
 end
 function deleteHelperData(checker)
 	os.remove(configDirectory .. "/Settings.json")
@@ -4857,19 +4840,25 @@ function give_rank()
 end
 
 imgui.OnInitialize(function()
+	-- без ненужных файликов
 	imgui.GetIO().IniFilename = nil
+	-- замена шрифта на стандарт с поддержкой смены размеров и иконок
+	imgui.GetIO().Fonts:Clear()
+	local glyph_ranges = imgui.GetIO().Fonts:GetGlyphRangesCyrillic()
 	if isMonetLoader() then
-		fa.Init(14 * settings.general.custom_dpi)
+		font_dpi = imgui.GetIO().Fonts:AddFontFromFileTTF(getWorkingDirectory():gsub('\\','/') .. '/lib/mimgui/trebucbd.ttf', 14 * settings.general.custom_dpi, _, glyph_ranges)
 	else
-		fa.Init(14)
+		font_dpi = imgui.GetIO().Fonts:AddFontFromFileTTF(getFolderPath(0x14)..'\\trebucbd.ttf', 14 * settings.general.custom_dpi, _, glyph_ranges)
 	end
-	if settings.general.helper_theme == 0 and monet_no_errors then
-		apply_moonmonet_theme()
-	elseif settings.general.helper_theme == 1 then
-		apply_dark_theme()
-	elseif settings.general.helper_theme == 2 then
-		apply_white_theme()
-	end
+   	fa.Init(14 * settings.general.custom_dpi)
+
+	-- цветовая тема хелпера
+	local themes = {
+		[0] = function() if monet_no_errors then apply_moonmonet_theme() else apply_dark_theme() end end,
+		[1] = apply_dark_theme,
+		[2] = apply_white_theme
+	}
+	themes[settings.general.helper_theme]()
 end)
 
 function getUserIcon()
@@ -6947,16 +6936,9 @@ imgui.OnFrame(
 						if imgui.BeginChild('##node_edit_window', imgui.ImVec2(589 * settings.general.custom_dpi, 369 * settings.general.custom_dpi), true) then	
 							imgui.PushItemWidth(578 * settings.general.custom_dpi)
 							imgui.InputTextWithHint(u8'##note_name', u8('Введите название вашей заметки'),input_name_note, 256)
-							if not isMonetLoader() then
-								old_scale = imgui.GetFont().Scale
-								imgui.GetFont().Scale = settings.general.custom_dpi
-								imgui.PushFont(imgui.GetFont())
-							end	
+						
 							imgui.InputTextMultiline("##note_text", input_text_note, 16384, imgui.ImVec2(578 * settings.general.custom_dpi, 329 * settings.general.custom_dpi))
-							if not isMonetLoader() then
-								imgui.GetFont().Scale = old_scale
-								imgui.PopFont()
-							end
+							
 							imgui.EndChild()
 						end	
 						if imgui.Button(fa.CIRCLE_XMARK .. u8' Отмена ' .. fa.CIRCLE_XMARK, imgui.ImVec2(imgui.GetMiddleButtonX(2), 0)) then
@@ -7420,16 +7402,8 @@ imgui.OnFrame(
 	    	imgui.Combo(u8'',ComboTags, ImItems, #item_list)
 	 	    imgui.Separator()
 	        imgui.CenterText(fa.FILE_WORD .. u8' Текстовый бинд команды:')
-			if not isMonetLoader() then
-				old_scale = imgui.GetFont().Scale
-				imgui.GetFont().Scale = settings.general.custom_dpi
-				imgui.PushFont(imgui.GetFont())
-			end
+		
 			imgui.InputTextMultiline("##text_multiple", input_text, 8192, imgui.ImVec2(579 * settings.general.custom_dpi, 173 * settings.general.custom_dpi))
-			if not isMonetLoader() then
-				imgui.GetFont().Scale = old_scale
-				imgui.PopFont()
-			end
 		imgui.EndChild() end
 		if imgui.Button(fa.CIRCLE_XMARK .. u8' Отмена ' .. fa.CIRCLE_XMARK .. "##binder_cancel", imgui.ImVec2(imgui.GetMiddleButtonX(5), 0)) then
 			BinderWindow[0] = false
@@ -7680,21 +7654,12 @@ imgui.OnFrame(
 		end
 
 		if not isMonetLoader() and not sampIsChatInputActive() and not sampIsDialogActive() and not isSampfuncsConsoleActive() then player.HideCursor = true else player.HideCursor = false end
-		if settings.mj.auto_update_wanteds then
-			local text_time_wait = 15 - tonumber(updwanteds.time)
-			if text_time_wait < 10 then
-				text_time_wait = '0' .. text_time_wait
-			end
-			imgui.Text(u8('Обновление списка преступников будет через ') .. text_time_wait .. u8(' секунд'))
-			imgui.Separator()
-		else
-			if imgui.Button(u8'Обновить список преступников', imgui.ImVec2(340 * settings.general.custom_dpi, 25 * settings.general.custom_dpi)) then
+		if imgui.Button(u8'Обновить список преступников', imgui.ImVec2(340 * settings.general.custom_dpi, 25 * settings.general.custom_dpi)) then
 				WantedWindow[0] = false
 				sampAddChatMessage('[Arizona Helper] {ffffff}Вы можете включить авто-обновление /wanteds в настройках Ассистента!', message_color)
 				sampProcessChatInput('/wanteds')
 			end
 			imgui.Separator()
-		end	
 		imgui.Columns(3)
 		imgui.CenterColumnText(u8("Никнейм"))
 		imgui.SetColumnWidth(-1, 200 * settings.general.custom_dpi)

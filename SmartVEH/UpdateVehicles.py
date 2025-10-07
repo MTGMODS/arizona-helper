@@ -1,5 +1,4 @@
-import requests
-import json
+import requests, json
 
 # thanks arztools
 url = "https://api.arztools.tech/tools/arizona/vehicles.json"

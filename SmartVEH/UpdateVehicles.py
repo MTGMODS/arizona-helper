@@ -1,6 +1,7 @@
 import requests
 import json
 
+# thanks arztools
 url = "https://api.arztools.tech/tools/arizona/vehicles.json"
 response = requests.get(url)
 response.encoding = "utf-8"

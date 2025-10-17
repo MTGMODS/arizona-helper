@@ -3959,7 +3959,7 @@ function sampev.onServerMessage(color,text)
 	end
 
 	if (settings.general.auto_uval and settings.player_info.fraction_rank_number >= 9) then
-		if text:find("%[(.-)%] (.-) (.-)%[(.-)%]: (.+)") and color == 766526463 then -- /f /fb или /r /rb без тега 
+		if text:find("^%[(.-)%] (.-) (.-)%[(.-)%]: (.+)") and color == 766526463 then -- /f /fb или /r /rb без тега 
 			local tag, rank, name, playerID, message = string.match(text, "%[(.-)%] (.+) (.-)%[(.-)%]: (.+)")
 			if ((not message:find(" отправьте (.+) +++ чтобы уволится ПСЖ!") and not message:find("Сотрудник (.+) был уволен по причине(.+)")) and (message:rupper():find("ПСЖ") or message:rupper():find("ПСЖ.") or message:rupper():find("УВОЛЬТЕ") or message:find("УВОЛЬТЕ.") or message:rupper():find("УВАЛ") or message:rupper():find("УВАЛ."))) then
 				message3 = message2
@@ -3978,7 +3978,7 @@ function sampev.onServerMessage(color,text)
 				auto_uval_checker = true
 				sampSendChat('/fmute ' .. PlayerID .. ' 1 [AutoUval] Ожидайте')
 			end
-		elseif text:find("%[(.-)%] %[(.-)%] (.+) (.-)%[(.-)%]: (.+)") and color == 766526463 then -- /r или /f с тегом
+		elseif text:find("^%[(.-)%] %[(.-)%] (.+) (.-)%[(.-)%]: (.+)") and color == 766526463 then -- /r или /f с тегом
 			local tag, tag2, rank, name, playerID, message = string.match(text, "%[(.-)%] %[(.-)%] (.+) (.-)%[(.-)%]: (.+)")
 			if not message:find(" отправьте (.+) +++ чтобы уволится ПСЖ!") and not message:find("Сотрудник (.+) был уволен по причине(.+)") and message:rupper():find("ПСЖ") or message:rupper():find("УВОЛЬТЕ") or message:rupper():find("УВАЛ") then
 				message3 = message2
@@ -4017,7 +4017,7 @@ function sampev.onServerMessage(color,text)
 
 	if isMode('police') or isMode('fbi') then
 		if settings.player_info.fraction_rank_number >= (isMode('fbi') and 4 or 5) then
-			if text:find("%[(.-)%] (.-) (.-)%[(.-)%]: (.+)") and color == 766526463 then -- /f /fb или /r /rb без тега 
+			if text:find("^%[(.-)%] (.-) (.-)%[(.-)%]: (.+)") and color == 766526463 then -- /f /fb или /r /rb без тега 
 				local tag, rank, name, playerID, message = string.match(text, "%[(.-)%] (.+) (.-)%[(.-)%]: (.+)")
 				if message:find('Прошу обьявить в розыск (%d) степени дело N(%d+)%. Причина%: (.+)') and playerID ~= binderTags.my_id() then
 					local lvl, id, reason = message:match('Прошу обьявить в розыск (%d) степени дело N(%d+)%. Причина%: (.+)')

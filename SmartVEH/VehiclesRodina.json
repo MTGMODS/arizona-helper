@@ -1,0 +1,3617 @@
+[
+    {
+        "name": "Mercedes-Benz Gl63",
+        "model_id": 400,
+        "server_id": 1
+    },
+    {
+        "name": "Honda Civic",
+        "model_id": 401,
+        "server_id": 2
+    },
+    {
+        "name": "Mercedes-Benz E63",
+        "model_id": 402,
+        "server_id": 3
+    },
+    {
+        "name": "MAN TGS",
+        "model_id": 403,
+        "server_id": 4
+    },
+    {
+        "name": "Mazda 626",
+        "model_id": 404,
+        "server_id": 5
+    },
+    {
+        "name": "Toyota Chaser",
+        "model_id": 405,
+        "server_id": 6
+    },
+    {
+        "name": "ЗиЛ ММЗ 555",
+        "model_id": 406,
+        "server_id": 7
+    },
+    {
+        "name": "МАЗ Пожарный",
+        "model_id": 407,
+        "server_id": 8
+    },
+    {
+        "name": "IVECO",
+        "model_id": 408,
+        "server_id": 9
+    },
+    {
+        "name": "Porsche Panamera",
+        "model_id": 409,
+        "server_id": 10
+    },
+    {
+        "name": "Audi S8",
+        "model_id": 410,
+        "server_id": 11
+    },
+    {
+        "name": "Reno Laguna",
+        "model_id": 411,
+        "server_id": 12
+    },
+    {
+        "name": "Mitsubishi Galant vr-4",
+        "model_id": 412,
+        "server_id": 13
+    },
+    {
+        "name": "ПАЗ 672",
+        "model_id": 413,
+        "server_id": 14
+    },
+    {
+        "name": "ЛиАЗ 5256",
+        "model_id": 414,
+        "server_id": 15
+    },
+    {
+        "name": "BMW М6",
+        "model_id": 415,
+        "server_id": 16
+    },
+    {
+        "name": "Ford Hospital",
+        "model_id": 416,
+        "server_id": 17
+    },
+    {
+        "name": "Leviathan",
+        "model_id": 417,
+        "server_id": 18
+    },
+    {
+        "name": "Volkswagen Bus",
+        "model_id": 418,
+        "server_id": 19
+    },
+    {
+        "name": "Volkswagen Golf r32",
+        "model_id": 419,
+        "server_id": 20
+    },
+    {
+        "name": "Skoda Superb",
+        "model_id": 420,
+        "server_id": 21
+    },
+    {
+        "name": "Nissan 300zx",
+        "model_id": 421,
+        "server_id": 22
+    },
+    {
+        "name": "УАЗ 452",
+        "model_id": 422,
+        "server_id": 23
+    },
+    {
+        "name": "Ice Cream",
+        "model_id": 423,
+        "server_id": 24
+    },
+    {
+        "name": "Smart",
+        "model_id": 424,
+        "server_id": 25
+    },
+    {
+        "name": "Hunter",
+        "model_id": 425,
+        "server_id": 26
+    },
+    {
+        "name": "BMW 7",
+        "model_id": 426,
+        "server_id": 27
+    },
+    {
+        "name": "Газель Полиция",
+        "model_id": 427,
+        "server_id": 28
+    },
+    {
+        "name": "Volkswagen Броневик",
+        "model_id": 428,
+        "server_id": 29
+    },
+    {
+        "name": "Mercedes A45",
+        "model_id": 429,
+        "server_id": 30
+    },
+    {
+        "name": "Police boat",
+        "model_id": 430,
+        "server_id": 31
+    },
+    {
+        "name": "МАЗ 206",
+        "model_id": 431,
+        "server_id": 32
+    },
+    {
+        "name": "Panzer",
+        "model_id": 432,
+        "server_id": 33
+    },
+    {
+        "name": "Typhoon",
+        "model_id": 433,
+        "server_id": 34
+    },
+    {
+        "name": "Hotknife",
+        "model_id": 434,
+        "server_id": 35
+    },
+    {
+        "name": "Trailer",
+        "model_id": 435,
+        "server_id": 36
+    },
+    {
+        "name": "Mercedes-Benz CLS 53",
+        "model_id": 436,
+        "server_id": 37
+    },
+    {
+        "name": "Mercedes Rodina",
+        "model_id": 437,
+        "server_id": 38
+    },
+    {
+        "name": "AUDI RS 5",
+        "model_id": 438,
+        "server_id": 39
+    },
+    {
+        "name": "Lada 112",
+        "model_id": 439,
+        "server_id": 40
+    },
+    {
+        "name": "Газель 2705",
+        "model_id": 440,
+        "server_id": 41
+    },
+    {
+        "name": "RC Bandit",
+        "model_id": 441,
+        "server_id": 42
+    },
+    {
+        "name": "ВАЗ 21011",
+        "model_id": 442,
+        "server_id": 43
+    },
+    {
+        "name": "КамАЗ 53212",
+        "model_id": 443,
+        "server_id": 44
+    },
+    {
+        "name": "Monster",
+        "model_id": 444,
+        "server_id": 45
+    },
+    {
+        "name": "Volkswagen Passat",
+        "model_id": 445,
+        "server_id": 46
+    },
+    {
+        "name": "Squallo",
+        "model_id": 446,
+        "server_id": 47
+    },
+    {
+        "name": "Sparrow",
+        "model_id": 447,
+        "server_id": 48
+    },
+    {
+        "name": "Pizzaboy",
+        "model_id": 448,
+        "server_id": 49
+    },
+    {
+        "name": "Трамвай",
+        "model_id": 449,
+        "server_id": 50
+    },
+    {
+        "name": "Trailer 2",
+        "model_id": 450,
+        "server_id": 51
+    },
+    {
+        "name": "Lamborghini Huracan",
+        "model_id": 451,
+        "server_id": 52
+    },
+    {
+        "name": "Speeder",
+        "model_id": 452,
+        "server_id": 53
+    },
+    {
+        "name": "Reefer",
+        "model_id": 453,
+        "server_id": 54
+    },
+    {
+        "name": "Tropic",
+        "model_id": 454,
+        "server_id": 55
+    },
+    {
+        "name": "Грейдер",
+        "model_id": 455,
+        "server_id": 56
+    },
+    {
+        "name": "Mitsubishi Canter",
+        "model_id": 456,
+        "server_id": 57
+    },
+    {
+        "name": "Golf Car",
+        "model_id": 457,
+        "server_id": 58
+    },
+    {
+        "name": "Dodge SXT",
+        "model_id": 458,
+        "server_id": 59
+    },
+    {
+        "name": "Ford Transit",
+        "model_id": 459,
+        "server_id": 60
+    },
+    {
+        "name": "Skimmer",
+        "model_id": 460,
+        "server_id": 61
+    },
+    {
+        "name": "BMW S1000RR",
+        "model_id": 461,
+        "server_id": 62
+    },
+    {
+        "name": "Honda Zoomer 50",
+        "model_id": 462,
+        "server_id": 63
+    },
+    {
+        "name": "Harley-Davidson",
+        "model_id": 463,
+        "server_id": 64
+    },
+    {
+        "name": "RC Baron",
+        "model_id": 464,
+        "server_id": 65
+    },
+    {
+        "name": "RC Raider",
+        "model_id": 465,
+        "server_id": 66
+    },
+    {
+        "name": "BMW M5 F90",
+        "model_id": 466,
+        "server_id": 67
+    },
+    {
+        "name": "ВАЗ 2107",
+        "model_id": 467,
+        "server_id": 68
+    },
+    {
+        "name": "Sanchez",
+        "model_id": 468,
+        "server_id": 69
+    },
+    {
+        "name": "Robinson R44",
+        "model_id": 469,
+        "server_id": 70
+    },
+    {
+        "name": "Hummer H1",
+        "model_id": 470,
+        "server_id": 71
+    },
+    {
+        "name": "Polaris",
+        "model_id": 471,
+        "server_id": 72
+    },
+    {
+        "name": "Coastguard",
+        "model_id": 472,
+        "server_id": 73
+    },
+    {
+        "name": "Dinghy",
+        "model_id": 473,
+        "server_id": 74
+    },
+    {
+        "name": "Lada 2115",
+        "model_id": 474,
+        "server_id": 75
+    },
+    {
+        "name": "BMW X5M 2020",
+        "model_id": 475,
+        "server_id": 76
+    },
+    {
+        "name": "Rustler",
+        "model_id": 476,
+        "server_id": 77
+    },
+    {
+        "name": "BMW M4",
+        "model_id": 477,
+        "server_id": 78
+    },
+    {
+        "name": "ВИС 2345",
+        "model_id": 478,
+        "server_id": 79
+    },
+    {
+        "name": "Subaru Legacy",
+        "model_id": 479,
+        "server_id": 80
+    },
+    {
+        "name": "Porsche 911",
+        "model_id": 480,
+        "server_id": 81
+    },
+    {
+        "name": "Аист",
+        "model_id": 481,
+        "server_id": 82
+    },
+    {
+        "name": "MB v250",
+        "model_id": 482,
+        "server_id": 83
+    },
+    {
+        "name": "ПАЗ Vector Next",
+        "model_id": 483,
+        "server_id": 84
+    },
+    {
+        "name": "Marquis",
+        "model_id": 484,
+        "server_id": 85
+    },
+    {
+        "name": "Chevrolet Corvette",
+        "model_id": 485,
+        "server_id": 86
+    },
+    {
+        "name": "Dozer",
+        "model_id": 486,
+        "server_id": 87
+    },
+    {
+        "name": "MBB Bo 105",
+        "model_id": 487,
+        "server_id": 88
+    },
+    {
+        "name": "SAN News Maverick",
+        "model_id": 488,
+        "server_id": 89
+    },
+    {
+        "name": "Cadilac Escalade",
+        "model_id": 489,
+        "server_id": 90
+    },
+    {
+        "name": "Range Rover Sport",
+        "model_id": 490,
+        "server_id": 91
+    },
+    {
+        "name": "Nissan Silvia",
+        "model_id": 491,
+        "server_id": 92
+    },
+    {
+        "name": "Lada 2114",
+        "model_id": 492,
+        "server_id": 93
+    },
+    {
+        "name": "Jetmax",
+        "model_id": 493,
+        "server_id": 94
+    },
+    {
+        "name": "Bugatti",
+        "model_id": 494,
+        "server_id": 95
+    },
+    {
+        "name": "Tesla Cybertruck",
+        "model_id": 495,
+        "server_id": 96
+    },
+    {
+        "name": "Skoda Superb",
+        "model_id": 496,
+        "server_id": 97
+    },
+    {
+        "name": "Police Maverick",
+        "model_id": 497,
+        "server_id": 98
+    },
+    {
+        "name": "ЛАЗ 699Р",
+        "model_id": 498,
+        "server_id": 99
+    },
+    {
+        "name": "ГАЗ 52",
+        "model_id": 499,
+        "server_id": 100
+    },
+    {
+        "name": "Jeep SRT8",
+        "model_id": 500,
+        "server_id": 101
+    },
+    {
+        "name": "RC Goblin",
+        "model_id": 501,
+        "server_id": 102
+    },
+    {
+        "name": "Tesla Model S",
+        "model_id": 502,
+        "server_id": 103
+    },
+    {
+        "name": "Ford GT",
+        "model_id": 503,
+        "server_id": 104
+    },
+    {
+        "name": "Dodge Viper",
+        "model_id": 504,
+        "server_id": 105
+    },
+    {
+        "name": "Toyota LC200",
+        "model_id": 505,
+        "server_id": 106
+    },
+    {
+        "name": "Audi R8",
+        "model_id": 506,
+        "server_id": 107
+    },
+    {
+        "name": "Hyundai Solaris",
+        "model_id": 507,
+        "server_id": 108
+    },
+    {
+        "name": "УАЗ 2206",
+        "model_id": 508,
+        "server_id": 109
+    },
+    {
+        "name": "Десна",
+        "model_id": 509,
+        "server_id": 110
+    },
+    {
+        "name": "Mountain Bike",
+        "model_id": 510,
+        "server_id": 111
+    },
+    {
+        "name": "Aerostar 700",
+        "model_id": 511,
+        "server_id": 112
+    },
+    {
+        "name": "Cropduster",
+        "model_id": 512,
+        "server_id": 113
+    },
+    {
+        "name": "Stuntplane",
+        "model_id": 513,
+        "server_id": 114
+    },
+    {
+        "name": "МАЗ 5440",
+        "model_id": 514,
+        "server_id": 115
+    },
+    {
+        "name": "Scania R440 V8",
+        "model_id": 515,
+        "server_id": 116
+    },
+    {
+        "name": "Ford Focus RS",
+        "model_id": 516,
+        "server_id": 117
+    },
+    {
+        "name": "РАФ 2203",
+        "model_id": 517,
+        "server_id": 118
+    },
+    {
+        "name": "ЕрАЗ 677",
+        "model_id": 518,
+        "server_id": 119
+    },
+    {
+        "name": "Learjet 60",
+        "model_id": 519,
+        "server_id": 120
+    },
+    {
+        "name": "Hydra",
+        "model_id": 520,
+        "server_id": 121
+    },
+    {
+        "name": "ИЖ Планета 5",
+        "model_id": 521,
+        "server_id": 122
+    },
+    {
+        "name": "Yamaha YZF-R1",
+        "model_id": 522,
+        "server_id": 123
+    },
+    {
+        "name": "BMW POLICE",
+        "model_id": 523,
+        "server_id": 124
+    },
+    {
+        "name": "Cement Truck",
+        "model_id": 524,
+        "server_id": 125
+    },
+    {
+        "name": "ЗиЛ Эвакуатор",
+        "model_id": 525,
+        "server_id": 126
+    },
+    {
+        "name": "Opel",
+        "model_id": 526,
+        "server_id": 127
+    },
+    {
+        "name": "Lada 2113 Pro-Sport",
+        "model_id": 527,
+        "server_id": 128
+    },
+    {
+        "name": "Гробовозка",
+        "model_id": 528,
+        "server_id": 129
+    },
+    {
+        "name": "BMW М5 Е60",
+        "model_id": 529,
+        "server_id": 130
+    },
+    {
+        "name": "Forklift",
+        "model_id": 530,
+        "server_id": 131
+    },
+    {
+        "name": "Трактор Беларус",
+        "model_id": 531,
+        "server_id": 132
+    },
+    {
+        "name": "Combine Harvester",
+        "model_id": 532,
+        "server_id": 133
+    },
+    {
+        "name": "BMW M5 E34",
+        "model_id": 533,
+        "server_id": 134
+    },
+    {
+        "name": "Volkswagen Polo",
+        "model_id": 534,
+        "server_id": 135
+    },
+    {
+        "name": "Porsche Cayenne T",
+        "model_id": 535,
+        "server_id": 136
+    },
+    {
+        "name": "Audi RS6",
+        "model_id": 536,
+        "server_id": 137
+    },
+    {
+        "name": "Freight (Train)",
+        "model_id": 537,
+        "server_id": 138
+    },
+    {
+        "name": "Brownstreak (Train)",
+        "model_id": 538,
+        "server_id": 139
+    },
+    {
+        "name": "Vortex",
+        "model_id": 539,
+        "server_id": 140
+    },
+    {
+        "name": "Lada Priora 2",
+        "model_id": 540,
+        "server_id": 141
+    },
+    {
+        "name": "MB AMG GT",
+        "model_id": 541,
+        "server_id": 142
+    },
+    {
+        "name": "Lada 4x4",
+        "model_id": 542,
+        "server_id": 143
+    },
+    {
+        "name": "MB sls",
+        "model_id": 543,
+        "server_id": 144
+    },
+    {
+        "name": "MAN Firetruck ",
+        "model_id": 544,
+        "server_id": 145
+    },
+    {
+        "name": "ВАЗ 2106",
+        "model_id": 545,
+        "server_id": 146
+    },
+    {
+        "name": "Москвич Святогор",
+        "model_id": 546,
+        "server_id": 147
+    },
+    {
+        "name": "Kia Ceed",
+        "model_id": 547,
+        "server_id": 148
+    },
+    {
+        "name": "Ми-8",
+        "model_id": 548,
+        "server_id": 149
+    },
+    {
+        "name": "ЗАЗ 966",
+        "model_id": 549,
+        "server_id": 150
+    },
+    {
+        "name": "Alfa Romeo",
+        "model_id": 550,
+        "server_id": 151
+    },
+    {
+        "name": "Mitsubishi Evolution",
+        "model_id": 551,
+        "server_id": 152
+    },
+    {
+        "name": "ВИС 2347",
+        "model_id": 552,
+        "server_id": 153
+    },
+    {
+        "name": "King Air C90B",
+        "model_id": 553,
+        "server_id": 154
+    },
+    {
+        "name": "Газель 3302",
+        "model_id": 554,
+        "server_id": 155
+    },
+    {
+        "name": "СМЗ С-3Д",
+        "model_id": 555,
+        "server_id": 156
+    },
+    {
+        "name": "Chevrolet Monster",
+        "model_id": 556,
+        "server_id": 157
+    },
+    {
+        "name": "Monster B",
+        "model_id": 557,
+        "server_id": 158
+    },
+    {
+        "name": "Subaru Impreza",
+        "model_id": 558,
+        "server_id": 159
+    },
+    {
+        "name": "RR Wraith",
+        "model_id": 559,
+        "server_id": 160
+    },
+    {
+        "name": "Audi TT RS",
+        "model_id": 560,
+        "server_id": 161
+    },
+    {
+        "name": "Москвич 427",
+        "model_id": 561,
+        "server_id": 162
+    },
+    {
+        "name": "Nissan GTR 2017",
+        "model_id": 562,
+        "server_id": 163
+    },
+    {
+        "name": "Raindance",
+        "model_id": 563,
+        "server_id": 164
+    },
+    {
+        "name": "RC Tiger",
+        "model_id": 564,
+        "server_id": 165
+    },
+    {
+        "name": "ВАЗ 2108",
+        "model_id": 565,
+        "server_id": 166
+    },
+    {
+        "name": "ВАЗ 2104",
+        "model_id": 566,
+        "server_id": 167
+    },
+    {
+        "name": "Toyota Camry (2018)",
+        "model_id": 567,
+        "server_id": 168
+    },
+    {
+        "name": "Bac Mono",
+        "model_id": 568,
+        "server_id": 169
+    },
+    {
+        "name": "Freight Flat Trailer",
+        "model_id": 569,
+        "server_id": 170
+    },
+    {
+        "name": "Streak Trailer",
+        "model_id": 570,
+        "server_id": 171
+    },
+    {
+        "name": "Kart",
+        "model_id": 571,
+        "server_id": 172
+    },
+    {
+        "name": "Mower",
+        "model_id": 572,
+        "server_id": 173
+    },
+    {
+        "name": "КамАЗ Мастер",
+        "model_id": 573,
+        "server_id": 174
+    },
+    {
+        "name": "Почта России",
+        "model_id": 574,
+        "server_id": 175
+    },
+    {
+        "name": "ГАЗ М20 Победа",
+        "model_id": 575,
+        "server_id": 176
+    },
+    {
+        "name": "Москвич 408 Export",
+        "model_id": 576,
+        "server_id": 177
+    },
+    {
+        "name": "AT400",
+        "model_id": 577,
+        "server_id": 178
+    },
+    {
+        "name": "Урал 4320",
+        "model_id": 578,
+        "server_id": 179
+    },
+    {
+        "name": "Mercedes G63",
+        "model_id": 579,
+        "server_id": 180
+    },
+    {
+        "name": "Mercedes-Benz C63",
+        "model_id": 580,
+        "server_id": 181
+    },
+    {
+        "name": "Suzuki GSX-R",
+        "model_id": 581,
+        "server_id": 182
+    },
+    {
+        "name": "Ford Transit Новостной",
+        "model_id": 582,
+        "server_id": 183
+    },
+    {
+        "name": "Tug",
+        "model_id": 583,
+        "server_id": 184
+    },
+    {
+        "name": "Petrol Trailer",
+        "model_id": 584,
+        "server_id": 185
+    },
+    {
+        "name": "Mercedes-Maybach",
+        "model_id": 585,
+        "server_id": 186
+    },
+    {
+        "name": "Wayfarer",
+        "model_id": 586,
+        "server_id": 187
+    },
+    {
+        "name": "Mazda mx5",
+        "model_id": 587,
+        "server_id": 188
+    },
+    {
+        "name": "ЛиАЗ 677 Кафе",
+        "model_id": 588,
+        "server_id": 189
+    },
+    {
+        "name": "Opel GT",
+        "model_id": 589,
+        "server_id": 190
+    },
+    {
+        "name": "Freight Box Trailer",
+        "model_id": 590,
+        "server_id": 191
+    },
+    {
+        "name": "Article Trailer 3",
+        "model_id": 591,
+        "server_id": 192
+    },
+    {
+        "name": "Andromada",
+        "model_id": 592,
+        "server_id": 193
+    },
+    {
+        "name": "Dodo",
+        "model_id": 593,
+        "server_id": 194
+    },
+    {
+        "name": "RC Cam",
+        "model_id": 594,
+        "server_id": 195
+    },
+    {
+        "name": "Launch",
+        "model_id": 595,
+        "server_id": 196
+    },
+    {
+        "name": "Audi RS7 Police",
+        "model_id": 596,
+        "server_id": 197
+    },
+    {
+        "name": "Tesla Model 3 Police",
+        "model_id": 597,
+        "server_id": 198
+    },
+    {
+        "name": "Mercedes Benz E63s Police",
+        "model_id": 598,
+        "server_id": 199
+    },
+    {
+        "name": "Skoda Superb Police",
+        "model_id": 599,
+        "server_id": 200
+    },
+    {
+        "name": "DeLorean DMC-12",
+        "model_id": 600,
+        "server_id": 201
+    },
+    {
+        "name": "БТР 80",
+        "model_id": 601,
+        "server_id": 202
+    },
+    {
+        "name": "BMW M2",
+        "model_id": 602,
+        "server_id": 203
+    },
+    {
+        "name": "MB C63s Coupe",
+        "model_id": 603,
+        "server_id": 204
+    },
+    {
+        "name": "Skoda Y",
+        "model_id": 604,
+        "server_id": 205
+    },
+    {
+        "name": "Sadler Shit",
+        "model_id": 605,
+        "server_id": 206
+    },
+    {
+        "name": "Baggage Trailer",
+        "model_id": 606,
+        "server_id": 207
+    },
+    {
+        "name": "Baggage Trailer",
+        "model_id": 607,
+        "server_id": 208
+    },
+    {
+        "name": "Tug Stairs Trailer",
+        "model_id": 608,
+        "server_id": 209
+    },
+    {
+        "name": "ГАЗ 3309",
+        "model_id": 609,
+        "server_id": 210
+    },
+    {
+        "name": "Farm Trailer",
+        "model_id": 610,
+        "server_id": 211
+    },
+    {
+        "name": "Utility Trailer",
+        "model_id": 611,
+        "server_id": 212
+    },
+    {
+        "name": "Toyota Avensis",
+        "model_id": 612,
+        "server_id": 213
+    },
+    {
+        "name": "MB AMG GT 4",
+        "model_id": 613,
+        "server_id": 214
+    },
+    {
+        "name": "Audi Q8",
+        "model_id": 794,
+        "server_id": 215
+    },
+    {
+        "name": "Lexus LX",
+        "model_id": 1800,
+        "server_id": 216
+    },
+    {
+        "name": "Mercedes-Benz GLE",
+        "model_id": 1801,
+        "server_id": 217
+    },
+    {
+        "name": "Volkswagen Amarok",
+        "model_id": 1802,
+        "server_id": 218
+    },
+    {
+        "name": "Audi Q7 Police",
+        "model_id": 1803,
+        "server_id": 219
+    },
+    {
+        "name": "Chevrolet Cruze",
+        "model_id": 1804,
+        "server_id": 220
+    },
+    {
+        "name": "Toyota Camry (2010)",
+        "model_id": 1805,
+        "server_id": 221
+    },
+    {
+        "name": "Toyota Corolla",
+        "model_id": 1806,
+        "server_id": 222
+    },
+    {
+        "name": "Audi RS7",
+        "model_id": 1807,
+        "server_id": 223
+    },
+    {
+        "name": "Audi A8 2020",
+        "model_id": 1808,
+        "server_id": 224
+    },
+    {
+        "name": "Mazda 6",
+        "model_id": 1809,
+        "server_id": 225
+    },
+    {
+        "name": "Ranger Halloween",
+        "model_id": 1810,
+        "server_id": 226
+    },
+    {
+        "name": "Ambmini Halloween",
+        "model_id": 1811,
+        "server_id": 227
+    },
+    {
+        "name": "MB SL300 Halloween",
+        "model_id": 1812,
+        "server_id": 228
+    },
+    {
+        "name": "Grobvoz Halloween",
+        "model_id": 1813,
+        "server_id": 229
+    },
+    {
+        "name": "KIA SPORTAGE",
+        "model_id": 1814,
+        "server_id": 230
+    },
+    {
+        "name": "Airbus Helicopters H160",
+        "model_id": 1815,
+        "server_id": 231
+    },
+    {
+        "name": "Bentley Continental GT",
+        "model_id": 1816,
+        "server_id": 232
+    },
+    {
+        "name": "BMW M8",
+        "model_id": 1817,
+        "server_id": 233
+    },
+    {
+        "name": "MB S63 COUPE",
+        "model_id": 1818,
+        "server_id": 234
+    },
+    {
+        "name": "Volkswagen Touareg",
+        "model_id": 1819,
+        "server_id": 235
+    },
+    {
+        "name": "Lamborghini URUS",
+        "model_id": 1820,
+        "server_id": 236
+    },
+    {
+        "name": "MB E63s (2020)",
+        "model_id": 1821,
+        "server_id": 237
+    },
+    {
+        "name": "Infiniti fx35",
+        "model_id": 1822,
+        "server_id": 238
+    },
+    {
+        "name": "Faggio",
+        "model_id": 1823,
+        "server_id": 239
+    },
+    {
+        "name": "Snow Bike",
+        "model_id": 1912,
+        "server_id": 240
+    },
+    {
+        "name": "Snow Sanchez",
+        "model_id": 1913,
+        "server_id": 241
+    },
+    {
+        "name": "Dodge Chalenger",
+        "model_id": 1914,
+        "server_id": 242
+    },
+    {
+        "name": "Acura NSX",
+        "model_id": 1915,
+        "server_id": 243
+    },
+    {
+        "name": "Volvo V60",
+        "model_id": 1916,
+        "server_id": 244
+    },
+    {
+        "name": "Range Rover Evoque",
+        "model_id": 1918,
+        "server_id": 245
+    },
+    {
+        "name": "Honda Civic Type R",
+        "model_id": 1920,
+        "server_id": 246
+    },
+    {
+        "name": "Lexus IS350",
+        "model_id": 1921,
+        "server_id": 247
+    },
+    {
+        "name": "Ford Mustang",
+        "model_id": 1924,
+        "server_id": 248
+    },
+    {
+        "name": "Volvo XC 90",
+        "model_id": 1925,
+        "server_id": 249
+    },
+    {
+        "name": "Jaguar F-Pace",
+        "model_id": 1926,
+        "server_id": 250
+    },
+    {
+        "name": "KIA Optima",
+        "model_id": 1927,
+        "server_id": 251
+    },
+    {
+        "name": "Volvo Truck",
+        "model_id": 1928,
+        "server_id": 252
+    },
+    {
+        "name": "Chevrolet Colorado",
+        "model_id": 1929,
+        "server_id": 253
+    },
+    {
+        "name": "Cadilac Seville",
+        "model_id": 1930,
+        "server_id": 254
+    },
+    {
+        "name": "BMW X5 e53",
+        "model_id": 1931,
+        "server_id": 255
+    },
+    {
+        "name": "BMW Z4",
+        "model_id": 1932,
+        "server_id": 256
+    },
+    {
+        "name": "Lexus RX460",
+        "model_id": 1945,
+        "server_id": 257
+    },
+    {
+        "name": "Mercedes S600",
+        "model_id": 1946,
+        "server_id": 258
+    },
+    {
+        "name": "Ducati 1098",
+        "model_id": 1947,
+        "server_id": 259
+    },
+    {
+        "name": "Ducati Diavel",
+        "model_id": 1948,
+        "server_id": 260
+    },
+    {
+        "name": "Ducati",
+        "model_id": 1949,
+        "server_id": 261
+    },
+    {
+        "name": "Kawasaki ZX-10RR",
+        "model_id": 1950,
+        "server_id": 262
+    },
+    {
+        "name": "Western",
+        "model_id": 1951,
+        "server_id": 263
+    },
+    {
+        "name": "BMW X7",
+        "model_id": 1952,
+        "server_id": 264
+    },
+    {
+        "name": "RR Cullinan",
+        "model_id": 1954,
+        "server_id": 265
+    },
+    {
+        "name": "Ковёр-самолёт",
+        "model_id": 1955,
+        "server_id": 266
+    },
+    {
+        "name": "Volkswagen Beetle",
+        "model_id": 1956,
+        "server_id": 267
+    },
+    {
+        "name": "Bugatti Divo",
+        "model_id": 1958,
+        "server_id": 268
+    },
+    {
+        "name": "Fiat 500 Abarath",
+        "model_id": 1959,
+        "server_id": 269
+    },
+    {
+        "name": "Mercedes-Benz GLS 2020",
+        "model_id": 1960,
+        "server_id": 270
+    },
+    {
+        "name": "Mercedes-Benz G65 AMG",
+        "model_id": 1962,
+        "server_id": 271
+    },
+    {
+        "name": "Lamborgini SVJ",
+        "model_id": 1963,
+        "server_id": 272
+    },
+    {
+        "name": "Range Rover SVA",
+        "model_id": 1964,
+        "server_id": 273
+    },
+    {
+        "name": "BMW 5 E39",
+        "model_id": 1965,
+        "server_id": 274
+    },
+    {
+        "name": "Mercedes-Benz S600 W220",
+        "model_id": 1966,
+        "server_id": 275
+    },
+    {
+        "name": "Tesla Model Y",
+        "model_id": 1972,
+        "server_id": 276
+    },
+    {
+        "name": "Nissan LEAF",
+        "model_id": 1973,
+        "server_id": 277
+    },
+    {
+        "name": "Nissan Silvia",
+        "model_id": 1974,
+        "server_id": 278
+    },
+    {
+        "name": "Subaru Forester",
+        "model_id": 1975,
+        "server_id": 279
+    },
+    {
+        "name": "Hyundai Sonata",
+        "model_id": 1977,
+        "server_id": 280
+    },
+    {
+        "name": "BMW 7 E38",
+        "model_id": 1978,
+        "server_id": 281
+    },
+    {
+        "name": "Mercedes-Benz E55 AMG",
+        "model_id": 1979,
+        "server_id": 282
+    },
+    {
+        "name": "Mercedes-Benz E500",
+        "model_id": 1980,
+        "server_id": 283
+    },
+    {
+        "name": "Subaru WRX STI",
+        "model_id": 1981,
+        "server_id": 284
+    },
+    {
+        "name": "Sherp",
+        "model_id": 1982,
+        "server_id": 285
+    },
+    {
+        "name": "Сани",
+        "model_id": 1984,
+        "server_id": 286
+    },
+    {
+        "name": "Buckingham",
+        "model_id": 1985,
+        "server_id": 287
+    },
+    {
+        "name": "Ford Mustang GT500",
+        "model_id": 1987,
+        "server_id": 288
+    },
+    {
+        "name": "Dodge RAM",
+        "model_id": 1988,
+        "server_id": 289
+    },
+    {
+        "name": "Chevrolet Corvette",
+        "model_id": 1989,
+        "server_id": 290
+    },
+    {
+        "name": "Aston Martin DB5",
+        "model_id": 1992,
+        "server_id": 291
+    },
+    {
+        "name": "BMW M3 GTR",
+        "model_id": 1993,
+        "server_id": 292
+    },
+    {
+        "name": "Chevrolet Camarro SS",
+        "model_id": 1994,
+        "server_id": 293
+    },
+    {
+        "name": "Mazda RX7",
+        "model_id": 1995,
+        "server_id": 294
+    },
+    {
+        "name": "Mazda RX8",
+        "model_id": 1998,
+        "server_id": 295
+    },
+    {
+        "name": "Mitsubishi Eclipse",
+        "model_id": 1999,
+        "server_id": 296
+    },
+    {
+        "name": "Ford Mustang",
+        "model_id": 2000,
+        "server_id": 297
+    },
+    {
+        "name": "Nissan 350z",
+        "model_id": 2001,
+        "server_id": 298
+    },
+    {
+        "name": "Nissan GTR R34",
+        "model_id": 2002,
+        "server_id": 299
+    },
+    {
+        "name": "Quadra Turbo-R V-Tech",
+        "model_id": 2003,
+        "server_id": 300
+    },
+    {
+        "name": "Сапсан",
+        "model_id": 2004,
+        "server_id": 301
+    },
+    {
+        "name": "ЧС4Т",
+        "model_id": 2005,
+        "server_id": 302
+    },
+    {
+        "name": "Faggio Glovo",
+        "model_id": 2006,
+        "server_id": 303
+    },
+    {
+        "name": "BMW 760Li",
+        "model_id": 3820,
+        "server_id": 304
+    },
+    {
+        "name": "Aston Martin One77",
+        "model_id": 3821,
+        "server_id": 305
+    },
+    {
+        "name": "Bentley Muliner",
+        "model_id": 3822,
+        "server_id": 306
+    },
+    {
+        "name": "Bentley Bentayga",
+        "model_id": 3823,
+        "server_id": 307
+    },
+    {
+        "name": "BMW M4 Competition",
+        "model_id": 3824,
+        "server_id": 308
+    },
+    {
+        "name": "BMW i8",
+        "model_id": 3825,
+        "server_id": 309
+    },
+    {
+        "name": "Genesis G90",
+        "model_id": 3826,
+        "server_id": 310
+    },
+    {
+        "name": "Honda Integra",
+        "model_id": 3827,
+        "server_id": 311
+    },
+    {
+        "name": "BMW G20",
+        "model_id": 3828,
+        "server_id": 312
+    },
+    {
+        "name": "MB S500 W223",
+        "model_id": 3829,
+        "server_id": 313
+    },
+    {
+        "name": "Ford Raptor",
+        "model_id": 3830,
+        "server_id": 314
+    },
+    {
+        "name": "Ferrari J50",
+        "model_id": 3831,
+        "server_id": 315
+    },
+    {
+        "name": "Mercedes Benz SLR",
+        "model_id": 3832,
+        "server_id": 316
+    },
+    {
+        "name": "Subaru BRZ",
+        "model_id": 3833,
+        "server_id": 317
+    },
+    {
+        "name": "Lada Vesta",
+        "model_id": 3834,
+        "server_id": 318
+    },
+    {
+        "name": "Porsche Taycan",
+        "model_id": 3835,
+        "server_id": 319
+    },
+    {
+        "name": "Ferrari Enzo",
+        "model_id": 3836,
+        "server_id": 320
+    },
+    {
+        "name": "UAZ Patriot",
+        "model_id": 3837,
+        "server_id": 321
+    },
+    {
+        "name": "Волга 3110",
+        "model_id": 3838,
+        "server_id": 322
+    },
+    {
+        "name": "MB X-Class",
+        "model_id": 3839,
+        "server_id": 323
+    },
+    {
+        "name": "Jaguar XFR",
+        "model_id": 3840,
+        "server_id": 324
+    },
+    {
+        "name": "Ghost",
+        "model_id": 3841,
+        "server_id": 325
+    },
+    {
+        "name": "Лошадь",
+        "model_id": 5732,
+        "server_id": 326
+    },
+    {
+        "name": "Карета для лошади",
+        "model_id": 5733,
+        "server_id": 327
+    },
+    {
+        "name": "Метла",
+        "model_id": 5799,
+        "server_id": 328
+    },
+    {
+        "name": "AUDI A6",
+        "model_id": 5804,
+        "server_id": 329
+    },
+    {
+        "name": "AUDI Q7",
+        "model_id": 5805,
+        "server_id": 330
+    },
+    {
+        "name": "BMW M6",
+        "model_id": 5806,
+        "server_id": 331
+    },
+    {
+        "name": "BMW M6 OLD",
+        "model_id": 5825,
+        "server_id": 332
+    },
+    {
+        "name": "MB CLA46",
+        "model_id": 5831,
+        "server_id": 333
+    },
+    {
+        "name": "MB CLS",
+        "model_id": 5832,
+        "server_id": 334
+    },
+    {
+        "name": "Haval",
+        "model_id": 5833,
+        "server_id": 335
+    },
+    {
+        "name": "Lincoln",
+        "model_id": 5835,
+        "server_id": 336
+    },
+    {
+        "name": "Porsche Macan",
+        "model_id": 5849,
+        "server_id": 337
+    },
+    {
+        "name": "Daewoo Matiz",
+        "model_id": 5850,
+        "server_id": 338
+    },
+    {
+        "name": "MB 6x6",
+        "model_id": 5838,
+        "server_id": 339
+    },
+    {
+        "name": "MB E63",
+        "model_id": 5839,
+        "server_id": 340
+    },
+    {
+        "name": "Toyota LC Prado",
+        "model_id": 5844,
+        "server_id": 341
+    },
+    {
+        "name": "Toyota Rav 4",
+        "model_id": 5845,
+        "server_id": 342
+    },
+    {
+        "name": "Toyota Supra A90",
+        "model_id": 5846,
+        "server_id": 343
+    },
+    {
+        "name": "УАЗ 469",
+        "model_id": 5847,
+        "server_id": 344
+    },
+    {
+        "name": "Volvo XC90",
+        "model_id": 5848,
+        "server_id": 345
+    },
+    {
+        "name": "Хэллоуинская карета",
+        "model_id": 5862,
+        "server_id": 346
+    },
+    {
+        "name": "Mercedes Actros",
+        "model_id": 6007,
+        "server_id": 347
+    },
+    {
+        "name": "Audi A6 C4",
+        "model_id": 6008,
+        "server_id": 348
+    },
+    {
+        "name": "BMW 4-Series",
+        "model_id": 6009,
+        "server_id": 349
+    },
+    {
+        "name": "Cadilac Escalade 2007",
+        "model_id": 6010,
+        "server_id": 350
+    },
+    {
+        "name": "Toyota Mark II",
+        "model_id": 6011,
+        "server_id": 351
+    },
+    {
+        "name": "Dacia",
+        "model_id": 6012,
+        "server_id": 352
+    },
+    {
+        "name": "Mitsubishi Lancer EVO-X",
+        "model_id": 6013,
+        "server_id": 353
+    },
+    {
+        "name": "Chevrolet Impala 1964",
+        "model_id": 6014,
+        "server_id": 354
+    },
+    {
+        "name": "Chevrolet Impala 1967",
+        "model_id": 6015,
+        "server_id": 355
+    },
+    {
+        "name": "Kenwooth Coca-Cola",
+        "model_id": 6016,
+        "server_id": 356
+    },
+    {
+        "name": "Coca-Cola Trailer",
+        "model_id": 6017,
+        "server_id": 357
+    },
+    {
+        "name": "McLaren MP4",
+        "model_id": 6024,
+        "server_id": 358
+    },
+    {
+        "name": "Ford Mustang Mach-1",
+        "model_id": 6025,
+        "server_id": 359
+    },
+    {
+        "name": "Rolls-Royce Phantom",
+        "model_id": 6026,
+        "server_id": 360
+    },
+    {
+        "name": "Пикап",
+        "model_id": 6027,
+        "server_id": 361
+    },
+    {
+        "name": "ЗиЛ 130 Водовоз",
+        "model_id": 6102,
+        "server_id": 362
+    },
+    {
+        "name": "Toyota Camry",
+        "model_id": 6150,
+        "server_id": 363
+    },
+    {
+        "name": "BMW M2",
+        "model_id": 6151,
+        "server_id": 364
+    },
+    {
+        "name": "Volkswagen Polo",
+        "model_id": 6152,
+        "server_id": 365
+    },
+    {
+        "name": "Audi TT RS",
+        "model_id": 6153,
+        "server_id": 366
+    },
+    {
+        "name": "Ford Transit Родинамобил",
+        "model_id": 6154,
+        "server_id": 367
+    },
+    {
+        "name": "Шлюпка",
+        "model_id": 6536,
+        "server_id": 368
+    },
+    {
+        "name": "Mercedes AMG ONE",
+        "model_id": 6543,
+        "server_id": 369
+    },
+    {
+        "name": "Aston Martin Valkyrie",
+        "model_id": 6544,
+        "server_id": 370
+    },
+    {
+        "name": "Chevrolet Aveo",
+        "model_id": 6545,
+        "server_id": 371
+    },
+    {
+        "name": "Bugatti Bolide",
+        "model_id": 6546,
+        "server_id": 372
+    },
+    {
+        "name": "Polaris Buggy",
+        "model_id": 6547,
+        "server_id": 373
+    },
+    {
+        "name": "Renault Duster",
+        "model_id": 6548,
+        "server_id": 374
+    },
+    {
+        "name": "Ferrari Monza",
+        "model_id": 6549,
+        "server_id": 375
+    },
+    {
+        "name": "MB G63 EQG",
+        "model_id": 6550,
+        "server_id": 376
+    },
+    {
+        "name": "Hummer HX",
+        "model_id": 6551,
+        "server_id": 377
+    },
+    {
+        "name": "Ferrari laferrari",
+        "model_id": 6552,
+        "server_id": 378
+    },
+    {
+        "name": "BMW M5cs",
+        "model_id": 6553,
+        "server_id": 379
+    },
+    {
+        "name": "Mercedes Vision",
+        "model_id": 6554,
+        "server_id": 380
+    },
+    {
+        "name": "Lamborghini Сountach",
+        "model_id": 7762,
+        "server_id": 381
+    },
+    {
+        "name": "Koenigsegg Gemera",
+        "model_id": 7763,
+        "server_id": 382
+    },
+    {
+        "name": "Kia K7",
+        "model_id": 7764,
+        "server_id": 383
+    },
+    {
+        "name": "LEXUS LX600",
+        "model_id": 7765,
+        "server_id": 384
+    },
+    {
+        "name": "BMW M1",
+        "model_id": 7766,
+        "server_id": 385
+    },
+    {
+        "name": "Nissan Qashqai",
+        "model_id": 7767,
+        "server_id": 386
+    },
+    {
+        "name": "VW Scirroco",
+        "model_id": 7768,
+        "server_id": 387
+    },
+    {
+        "name": "Toyota LC300GR",
+        "model_id": 7769,
+        "server_id": 388
+    },
+    {
+        "name": "Toyota AE86",
+        "model_id": 7770,
+        "server_id": 389
+    },
+    {
+        "name": "Land Rover Defender",
+        "model_id": 7771,
+        "server_id": 390
+    },
+    {
+        "name": "Ford Mustang Mach-e",
+        "model_id": 7772,
+        "server_id": 391
+    },
+    {
+        "name": "Mazda 6 OLD",
+        "model_id": 7773,
+        "server_id": 392
+    },
+    {
+        "name": "AUDI R8-speedster",
+        "model_id": 7774,
+        "server_id": 393
+    },
+    {
+        "name": "Hyundai Santa Fe",
+        "model_id": 7775,
+        "server_id": 394
+    },
+    {
+        "name": "Range Rover Velar",
+        "model_id": 7776,
+        "server_id": 395
+    },
+    {
+        "name": "Iveco Trakker нефтевоз",
+        "model_id": 7777,
+        "server_id": 396
+    },
+    {
+        "name": "Газель Next нефтевоз",
+        "model_id": 7778,
+        "server_id": 397
+    },
+    {
+        "name": "Cargobob нефтевоз",
+        "model_id": 7787,
+        "server_id": 398
+    },
+    {
+        "name": "Ikarus 280",
+        "model_id": 8126,
+        "server_id": 399
+    },
+    {
+        "name": "Ikarus Trailer",
+        "model_id": 8138,
+        "server_id": 400
+    },
+    {
+        "name": "Газель Next",
+        "model_id": 8145,
+        "server_id": 401
+    },
+    {
+        "name": "Электробус",
+        "model_id": 9353,
+        "server_id": 402
+    },
+    {
+        "name": "Freightliner Columbia",
+        "model_id": 9354,
+        "server_id": 403
+    },
+    {
+        "name": "Renault Magnum",
+        "model_id": 9355,
+        "server_id": 404
+    },
+    {
+        "name": "Scania P420",
+        "model_id": 9356,
+        "server_id": 405
+    },
+    {
+        "name": "Газель Next автобус",
+        "model_id": 9357,
+        "server_id": 406
+    },
+    {
+        "name": "Scania Touring",
+        "model_id": 9358,
+        "server_id": 407
+    },
+    {
+        "name": "ЛиАЗ 5256",
+        "model_id": 9359,
+        "server_id": 408
+    },
+    {
+        "name": "ЛАЗ 695Н",
+        "model_id": 9360,
+        "server_id": 409
+    },
+    {
+        "name": "Nissan 240sx",
+        "model_id": 9125,
+        "server_id": 410
+    },
+    {
+        "name": "Toyota Altezza",
+        "model_id": 9216,
+        "server_id": 411
+    },
+    {
+        "name": "VAZ 2105",
+        "model_id": 9217,
+        "server_id": 412
+    },
+    {
+        "name": "Ferrari Roma",
+        "model_id": 9218,
+        "server_id": 413
+    },
+    {
+        "name": "Mazda MPS",
+        "model_id": 9219,
+        "server_id": 414
+    },
+    {
+        "name": "Nagasaki",
+        "model_id": 9557,
+        "server_id": 415
+    },
+    {
+        "name": "Longfin",
+        "model_id": 9558,
+        "server_id": 416
+    },
+    {
+        "name": "Lampadati Toro",
+        "model_id": 9559,
+        "server_id": 417
+    },
+    {
+        "name": "Tanarg-912",
+        "model_id": 1986,
+        "server_id": 418
+    },
+    {
+        "name": "Скейтборд",
+        "model_id": 10430,
+        "server_id": 419
+    },
+    {
+        "name": "Доска для серфинга",
+        "model_id": 10431,
+        "server_id": 420
+    },
+    {
+        "name": "Воздушный шар",
+        "model_id": 10432,
+        "server_id": 421
+    },
+    {
+        "name": "Сноуборд",
+        "model_id": 10433,
+        "server_id": 422
+    },
+    {
+        "name": "Электросамокат 1",
+        "model_id": 10444,
+        "server_id": 423
+    },
+    {
+        "name": "Электросамокат 2",
+        "model_id": 10445,
+        "server_id": 424
+    },
+    {
+        "name": "Электросамокат 3",
+        "model_id": 10446,
+        "server_id": 425
+    },
+    {
+        "name": "Sprinter",
+        "model_id": 10452,
+        "server_id": 426
+    },
+    {
+        "name": "Tacoma",
+        "model_id": 10453,
+        "server_id": 427
+    },
+    {
+        "name": "ВАЗ 21013",
+        "model_id": 9869,
+        "server_id": 428
+    },
+    {
+        "name": "ВАЗ 21013 потрепанный",
+        "model_id": 9870,
+        "server_id": 429
+    },
+    {
+        "name": "ВАЗ 2109",
+        "model_id": 9871,
+        "server_id": 430
+    },
+    {
+        "name": "ВАЗ 2109 потрепанный",
+        "model_id": 9872,
+        "server_id": 431
+    },
+    {
+        "name": "Mercedes-Benz W123",
+        "model_id": 9873,
+        "server_id": 432
+    },
+    {
+        "name": "Mercedes-Benz W123 потрепанный",
+        "model_id": 9874,
+        "server_id": 433
+    },
+    {
+        "name": "Brabus 850",
+        "model_id": 10561,
+        "server_id": 434
+    },
+    {
+        "name": "Mansory Stallone",
+        "model_id": 10562,
+        "server_id": 435
+    },
+    {
+        "name": "Bentley Bentayga Mansory",
+        "model_id": 10563,
+        "server_id": 436
+    },
+    {
+        "name": "Brabus 700",
+        "model_id": 10564,
+        "server_id": 437
+    },
+    {
+        "name": "Mercedes-AMG G63: Mansory",
+        "model_id": 10565,
+        "server_id": 438
+    },
+    {
+        "name": "Brabus X",
+        "model_id": 10566,
+        "server_id": 439
+    },
+    {
+        "name": "Rolls-Royce Cullinan Mansory",
+        "model_id": 10567,
+        "server_id": 440
+    },
+    {
+        "name": "Lamborghini Urus Mansory",
+        "model_id": 10568,
+        "server_id": 441
+    },
+    {
+        "name": "Chevrolet Corvette",
+        "model_id": 10569,
+        "server_id": 442
+    },
+    {
+        "name": "Porsche Carrera",
+        "model_id": 10570,
+        "server_id": 443
+    },
+    {
+        "name": "Scramjet",
+        "model_id": 10571,
+        "server_id": 444
+    },
+    {
+        "name": "Dodge Charger SRT",
+        "model_id": 10572,
+        "server_id": 445
+    },
+    {
+        "name": "Ferrari F40",
+        "model_id": 10573,
+        "server_id": 446
+    },
+    {
+        "name": "Canis",
+        "model_id": 10574,
+        "server_id": 447
+    },
+    {
+        "name": "Chevrolet Tahoe",
+        "model_id": 10575,
+        "server_id": 448
+    },
+    {
+        "name": "Tampa GT310",
+        "model_id": 10576,
+        "server_id": 449
+    },
+    {
+        "name": "Toyota Tundra",
+        "model_id": 10577,
+        "server_id": 450
+    },
+    {
+        "name": "Bentley Ultratank",
+        "model_id": 12849,
+        "server_id": 451
+    },
+    {
+        "name": "Mercedes w116 Bigfoot",
+        "model_id": 12894,
+        "server_id": 452
+    },
+    {
+        "name": "BMW M5 e34 Bigfoot",
+        "model_id": 12895,
+        "server_id": 453
+    },
+    {
+        "name": "Audi R8 Off-Roader",
+        "model_id": 12898,
+        "server_id": 454
+    },
+    {
+        "name": "Танк 300",
+        "model_id": 12848,
+        "server_id": 455
+    },
+    {
+        "name": "Daweoo Lanos 6x6",
+        "model_id": 12841,
+        "server_id": 456
+    },
+    {
+        "name": "Fantom",
+        "model_id": 12845,
+        "server_id": 457
+    },
+    {
+        "name": "Mercedes-Benz Tourismo 2016",
+        "model_id": 2341,
+        "server_id": 458
+    },
+    {
+        "name": "Mercedes-Benz Tourismo Express",
+        "model_id": 2342,
+        "server_id": 459
+    },
+    {
+        "name": "Volvo FH12",
+        "model_id": 2343,
+        "server_id": 460
+    },
+    {
+        "name": "Mack ANTHEM 64T 2019",
+        "model_id": 2344,
+        "server_id": 461
+    },
+    {
+        "name": "Tesla Semi-Truck",
+        "model_id": 2345,
+        "server_id": 462
+    },
+    {
+        "name": "Western Star 4900X",
+        "model_id": 2346,
+        "server_id": 463
+    },
+    {
+        "name": "Brabus Adventure",
+        "model_id": 10560,
+        "server_id": 464
+    },
+    {
+        "name": "Renault Arkana",
+        "model_id": 13920,
+        "server_id": 465
+    },
+    {
+        "name": "Daewoo Lanos",
+        "model_id": 13921,
+        "server_id": 466
+    },
+    {
+        "name": "Lada Kalina",
+        "model_id": 13922,
+        "server_id": 467
+    },
+    {
+        "name": "Niva 4x4 Urban",
+        "model_id": 13923,
+        "server_id": 468
+    },
+    {
+        "name": "Niva Legend",
+        "model_id": 13924,
+        "server_id": 469
+    },
+    {
+        "name": "UAZ Hunter",
+        "model_id": 13925,
+        "server_id": 470
+    },
+    {
+        "name": "Banshee 900R",
+        "model_id": 10814,
+        "server_id": 471
+    },
+    {
+        "name": "Schlagen GT",
+        "model_id": 10815,
+        "server_id": 472
+    },
+    {
+        "name": "Jeep Grand Cherokee",
+        "model_id": 10816,
+        "server_id": 473
+    },
+    {
+        "name": "Patriot Mil-Spec",
+        "model_id": 10817,
+        "server_id": 474
+    },
+    {
+        "name": "Hennessey Velociraptor 6x6",
+        "model_id": 10818,
+        "server_id": 475
+    },
+    {
+        "name": "Zentorno",
+        "model_id": 10819,
+        "server_id": 476
+    },
+    {
+        "name": "Ford Transit",
+        "model_id": 10820,
+        "server_id": 477
+    },
+    {
+        "name": "Ford Ranger",
+        "model_id": 10881,
+        "server_id": 478
+    },
+    {
+        "name": "Mitsubishi ASX",
+        "model_id": 12835,
+        "server_id": 479
+    },
+    {
+        "name": "BMW E34 Alpina",
+        "model_id": 12836,
+        "server_id": 480
+    },
+    {
+        "name": "BMW X5 E70",
+        "model_id": 12837,
+        "server_id": 481
+    },
+    {
+        "name": "Honda Accord",
+        "model_id": 12838,
+        "server_id": 482
+    },
+    {
+        "name": "Lamborghini Huracan 2022",
+        "model_id": 12839,
+        "server_id": 483
+    },
+    {
+        "name": "Toyota Land Cruiser 100",
+        "model_id": 12840,
+        "server_id": 484
+    },
+    {
+        "name": "Mercedes-Benz s600 w221",
+        "model_id": 12842,
+        "server_id": 485
+    },
+    {
+        "name": "Nissan Silvia S14",
+        "model_id": 12843,
+        "server_id": 486
+    },
+    {
+        "name": "Mitsubishi Outlander 2008",
+        "model_id": 12844,
+        "server_id": 487
+    },
+    {
+        "name": "Nissan Silvia S13",
+        "model_id": 12846,
+        "server_id": 488
+    },
+    {
+        "name": "Toyota Supra A80",
+        "model_id": 12847,
+        "server_id": 489
+    },
+    {
+        "name": "Pagani Codalunga",
+        "model_id": 12893,
+        "server_id": 490
+    },
+    {
+        "name": "Daewoo Matiz Bigfoot",
+        "model_id": 12920,
+        "server_id": 491
+    },
+    {
+        "name": "Volga 3110 Bigfoot",
+        "model_id": 12921,
+        "server_id": 492
+    },
+    {
+        "name": "Bugatti Veyron",
+        "model_id": 12922,
+        "server_id": 493
+    },
+    {
+        "name": "Lamborghini Centenario",
+        "model_id": 12923,
+        "server_id": 494
+    },
+    {
+        "name": "Jeep Gladiator 6x6",
+        "model_id": 12924,
+        "server_id": 495
+    },
+    {
+        "name": "Ford Bronco 6x6",
+        "model_id": 12925,
+        "server_id": 496
+    },
+    {
+        "name": "Audi R8",
+        "model_id": 12926,
+        "server_id": 497
+    },
+    {
+        "name": "Dodge Charger",
+        "model_id": 12927,
+        "server_id": 498
+    },
+    {
+        "name": "Ford Mustang GT",
+        "model_id": 12928,
+        "server_id": 499
+    },
+    {
+        "name": "Rolls Royce Ghost",
+        "model_id": 12947,
+        "server_id": 500
+    },
+    {
+        "name": "Shaman 6x6",
+        "model_id": 12948,
+        "server_id": 501
+    },
+    {
+        "name": "Lamborghini Countach",
+        "model_id": 12949,
+        "server_id": 502
+    },
+    {
+        "name": "Mercedes Benz AMG GTR",
+        "model_id": 12950,
+        "server_id": 503
+    },
+    {
+        "name": "HUMMER H2",
+        "model_id": 12951,
+        "server_id": 504
+    },
+    {
+        "name": "Mitsubishi EVO 8",
+        "model_id": 12952,
+        "server_id": 505
+    },
+    {
+        "name": "Mercedes Benz AMG GT",
+        "model_id": 12953,
+        "server_id": 506
+    },
+    {
+        "name": "Mercedes Benz CLS55",
+        "model_id": 12954,
+        "server_id": 507
+    },
+    {
+        "name": "Peterbilt 579",
+        "model_id": 12956,
+        "server_id": 508
+    },
+    {
+        "name": "Porsche 911 Turbo S",
+        "model_id": 12957,
+        "server_id": 509
+    },
+    {
+        "name": "Volvo FH16 460",
+        "model_id": 12959,
+        "server_id": 510
+    },
+    {
+        "name": "Porsche 911 Dakar",
+        "model_id": 12960,
+        "server_id": 511
+    },
+    {
+        "name": "Mercedes Benz W213",
+        "model_id": 12962,
+        "server_id": 512
+    },
+    {
+        "name": "Porsche 930",
+        "model_id": 12963,
+        "server_id": 513
+    },
+    {
+        "name": "Dodge RAM 1500TRX",
+        "model_id": 12964,
+        "server_id": 514
+    },
+    {
+        "name": "Prosails",
+        "model_id": 12965,
+        "server_id": 515
+    },
+    {
+        "name": "Searay",
+        "model_id": 12966,
+        "server_id": 516
+    },
+    {
+        "name": "Searay 1650",
+        "model_id": 12967,
+        "server_id": 517
+    },
+    {
+        "name": "Chevrolet C10 Death",
+        "model_id": 1150,
+        "server_id": 518
+    },
+    {
+        "name": "Chevrolet Corvette C1",
+        "model_id": 1151,
+        "server_id": 519
+    },
+    {
+        "name": "Chevrolet Corvette C1 Barbie",
+        "model_id": 1152,
+        "server_id": 520
+    },
+    {
+        "name": "Nissan 280ZX",
+        "model_id": 1153,
+        "server_id": 521
+    },
+    {
+        "name": "GMC Savana 2009",
+        "model_id": 1154,
+        "server_id": 522
+    },
+    {
+        "name": "Honda NSX 90",
+        "model_id": 1155,
+        "server_id": 523
+    },
+    {
+        "name": "Scooby Car",
+        "model_id": 1156,
+        "server_id": 524
+    },
+    {
+        "name": "Nissan Halloween",
+        "model_id": 1157,
+        "server_id": 525
+    },
+    {
+        "name": "Bike Skull",
+        "model_id": 1158,
+        "server_id": 526
+    },
+    {
+        "name": "Lada 2109",
+        "model_id": 1159,
+        "server_id": 527
+    },
+    {
+        "name": "International 4700",
+        "model_id": 1160,
+        "server_id": 528
+    },
+    {
+        "name": "Kamaz 5464",
+        "model_id": 1161,
+        "server_id": 529
+    },
+    {
+        "name": "Optimus Truck",
+        "model_id": 1162,
+        "server_id": 530
+    },
+    {
+        "name": "Mr Whooppee Twister",
+        "model_id": 1163,
+        "server_id": 531
+    },
+    {
+        "name": "Hot Rot Hell",
+        "model_id": 1164,
+        "server_id": 532
+    },
+    {
+        "name": "Hot Rot Hulk",
+        "model_id": 1165,
+        "server_id": 533
+    },
+    {
+        "name": "ГАЗ 21",
+        "model_id": 1166,
+        "server_id": 534
+    },
+    {
+        "name": "Ford Explorer 2020",
+        "model_id": 1167,
+        "server_id": 535
+    },
+    {
+        "name": "BMW M2 G87",
+        "model_id": 13643,
+        "server_id": 536
+    },
+    {
+        "name": "Skoda Octavia",
+        "model_id": 13644,
+        "server_id": 537
+    },
+    {
+        "name": "Alfa Romeo Giulia QV",
+        "model_id": 13645,
+        "server_id": 538
+    },
+    {
+        "name": "Pagani Huayra BC",
+        "model_id": 13646,
+        "server_id": 539
+    },
+    {
+        "name": "Lamborghini Veneno",
+        "model_id": 13647,
+        "server_id": 540
+    },
+    {
+        "name": "Aston Martin DBS",
+        "model_id": 13648,
+        "server_id": 541
+    },
+    {
+        "name": "Lincoln Navigator",
+        "model_id": 13649,
+        "server_id": 542
+    },
+    {
+        "name": "Bentley Flying Spur",
+        "model_id": 13650,
+        "server_id": 543
+    },
+    {
+        "name": "Jeep Wrangler",
+        "model_id": 13651,
+        "server_id": 544
+    },
+    {
+        "name": "Chevrolet Silverado",
+        "model_id": 13652,
+        "server_id": 545
+    },
+    {
+        "name": "Mercedes-Benz EQS",
+        "model_id": 13653,
+        "server_id": 546
+    },
+    {
+        "name": "Hyundai Ioniq 3",
+        "model_id": 13654,
+        "server_id": 547
+    },
+    {
+        "name": "Volkswagen Arteon",
+        "model_id": 13655,
+        "server_id": 548
+    },
+    {
+        "name": "Volkswagen Golf GTI",
+        "model_id": 13656,
+        "server_id": 549
+    },
+    {
+        "name": "Buran",
+        "model_id": 13657,
+        "server_id": 550
+    },
+    {
+        "name": "Mizu",
+        "model_id": 13658,
+        "server_id": 551
+    },
+    {
+        "name": "Snow mobile",
+        "model_id": 13659,
+        "server_id": 552
+    },
+    {
+        "name": "Sgrin",
+        "model_id": 13660,
+        "server_id": 553
+    },
+    {
+        "name": "Santa",
+        "model_id": 13661,
+        "server_id": 554
+    },
+    {
+        "name": "Maserati GranTurismo MC SLine",
+        "model_id": 13662,
+        "server_id": 555
+    },
+    {
+        "name": "Rolls-Royce Boat Tail",
+        "model_id": 13663,
+        "server_id": 556
+    },
+    {
+        "name": "Skoda Kodiaq RS",
+        "model_id": 13664,
+        "server_id": 557
+    },
+    {
+        "name": "Toyota Prius PHEV",
+        "model_id": 13665,
+        "server_id": 558
+    },
+    {
+        "name": "RickMorty car",
+        "model_id": 13666,
+        "server_id": 559
+    },
+    {
+        "name": "Ferrari 250 GTO",
+        "model_id": 13667,
+        "server_id": 560
+    },
+    {
+        "name": "Toyota AE86 Takumi",
+        "model_id": 7240,
+        "server_id": 561
+    },
+    {
+        "name": "Mazda RX-7 Drift",
+        "model_id": 7241,
+        "server_id": 562
+    },
+    {
+        "name": "Nissan Silvia S15 Drift",
+        "model_id": 7242,
+        "server_id": 563
+    },
+    {
+        "name": "Mini Cooper Countryman ALL4 2017",
+        "model_id": 7288,
+        "server_id": 564
+    },
+    {
+        "name": "Dodge Charger Daytona SRT 2024",
+        "model_id": 7289,
+        "server_id": 565
+    },
+    {
+        "name": "BMW M4 F82",
+        "model_id": 7290,
+        "server_id": 566
+    },
+    {
+        "name": "BMW NINE T",
+        "model_id": 7291,
+        "server_id": 567
+    },
+    {
+        "name": "Porsche Cayenne Turbo GT 2022",
+        "model_id": 7292,
+        "server_id": 568
+    },
+    {
+        "name": "KIA EV9",
+        "model_id": 7293,
+        "server_id": 569
+    },
+    {
+        "name": "Flying Brick DBkaba",
+        "model_id": 7294,
+        "server_id": 570
+    },
+    {
+        "name": "LiXiang L9",
+        "model_id": 7295,
+        "server_id": 571
+    },
+    {
+        "name": "Lotus Emira",
+        "model_id": 7296,
+        "server_id": 572
+    },
+    {
+        "name": "Lotus Esprit V8",
+        "model_id": 7297,
+        "server_id": 573
+    },
+    {
+        "name": "DongFeng M-Hero 917",
+        "model_id": 7298,
+        "server_id": 574
+    },
+    {
+        "name": "Naran Hyper Coupe",
+        "model_id": 7299,
+        "server_id": 575
+    },
+    {
+        "name": "Nissan Skyline BNR32",
+        "model_id": 7300,
+        "server_id": 576
+    },
+    {
+        "name": "Vanda Electrics Dendrobium",
+        "model_id": 7301,
+        "server_id": 577
+    },
+    {
+        "name": "Whiplash Fortnite",
+        "model_id": 7302,
+        "server_id": 578
+    },
+    {
+        "name": "Batlle Bus Fortnite",
+        "model_id": 7303,
+        "server_id": 579
+    },
+    {
+        "name": "Porsche 939 RSR Concept",
+        "model_id": 7304,
+        "server_id": 580
+    },
+    {
+        "name": "Porsche 911 GT3RS 2024",
+        "model_id": 7305,
+        "server_id": 581
+    },
+    {
+        "name": "Rezvani Vengeance",
+        "model_id": 13741,
+        "server_id": 582
+    },
+    {
+        "name": "Peterbilt 359",
+        "model_id": 13742,
+        "server_id": 583
+    },
+    {
+        "name": "Ferrari Purosangue",
+        "model_id": 13746,
+        "server_id": 584
+    },
+    {
+        "name": "Lamborghini Huracan Off-Road",
+        "model_id": 13748,
+        "server_id": 585
+    },
+    {
+        "name": "Lamborghini Urus Off-Road",
+        "model_id": 13749,
+        "server_id": 586
+    },
+    {
+        "name": "Ferrari SF90 Off-Road",
+        "model_id": 13750,
+        "server_id": 587
+    },
+    {
+        "name": "Shelby Cobra 427 Custom",
+        "model_id": 13752,
+        "server_id": 588
+    },
+    {
+        "name": "Cadillac Escalade Larte Design",
+        "model_id": 13753,
+        "server_id": 589
+    },
+    {
+        "name": "Hummer H1 Military",
+        "model_id": 13754,
+        "server_id": 590
+    },
+    {
+        "name": "1967 Chevrolet Impala Autogun",
+        "model_id": 13755,
+        "server_id": 591
+    },
+    {
+        "name": "Clover Bomj Gang",
+        "model_id": 13756,
+        "server_id": 592
+    },
+    {
+        "name": "Devel Sixteen",
+        "model_id": 13757,
+        "server_id": 593
+    },
+    {
+        "name": "F1 Bolide 23",
+        "model_id": 13761,
+        "server_id": 594
+    },
+    {
+        "name": "BMW M3 G81",
+        "model_id": 13765,
+        "server_id": 595
+    },
+    {
+        "name": "Mercedes E53 AMG 2025",
+        "model_id": 13758,
+        "server_id": 596
+    },
+    {
+        "name": "Plymouth GTX Roadrunner 1971",
+        "model_id": 13751,
+        "server_id": 597
+    },
+    {
+        "name": "Bugatti Centodieci",
+        "model_id": 13744,
+        "server_id": 598
+    },
+    {
+        "name": "Kawasaki Ninja ZX 10R",
+        "model_id": 13762,
+        "server_id": 599
+    },
+    {
+        "name": "Nissan S30Z",
+        "model_id": 13743,
+        "server_id": 600
+    },
+    {
+        "name": "Cadillac Escalade 2023",
+        "model_id": 13745,
+        "server_id": 601
+    },
+    {
+        "name": "Lamborghini Huracan",
+        "model_id": 13747,
+        "server_id": 602
+    },
+    {
+        "name": "Nissan GTR35 HP",
+        "model_id": 13759,
+        "server_id": 603
+    },
+    {
+        "name": "Mitsubishi EVO VI HP",
+        "model_id": 13760,
+        "server_id": 604
+    },
+    {
+        "name": "Nissan Silvia s15 HP",
+        "model_id": 13763,
+        "server_id": 605
+    },
+    {
+        "name": "Honda NSX NA1",
+        "model_id": 13764,
+        "server_id": 606
+    },
+    {
+        "name": "Урал с Пончиком",
+        "model_id": 15120,
+        "server_id": 607
+    },
+    {
+        "name": "Урал со Скуби-Ду",
+        "model_id": 15121,
+        "server_id": 608
+    },
+    {
+        "name": "Урал со Слендером",
+        "model_id": 15122,
+        "server_id": 609
+    },
+    {
+        "name": "Урал с Уэнсдей",
+        "model_id": 15123,
+        "server_id": 610
+    },
+    {
+        "name": "Mercedes-Benz Wendsdey",
+        "model_id": 15124,
+        "server_id": 611
+    },
+    {
+        "name": "Катафалк Wendsdey",
+        "model_id": 15125,
+        "server_id": 612
+    },
+    {
+        "name": "Audi RS Q8 Mansory",
+        "model_id": 15127,
+        "server_id": 613
+    },
+    {
+        "name": "BMW XM Mansory",
+        "model_id": 15128,
+        "server_id": 614
+    },
+    {
+        "name": "Rolls Royse Spectre Mansory",
+        "model_id": 15129,
+        "server_id": 615
+    },
+    {
+        "name": "Mercedes Benz AMG-GT63 Coupe 2024",
+        "model_id": 15130,
+        "server_id": 616
+    },
+    {
+        "name": "Ford Bronco 2021",
+        "model_id": 15131,
+        "server_id": 617
+    },
+    {
+        "name": "Mercedez Benz GLC AMG 2025",
+        "model_id": 15132,
+        "server_id": 618
+    },
+    {
+        "name": "Honda S2000",
+        "model_id": 15133,
+        "server_id": 619
+    },
+    {
+        "name": "Lada 2114",
+        "model_id": 15134,
+        "server_id": 620
+    },
+    {
+        "name": "BMW M5 Stingray",
+        "model_id": 15135,
+        "server_id": 621
+    },
+    {
+        "name": "Ecto-1",
+        "model_id": 15126,
+        "server_id": 622
+    },
+    {
+        "name": "Invisible Trailer",
+        "model_id": 15354,
+        "server_id": 623
+    },
+    {
+        "name": "Nissan Skyline GT-R 34 Форсаж",
+        "model_id": 15456,
+        "server_id": 624
+    },
+    {
+        "name": "Dodge-санки",
+        "model_id": 15455,
+        "server_id": 625
+    },
+    {
+        "name": "Bell FCX 001",
+        "model_id": 14269,
+        "server_id": 626
+    },
+    {
+        "name": "Собачка Джека",
+        "model_id": 14270,
+        "server_id": 627
+    },
+    {
+        "name": "Scania Chimera",
+        "model_id": 14271,
+        "server_id": 628
+    },
+    {
+        "name": "Rosenbauer Panther 6x6",
+        "model_id": 14272,
+        "server_id": 629
+    },
+    {
+        "name": "Nissan Skyline GTR34",
+        "model_id": 14273,
+        "server_id": 630
+    },
+    {
+        "name": "Maserati MC-20",
+        "model_id": 14274,
+        "server_id": 631
+    },
+    {
+        "name": "Maserati Gran Turismo НГ",
+        "model_id": 14275,
+        "server_id": 632
+    },
+    {
+        "name": "Mercedes ML350",
+        "model_id": 14276,
+        "server_id": 633
+    },
+    {
+        "name": "MClaren Senna",
+        "model_id": 14277,
+        "server_id": 634
+    },
+    {
+        "name": "Mercedes E190 Evolution",
+        "model_id": 14278,
+        "server_id": 635
+    },
+    {
+        "name": "Mercedes E190",
+        "model_id": 14279,
+        "server_id": 636
+    },
+    {
+        "name": "Kamaz Dakar",
+        "model_id": 14280,
+        "server_id": 637
+    },
+    {
+        "name": "Haval F7",
+        "model_id": 14281,
+        "server_id": 638
+    },
+    {
+        "name": "BRABUS ROCKET GTS",
+        "model_id": 14282,
+        "server_id": 639
+    },
+    {
+        "name": "Bentley Continental GT3",
+        "model_id": 14283,
+        "server_id": 640
+    },
+    {
+        "name": "Mercedes Actros 4146 PT GTLF",
+        "model_id": 14284,
+        "server_id": 641
+    },
+    {
+        "name": "Haval F7 ДПС",
+        "model_id": 14285,
+        "server_id": 642
+    },
+    {
+        "name": "Range Rover Fly",
+        "model_id": 14377,
+        "server_id": 643
+    },
+    {
+        "name": "BMW X5 Fly",
+        "model_id": 14378,
+        "server_id": 644
+    },
+    {
+        "name": "Mercedes Benz ML 350 Fly",
+        "model_id": 14379,
+        "server_id": 645
+    },
+    {
+        "name": "Maserati MC 20 Mansory",
+        "model_id": 14380,
+        "server_id": 646
+    },
+    {
+        "name": "Invisible Car",
+        "model_id": 14397,
+        "server_id": 647
+    },
+    {
+        "name": "Peugeot 407 Taxi Marseille",
+        "model_id": 14437,
+        "server_id": 648
+    },
+    {
+        "name": "Xpeng Aero-Ht Evtol flying car 1",
+        "model_id": 14473,
+        "server_id": 649
+    },
+    {
+        "name": "Ford F-450 ремонтная",
+        "model_id": 14474,
+        "server_id": 650
+    },
+    {
+        "name": "Lada Niva Travel",
+        "model_id": 14475,
+        "server_id": 651
+    },
+    {
+        "name": "Ducati Panigale 1199 R",
+        "model_id": 14476,
+        "server_id": 652
+    },
+    {
+        "name": "Kamaz Typhoon",
+        "model_id": 14477,
+        "server_id": 653
+    },
+    {
+        "name": "ПАЗ-3205",
+        "model_id": 14478,
+        "server_id": 654
+    },
+    {
+        "name": "ВАЗ 2101 Кабриолет",
+        "model_id": 14479,
+        "server_id": 655
+    },
+    {
+        "name": "Aurus Senat",
+        "model_id": 14480,
+        "server_id": 656
+    },
+    {
+        "name": "ВАЗ 2107 4x4",
+        "model_id": 14481,
+        "server_id": 657
+    },
+    {
+        "name": "Mercedes-Maybach EQS SUV",
+        "model_id": 14482,
+        "server_id": 658
+    },
+    {
+        "name": "Lancia Delta Evo-e",
+        "model_id": 14483,
+        "server_id": 659
+    },
+    {
+        "name": "Lucid Air Sapphire",
+        "model_id": 14484,
+        "server_id": 660
+    },
+    {
+        "name": "Toyota GR Corolla",
+        "model_id": 14485,
+        "server_id": 661
+    },
+    {
+        "name": "Lexus LC 500 Convertible",
+        "model_id": 14486,
+        "server_id": 662
+    },
+    {
+        "name": "Chevrolet Corvette Z06",
+        "model_id": 14487,
+        "server_id": 663
+    },
+    {
+        "name": "McLaren Speedtail",
+        "model_id": 14488,
+        "server_id": 664
+    },
+    {
+        "name": "Chery Tiggo 7 Pro Max",
+        "model_id": 14489,
+        "server_id": 665
+    },
+    {
+        "name": "Lada Vesta Sport",
+        "model_id": 14490,
+        "server_id": 666
+    },
+    {
+        "name": "Toyota Celica GT-Four",
+        "model_id": 14491,
+        "server_id": 667
+    },
+    {
+        "name": "Ferrari SF90 Stradale",
+        "model_id": 14492,
+        "server_id": 668
+    },
+    {
+        "name": "Pontiac Firebird Trans-AM",
+        "model_id": 14493,
+        "server_id": 669
+    },
+    {
+        "name": "Bentley Bentayga 2024",
+        "model_id": 14494,
+        "server_id": 670
+    },
+    {
+        "name": "Bentley Bentayga Mansory P750",
+        "model_id": 14495,
+        "server_id": 671
+    },
+    {
+        "name": "Kawasaki Ninja ZX25R",
+        "model_id": 14496,
+        "server_id": 672
+    },
+    {
+        "name": "BMW M5 g90",
+        "model_id": 14497,
+        "server_id": 673
+    },
+    {
+        "name": "Xpeng Aero-Ht Evtol flying car 2",
+        "model_id": 14498,
+        "server_id": 674
+    },
+    {
+        "name": "Peugeot 407",
+        "model_id": 14499,
+        "server_id": 675
+    },
+    {
+        "name": "Toyota Supra FF",
+        "model_id": 15460,
+        "server_id": 676
+    },
+    {
+        "name": "Easter Truck 407",
+        "model_id": 9901,
+        "server_id": 677
+    },
+    {
+        "name": "Monowheel",
+        "model_id": 9902,
+        "server_id": 678
+    },
+    {
+        "name": "LP BMW M3 E30",
+        "model_id": 9903,
+        "server_id": 679
+    },
+    {
+        "name": "LP Ferrari F40",
+        "model_id": 9904,
+        "server_id": 680
+    },
+    {
+        "name": "LP Lamborghini Murcielago",
+        "model_id": 9905,
+        "server_id": 681
+    },
+    {
+        "name": "LP Mercedes W124 coupe",
+        "model_id": 9906,
+        "server_id": 682
+    },
+    {
+        "name": "LP Kart",
+        "model_id": 9907,
+        "server_id": 683
+    },
+    {
+        "name": "LP Urus Karting",
+        "model_id": 9916,
+        "server_id": 684
+    },
+    {
+        "name": "LP G-Wagen Karting",
+        "model_id": 9917,
+        "server_id": 685
+    },
+    {
+        "name": "Koenigsegg Jesko",
+        "model_id": 9918,
+        "server_id": 686
+    },
+    {
+        "name": "Mitsubishi Outlander",
+        "model_id": 9919,
+        "server_id": 687
+    },
+    {
+        "name": "Bugatti Atlantic",
+        "model_id": 9920,
+        "server_id": 688
+    },
+    {
+        "name": "Chevrolet Camaro ZL1",
+        "model_id": 9927,
+        "server_id": 689
+    },
+    {
+        "name": "Cadillac Escalade IQ",
+        "model_id": 9928,
+        "server_id": 690
+    },
+    {
+        "name": "Kia Mohave",
+        "model_id": 9929,
+        "server_id": 691
+    },
+    {
+        "name": "Mercedes Benz G63 Off-White",
+        "model_id": 9930,
+        "server_id": 692
+    },
+    {
+        "name": "BMW X7 Lumma",
+        "model_id": 9931,
+        "server_id": 693
+    },
+    {
+        "name": "Tesla Cybertruck Mansory",
+        "model_id": 9932,
+        "server_id": 694
+    },
+    {
+        "name": "Koenigsegg One",
+        "model_id": 9933,
+        "server_id": 695
+    },
+    {
+        "name": "Toyota 4Runner TRD Pro 2025",
+        "model_id": 9934,
+        "server_id": 696
+    },
+    {
+        "name": "Ford Mustang RTR Spec V",
+        "model_id": 9935,
+        "server_id": 697
+    },
+    {
+        "name": "Отечественное моноколесо",
+        "model_id": 13953,
+        "server_id": 698
+    },
+    {
+        "name": "LP танк",
+        "model_id": 13954,
+        "server_id": 699
+    },
+    {
+        "name": "Nissan 180SX Itasha",
+        "model_id": 13955,
+        "server_id": 700
+    },
+    {
+        "name": "MB G63 Army",
+        "model_id": 13956,
+        "server_id": 701
+    },
+    {
+        "name": "Lambo Huracan - Pirate Edition",
+        "model_id": 12145,
+        "server_id": 702
+    },
+    {
+        "name": "Dodge Challanger - Pirate Edition",
+        "model_id": 12146,
+        "server_id": 703
+    },
+    {
+        "name": "Lamborghini Urus Pirate",
+        "model_id": 12147,
+        "server_id": 704
+    },
+    {
+        "name": "Off-Road Buhanka",
+        "model_id": 12202,
+        "server_id": 705
+    },
+    {
+        "name": "Mitsubishi Lancer Evo Time Attack",
+        "model_id": 12203,
+        "server_id": 706
+    },
+    {
+        "name": "Volgatti",
+        "model_id": 12204,
+        "server_id": 707
+    },
+    {
+        "name": "Крокодил Гена 003",
+        "model_id": 12205,
+        "server_id": 708
+    },
+    {
+        "name": "Buick Regal Grand NGNX",
+        "model_id": 12206,
+        "server_id": 709
+    },
+    {
+        "name": "Buick Rivera",
+        "model_id": 12207,
+        "server_id": 710
+    },
+    {
+        "name": "Cadillac De-Ville",
+        "model_id": 12208,
+        "server_id": 711
+    },
+    {
+        "name": "Chevrolet Bel-Air",
+        "model_id": 12209,
+        "server_id": 712
+    },
+    {
+        "name": "Chevrolet Monte-Carlo",
+        "model_id": 12210,
+        "server_id": 713
+    },
+    {
+        "name": "Mercedes-Benz W214 Police",
+        "model_id": 9799,
+        "server_id": 714
+    },
+    {
+        "name": "Lamborghini Police UAE",
+        "model_id": 9800,
+        "server_id": 715
+    },
+    {
+        "name": "Bugatti 41 Royal",
+        "model_id": 13346,
+        "server_id": 716
+    },
+    {
+        "name": "Jeep Amphibia",
+        "model_id": 13347,
+        "server_id": 717
+    },
+    {
+        "name": "Niva Police",
+        "model_id": 13348,
+        "server_id": 718
+    },
+    {
+        "name": "Zenvo ST 1",
+        "model_id": 13349,
+        "server_id": 719
+    },
+    {
+        "name": "Pagani Zonda",
+        "model_id": 13350,
+        "server_id": 720
+    },
+    {
+        "name": "Cadillac Eldorado Pirate",
+        "model_id": 13376,
+        "server_id": 721
+    },
+    {
+        "name": "School Bus Pirate",
+        "model_id": 13377,
+        "server_id": 722
+    },
+    {
+        "name": "Toyota Tundra Pirate",
+        "model_id": 13378,
+        "server_id": 723
+    }
+]

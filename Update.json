@@ -1,8 +1,8 @@
 {
-  "current_version": "BETA 5",
+  "current_version": "BETA 11",
   "update_url": "https://github.com/MTGMODS/arizona-helper/raw/refs/heads/main/Arizona%20Helper.lua",
-  "update_info": "- Добавлено что-то\nПофикшено что-то",
+  "update_info": "- Фиксы всех известных багов\nНовые заметки и прочие новые функции\n- Поддержка Rodina RP (тестово)",
 
-  "vip_current_version": "BETA 10 VIP",
-  "vip_update_info": "- Добавлено что-то\n- Пофикшено что-то"
+  "vip_current_version": "BETA 11 VIP",
+  "vip_update_info": "- Фиксы всех известных багов\nНовые заметки и прочие новые функции\n- Поддержка Rodina RP (тестово)"
 }

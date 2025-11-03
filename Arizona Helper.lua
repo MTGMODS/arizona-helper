@@ -3,7 +3,7 @@
 script_name("Arizona Helper")
 script_description('Universal script for players Arizona Online')
 script_author("MTG MODS")
-script_version("BETA 11")
+script_version("BETA 11 (FIX 1)")
 ----------------------------------------------- INIT ---------------------------------------------
 function isMonetLoader() return MONET_VERSION ~= nil end
 print('Инициализация скрипта...')
@@ -1099,14 +1099,15 @@ local MODULE = {
 MODULE.Binder.tags = {
 	my_id = function()
 		if isMonetLoader() then
-			return sampGetPlayerIdByNickname(settings.player_info.nick)
+			local nick = settings.player_info.nick or ReverseTranslateNick(settings.player_info.name_surname)
+			return sampGetPlayerIdByNickname(nick)
 		else
 			return select(2, sampGetPlayerIdByCharHandle(PLAYER_PED))
 		end
 	end,
     my_nick = function()
 		if isMonetLoader() then
-			return settings.player_info.nick
+			return settings.player_info.nick or ReverseTranslateNick(settings.player_info.name_surname)
 		else
 			return sampGetPlayerNickname(select(2, sampGetPlayerIdByCharHandle(PLAYER_PED)))
 		end
@@ -1114,15 +1115,16 @@ MODULE.Binder.tags = {
 	my_ru_nick = function() return settings.player_info.name_surname end,
     my_rp_nick = function()
 		if isMonetLoader() then
-			return settings.player_info.nick:gsub('_',' ')
+			local nick = settings.player_info.nick or ReverseTranslateNick(settings.player_info.name_surname)
+			return nick:gsub('_', ' ')
 		else
 			return sampGetPlayerNickname(select(2, sampGetPlayerIdByCharHandle(PLAYER_PED))):gsub('_',' ') 
 		end
 	end,
-    my_doklad_nick = function() 
+    my_doklad_nick = function()
 		local nick
 		if isMonetLoader() then
-			nick = settings.player_info.nick
+			nick = settings.player_info.nick or ReverseTranslateNick(settings.player_info.name_surname)
 		else
 			nick = sampGetPlayerNickname(select(2, sampGetPlayerIdByCharHandle(PLAYER_PED)))
 		end

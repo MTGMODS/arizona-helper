@@ -3,7 +3,7 @@
 script_name("Arizona Helper")
 script_description('Universal script for players Arizona Online')
 script_author("MTG MODS")
-script_version("BETA 11 (FIX 1)")
+script_version("BETA 11.5")
 ----------------------------------------------- INIT ---------------------------------------------
 function isMonetLoader() return MONET_VERSION ~= nil end
 print('Инициализация скрипта...')
@@ -4716,10 +4716,10 @@ function sampev.onServerMessage(color, text)
 		return false
 	end
 
-	if ((settings.general.ping) and (text:find('@' .. MODULE.Binder.tags.my_nick()) or text:find('@' .. MODULE.Binder.tags.my_id()))) then
-		sampAddChatMessage('[Arizona Helper] {ffffff}Кто-то упомянул вас в чате!', message_color)
-		playNotifySound()
-	end
+	-- if ((settings.general.ping) and (text:find('@' .. MODULE.Binder.tags.my_nick()) or text:find('@' .. MODULE.Binder.tags.my_id()))) then
+	-- 	sampAddChatMessage('[Arizona Helper] {ffffff}Кто-то упомянул вас в чате!', message_color)
+	-- 	playNotifySound()
+	-- end
 
 
 	if ((settings.general.auto_uninvite) and (settings.player_info.fraction_rank_number >= 9)) then

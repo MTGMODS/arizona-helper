@@ -3,7 +3,7 @@
 script_name("Arizona Helper")
 script_description('Universal script for players Arizona Online')
 script_author("MTG MODS")
-script_version("BETA 11.5")
+script_version("BETA 11.6")
 ----------------------------------------------- INIT ---------------------------------------------
 function isMonetLoader() return MONET_VERSION ~= nil end
 print('Инициализация скрипта...')
@@ -5388,39 +5388,6 @@ function sampev.onShowDialog(dialogid, style, title, button1, button2, text)
 				return false
 			end
 		end 
-	end
-	
-	if (isMode('lc')) then
-		if title:find('Продажа лицензии') and givelic.bool then
-			if givelic.type == 'авто' then
-				sampSendDialogResponse(dialogid, 1, 0, 0)
-			elseif givelic.type == 'мото' then
-				sampSendDialogResponse(dialogid, 1, 1, 0)
-			elseif givelic.type == 'полеты' then
-				sampSendDialogResponse(dialogid, 1, 2, 0)
-			elseif givelic.type == 'рыбалка' then
-				sampSendDialogResponse(dialogid, 1, 3, 0)
-			elseif givelic.type == 'водный' then
-				sampSendDialogResponse(dialogid, 1, 4, 0)
-			elseif givelic.type == 'оружие' then
-				sampSendDialogResponse(dialogid, 1, 5, 0)
-			elseif givelic.type == 'охота' then
-				sampSendDialogResponse(dialogid, 1, 6, 0)
-			elseif givelic.type == 'раскопки' then
-				sampSendDialogResponse(dialogid, 1, 7, 0)
-			elseif givelic.type == 'такси' then
-				sampSendDialogResponse(dialogid, 1, 8, 0)
-			elseif givelic.type == 'механик' then
-				sampSendDialogResponse(dialogid, 1, 9, 0)       
-			end
-			return false
-		end
-		if title:find('Выбор срока лицензий') and givelic.bool then
-			sampSendDialogResponse(dialogid, 1, givelic.time - 1, 0)
-			givelic.bool = false
-			MODULE.Binder.state.isActive = false
-			return false
-		end
 	end
 
 end

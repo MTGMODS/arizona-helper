@@ -191,6 +191,7 @@ local default_settings = {
 		auto_clicker_situation = true,
     },
 	md = {
+		mobile_taser_button = true,
 		auto_doklad_damage = false,
 		auto_doklad_patrool = true,
 	},
@@ -2725,15 +2726,17 @@ function load_modules()
 	if isMode('police') or isMode('fbi') then
 		load_module('smart_uk')
 		load_module('smart_pdd')
-		if settings.general.mobile_taser_button and isMonetLoader() then
-			MODULE.Taser.Window[0] = true
-		end	
-		if settings.general.mobile_meg_button and isMonetLoader() then
-			MODULE.Megafon.Window[0] = true
-		end	
+		if (isMonetLoader()) then
+			if (settings.mj.mobile_taser_button) then
+				MODULE.Taser.Window[0] = true
+			end
+			if (settings.mj.mobile_meg_button) then
+				MODULE.Megafon.Window[0] = true
+			end
+		end
 	elseif isMode('prison') then
 		load_module('smart_rptp')
-		if settings.general.mobile_taser_button and isMonetLoader() then
+		if ((isMonetLoader()) and (settings.md.mobile_taser_button)) then
 			MODULE.Taser.Window[0] = true
 		end	
 	elseif isMode('smi') then

@@ -63,7 +63,7 @@ local default_settings = {
 		bind_leader_fastmenu = '[71]',
 		bind_action = '[13]',
 		bind_command_stop = '[123]',
-		piemenu = true,
+		piemenu = false,
 		mobile_fastmenu_button = true,
 		mobile_stop_button = true,
 		payday_notify = true,
@@ -7706,7 +7706,7 @@ if not (isMode('ghetto') or isMode('mafia')) then
 			imgui.SetNextWindowPos(imgui.ImVec2(settings.windows_pos.patrool_menu.x, settings.windows_pos.patrool_menu.y), imgui.Cond.FirstUseEver)
 			imgui.Begin(getHelperIcon() .. u8" Arizona Helper " .. getHelperIcon() .. '##post_info_menu', MODULE.Post.Window, imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoResize + imgui.WindowFlags.AlwaysAutoResize )
 			change_dpi()
-			if not isMonetLoader() and not sampIsChatInputActive() and not sampIsDialogActive() and not isSampfuncsConsoleActive() then player.HideCursor = true else player.HideCursor = false end
+			isafery_disable_cursor(player)
 			if MODULE.Post.active then
 				imgui.Text(fa.MAP_LOCATION_DOT .. u8(' Пост: ') .. u8(MODULE.Binder.tags.get_post_name()))
 				imgui.Text(fa.CLOCK .. u8(' Время на посту: ') .. u8(MODULE.Binder.tags.get_post_time()))
@@ -7794,7 +7794,7 @@ if isMode('police') or isMode('fbi') or isMode('prison') then
 			imgui.SetNextWindowPos(imgui.ImVec2(settings.windows_pos.taser.x, settings.windows_pos.taser.y), imgui.Cond.FirstUseEver)
 			imgui.Begin(" Arizona Helper##MODULE.Taser.Window", MODULE.Taser.Window, imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoResize + imgui.WindowFlags.NoBackground + imgui.WindowFlags.NoTitleBar)
 			change_dpi()
-			if not isMonetLoader() and not sampIsChatInputActive() and not sampIsDialogActive() and not isSampfuncsConsoleActive() then player.HideCursor = true else player.HideCursor = false end
+			isafery_disable_cursor(player)
 			if imgui.Button(fa.GUN .. u8' Taser ',  imgui.ImVec2(75 * settings.general.custom_dpi, 25 * settings.general.custom_dpi)) then
 				sampSendChat('/taser')
 			end
@@ -8153,7 +8153,7 @@ if isMode('police') or isMode('fbi') then
 			imgui.SetNextWindowPos(imgui.ImVec2(settings.windows_pos.patrool_menu.x, settings.windows_pos.patrool_menu.y), imgui.Cond.FirstUseEver)
 			imgui.Begin(getHelperIcon() .. u8" Arizona Helper " .. getHelperIcon() .. '##patrool_info_menu', _, imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoResize + imgui.WindowFlags.AlwaysAutoResize )
 			change_dpi()
-			if not isMonetLoader() and not sampIsChatInputActive() and not sampIsDialogActive() and not isSampfuncsConsoleActive() then player.HideCursor = true else player.HideCursor = false end
+			isafery_disable_cursor(player)
 			if MODULE.Patrool.active then
 				imgui.Text(fa.CLOCK .. u8(' Время патрулирования: ') .. u8(MODULE.Binder.tags.get_patrool_time()))
 				imgui.Text(fa.CIRCLE_INFO .. u8(' Ваша маркировка: ') .. u8(MODULE.Binder.tags.get_patrool_mark()))
@@ -8279,7 +8279,7 @@ if isMode('police') or isMode('fbi') then
 				MODULE.Wanted.Window[0] = false
 			end
 
-			if not isMonetLoader() and not sampIsChatInputActive() and not sampIsDialogActive() and not isSampfuncsConsoleActive() then player.HideCursor = true else player.HideCursor = false end
+			isafery_disable_cursor(player)
 			if settings.mj.auto_update_wanteds then
 				local text_time_wait = tostring(15 - tonumber(MODULE.Wanted.updwanteds.time))
 				if tonumber(text_time_wait) < 10 then
@@ -8340,7 +8340,7 @@ if isMode('police') or isMode('fbi') then
 			imgui.SetNextWindowPos(imgui.ImVec2(settings.windows_pos.megafon.x, settings.windows_pos.megafon.y), imgui.Cond.FirstUseEver)
 			imgui.Begin(fa.BUILDING_SHIELD .. " Arizona Helper##fast_meg_button", MODULE.Megafon.Window, imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoResize + imgui.WindowFlags.NoBackground + imgui.WindowFlags.NoTitleBar)
 			change_dpi()
-			if not isMonetLoader() and not sampIsChatInputActive() and not sampIsDialogActive() and not isSampfuncsConsoleActive() then player.HideCursor = true else player.HideCursor = false end
+			isafery_disable_cursor(player)
 			if imgui.Button(fa.BULLHORN .. u8' 10-55 ',  imgui.ImVec2(75 * settings.general.custom_dpi, 25 * settings.general.custom_dpi)) then
 				sampProcessChatInput('/55')
 			end
@@ -9247,7 +9247,7 @@ imgui.OnFrame(
 imgui.OnFrame(
 	function() return MODULE.FastPieMenu.Window[0] end,
 	function(player)
-		if not isMonetLoader() and not sampIsChatInputActive() and not sampIsDialogActive() and not isSampfuncsConsoleActive() then player.HideCursor = true else player.HideCursor = false end
+		isafery_disable_cursor(player)
 		imgui.Begin('##MODULE.FastPieMenu.Window', MODULE.FastPieMenu.Window, imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoResize + imgui.WindowFlags.NoBackground + imgui.WindowFlags.NoTitleBar)
 		if imgui.IsMouseClicked(2) then
 			imgui.OpenPopup('PieMenu')
@@ -9654,6 +9654,9 @@ function imgui.GetMiddleButtonX(count)
     local width = imgui.GetWindowContentRegionWidth() 
     local space = imgui.GetStyle().ItemSpacing.x
     return count == 1 and width or width/count - ((space * (count-1)) / count)
+end
+function safery_disable_cursor(gui)
+	if not isMonetLoader() and not sampIsChatInputActive() and isSampAvailable() and not sampIsCursorActive() and not sampIsDialogActive() and not isSampfuncsConsoleActive() then gui.HideCursor = true else gui.HideCursor = false end
 end
 function apply_dark_theme()
 	imgui.SwitchContext()

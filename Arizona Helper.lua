@@ -2573,13 +2573,6 @@ function main()
 
 	if not isSampLoaded() or not isSampfuncsLoaded() then return end
     while not isSampAvailable() do wait(0) end
-	
-	if ((not settings.general.key or settings.general.key == '') or (not checkKey(settings.general.key))) then
-		MODULE.Activate.input = imgui.new.char[32](settings.general.key or '')
-		MODULE.Activate.checker = true
-		MODULE.Activate.Window[0] = true
-		return
-	end
 
 	check_resourses()
 

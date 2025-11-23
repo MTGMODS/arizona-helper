@@ -3,7 +3,7 @@
 script_name("Arizona Helper")
 script_description('Universal script for players Arizona Online')
 script_author("MTG MODS")
-script_version("BETA 12.9")
+script_version("BETA 12.9.1")
 ----------------------------------------------- INIT ---------------------------------------------
 function isMonetLoader() return MONET_VERSION ~= nil end
 print('Инициализация скрипта...')
@@ -2699,6 +2699,14 @@ function main()
 				
 			end
 		end
+
+		if (not isMonetLoader()) and (sampIsLocalPlayerSpawned() and (getCurrentCharWeapon(PLAYER_PED) == 0)) then
+			local url = 'https://mtgmods.github.io/logo.png'
+			visualCEF(([[
+				if (document.querySelector('.player-info__gun-image').src != '%s')
+					document.querySelector('.player-info__gun-image').src = '%s';
+            ]]):format(url, url), true)
+        end
 
 	end
 
@@ -7139,19 +7147,11 @@ function render_fractions_functions()
 			end
 			imgui.EndPopup()
 		end
-		if tbl[key] then
-			if imgui.CenterColumnSmallButton(u8('Посмотреть##' .. name .. key)) then
-				imgui.OpenPopup(fa.CIRCLE_INFO .. ' ' .. u8(name) .. ' ' .. fa.CIRCLE_INFO)
-			end
-		else
-			imgui.CenterColumnText(u8("Отключено"))
+		if imgui.CenterColumnSmallButton(u8('Посмотреть##' .. name .. key)) then
+			imgui.OpenPopup(fa.CIRCLE_INFO .. ' ' .. u8(name) .. ' ' .. fa.CIRCLE_INFO)
 		end
 		imgui.NextColumn()
-		-- if imgui.ToggleButton('test##name', MODULE.Main.checkbox.payday_notify) then
-		-- 	sampAddChatMessage(MODULE.Main.checkbox.payday_notify[0], -1)
-		-- end
-		-- imgui.SameLine()
-		if imgui.CenterColumnSmallButton(u8((tbl[key] and 'Отключить' or 'Включить') .. '##' .. name .. key)) then
+		if imgui.CenterColumnSmallButton(u8((tbl and tbl[key] and 'Отключить' or 'Включить') .. '##' .. name .. key)) then
 			if (isVip) then 
 				send_no_vip_msg()
 			else
@@ -7159,7 +7159,7 @@ function render_fractions_functions()
 				save_settings()
 			end
 		end
-		if func and tbl[key] then
+		if func and tbl and tbl[key] then
 			imgui.SameLine()
 			if imgui.SmallButton(fa.GEAR .. '##' .. key) then
 				func()

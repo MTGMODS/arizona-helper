@@ -7484,9 +7484,7 @@ function render_fractions_functions()
 							settings.mh.heal_in_chat,
 							"enable",
 							false,
-							function()
-								send_no_vip_msg()
-							end
+							function() send_no_vip_msg() end
 						)
 	
 						render_assist_item(
@@ -9131,8 +9129,7 @@ if isMode('smi') then
 			local window_size = imgui.GetWindowSize()
 			local size_item_width = settings.smi.ads_history and 100 or 70
 			imgui.PushItemWidth(window_size.x - size_item_width * settings.general.custom_dpi)
-			imgui.InputTextWithHint('', u8'Отредактируйте объявление либо введите причину для отклонения', MODULE.SmiEdit.input_edit_text, 256)
-
+			imgui.InputTextWithHint('##smi_edit_ad', u8'Отредактируйте объявление либо введите причину для отклонения', MODULE.SmiEdit.input_edit_text, 256)
 			imgui.SameLine()
 			if imgui.Button(fa.DELETE_LEFT, imgui.ImVec2(27 * settings.general.custom_dpi, 25 * settings.general.custom_dpi)) then
 				local text = u8:decode(ffi.string(MODULE.SmiEdit.input_edit_text))

@@ -2700,14 +2700,6 @@ function main()
 			end
 		end
 
-		if (not isMonetLoader()) and (sampIsLocalPlayerSpawned() and (getCurrentCharWeapon(PLAYER_PED) == 0)) then
-			local url = 'https://mtgmods.github.io/logo.png'
-			visualCEF(([[
-				if (document.querySelector('.player-info__gun-image').src != '%s')
-					document.querySelector('.player-info__gun-image').src = '%s';
-            ]]):format(url, url), true)
-        end
-
 	end
 
 end

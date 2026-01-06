@@ -1,8 +1,8 @@
 {
-  "current_version": "BETA 12.9.1",
+  "current_version": "BETA 12.9.7",
   "update_url": "https://github.com/MTGMODS/arizona-helper/raw/refs/heads/main/Arizona%20Helper.lua",
-  "update_info": "- Фиксы многих ошибок, теперь хелпер работает стабильно",
+  "update_info": "- Фиксы многих ошибок, теперь хелпер работает стабильно\n- Пока что без новых функций",
 
   "vip_current_version": "BETA 12.9.7 VIP",
-  "vip_update_info": "- Фиксы многих ошибок, теперь хелпер работает стабильно"
+  "vip_update_info": "- Фиксы многих ошибок, теперь хелпер работает стабильно\n- Пока что без новых функций"
 }

@@ -7379,7 +7379,7 @@ function render_fractions_functions()
 			imgui.OpenPopup(fa.CIRCLE_INFO .. ' ' .. u8(name) .. ' ' .. fa.CIRCLE_INFO)
 		end
 		imgui.NextColumn()
-		if imgui.CenterColumnSmallButton(u8((tbl[key] and 'Отключить' or 'Включить') .. '##' .. name .. key)) then
+		if imgui.CenterColumnSmallButton(u8(((tbl and tbl[key]) and 'Отключить' or 'Включить') .. '##' .. name .. key)) then
 			if ((isVip) and (not thisScript().version:find('VIP'))) then 
 				send_no_vip_msg()
 			else

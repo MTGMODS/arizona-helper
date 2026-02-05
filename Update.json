@@ -3,6 +3,6 @@
   "update_url": "https://github.com/MTGMODS/arizona-helper/raw/refs/heads/main/Arizona%20Helper.lua",
   "update_info": "- Фиксы многих ошибок, теперь хелпер работает стабильно\n- Пока что без новых функций",
 
-  "vip_current_version": "BETA 12.9.8 VIP",
-  "vip_update_info": "- Добавлено PieMenu на мобайл\n- Фиксы многих ошибок, теперь хелпер работает стабильно\n- Пока что без новых функций"
+  "vip_current_version": "BETA 12.9.9 VIP",
+  "vip_update_info": "- Добавлено PieMenu\n- Фиксы многих ошибок, теперь хелпер работает стабильно"
 }

@@ -1,5 +1,5 @@
 {
-  "current_version": "BETA 12.9.9",
+  "current_version": "BETA 12.9.7",
   "update_url": "https://github.com/MTGMODS/arizona-helper/raw/refs/heads/main/Arizona%20Helper.lua",
   "update_info": "- Добавлено PieMenu\n- Фиксы многих ошибок, теперь хелпер работает стабильно\n- Пока что без новых функций",
 

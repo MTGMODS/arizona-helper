@@ -3018,14 +3018,24 @@ function register_command(chat_cmd, cmd_arg, cmd_text, cmd_waiting)
 										for index, value in ipairs(modules.commands.data.commands.my) do
 											if line:find('/' .. chat_cmd) then
 												isHelperCmd = true
-												sampAddChatMessage(value.cmd .. chat_cmd, -1)
 												break
 											end
 										end
 										if isHelperCmd then
 											sampSendChat(line)
 										else
-											sampProcessChatInput(line)
+											local isHelperCmd = false
+											for index, value in ipairs(modules.commands.data.commands.my) do
+												if line:find('/' .. chat_cmd) then
+													isHelperCmd = true
+													break
+												end
+											end
+											if isHelperCmd then
+												sampSendChat(line)
+											else
+												sampProcessChatInput(line)
+											end	
 										end	
 										if MODULE.DEBUG then sampAddChatMessage('[DEBUG] SEND: ' .. line, message_color) end	
 									end
@@ -4685,7 +4695,18 @@ if (settings.player_info.fraction_rank_number >= 9) then
 									end
 								end
 							end
-							sampProcessChatInput(line)
+							local isHelperCmd = false
+							for index, value in ipairs(modules.commands.data.commands.my) do
+								if line:find('/' .. chat_cmd) then
+									isHelperCmd = true
+									break
+								end
+							end
+							if isHelperCmd then
+								sampSendChat(line)
+							else
+								sampProcessChatInput(line)
+							end	
 							wait(1500)	
 						end
 						if not wait_tag then
@@ -9718,7 +9739,18 @@ if isMode('hospital') then
 											sampAddChatMessage('[Arizona Helper] {ffffff}Продолжаю отыгровку команды /' .. command.cmd, message_color)	
 										end					
 									else
-										sampProcessChatInput(line)
+										local isHelperCmd = false
+										for index, value in ipairs(modules.commands.data.commands.my) do
+											if line:find('/' .. chat_cmd) then
+												isHelperCmd = true
+												break
+											end
+										end
+										if isHelperCmd then
+											sampSendChat(line)
+										else
+											sampProcessChatInput(line)
+										end	
 										if MODULE.DEBUG then sampAddChatMessage('[DEBUG] SEND: ' .. line, message_color) end	
 										wait(command.waiting * 1000)
 									end
@@ -9807,7 +9839,18 @@ if isMode('hospital') then
 											sampAddChatMessage('[Arizona Helper] {ffffff}Продолжаю отыгровку команды /' .. command.cmd, message_color)	
 										end					
 									else
-										sampProcessChatInput(line)
+										local isHelperCmd = false
+										for index, value in ipairs(modules.commands.data.commands.my) do
+											if line:find('/' .. chat_cmd) then
+												isHelperCmd = true
+												break
+											end
+										end
+										if isHelperCmd then
+											sampSendChat(line)
+										else
+											sampProcessChatInput(line)
+										end	
 										if MODULE.DEBUG then sampAddChatMessage('[DEBUG] SEND: ' .. line, message_color) end	
 										wait(command.waiting * 1000)
 									end
@@ -9896,7 +9939,18 @@ if isMode('hospital') then
 											sampAddChatMessage('[Arizona Helper] {ffffff}Продолжаю отыгровку команды /' .. command.cmd, message_color)	
 										end					
 									else
-										sampProcessChatInput(line)
+										local isHelperCmd = false
+										for index, value in ipairs(modules.commands.data.commands.my) do
+											if line:find('/' .. chat_cmd) then
+												isHelperCmd = true
+												break
+											end
+										end
+										if isHelperCmd then
+											sampSendChat(line)
+										else
+											sampProcessChatInput(line)
+										end	
 										if MODULE.DEBUG then sampAddChatMessage('[DEBUG] SEND: ' .. line, message_color) end	
 										wait(command.waiting * 1000)
 									end

@@ -3024,18 +3024,7 @@ function register_command(chat_cmd, cmd_arg, cmd_text, cmd_waiting)
 										if isHelperCmd then
 											sampSendChat(line)
 										else
-											local isHelperCmd = false
-											for index, value in ipairs(modules.commands.data.commands.my) do
-												if line:find('/' .. chat_cmd) then
-													isHelperCmd = true
-													break
-												end
-											end
-											if isHelperCmd then
-												sampSendChat(line)
-											else
-												sampProcessChatInput(line)
-											end	
+											sampProcessChatInput(line)
 										end	
 										if MODULE.DEBUG then sampAddChatMessage('[DEBUG] SEND: ' .. line, message_color) end	
 									end
@@ -4696,8 +4685,8 @@ if (settings.player_info.fraction_rank_number >= 9) then
 								end
 							end
 							local isHelperCmd = false
-							for index, value in ipairs(modules.commands.data.commands.my) do
-								if line:find('/' .. chat_cmd) then
+							for index, value in ipairs(modules.commands.data.commands_manage.my) do
+								if line:find('/' .. value.cmd) then
 									isHelperCmd = true
 									break
 								end
@@ -9741,7 +9730,7 @@ if isMode('hospital') then
 									else
 										local isHelperCmd = false
 										for index, value in ipairs(modules.commands.data.commands.my) do
-											if line:find('/' .. chat_cmd) then
+											if line:find('/' .. value.cmd) then
 												isHelperCmd = true
 												break
 											end
@@ -9841,7 +9830,7 @@ if isMode('hospital') then
 									else
 										local isHelperCmd = false
 										for index, value in ipairs(modules.commands.data.commands.my) do
-											if line:find('/' .. chat_cmd) then
+											if line:find('/' .. value.cmd) then
 												isHelperCmd = true
 												break
 											end
@@ -9941,7 +9930,7 @@ if isMode('hospital') then
 									else
 										local isHelperCmd = false
 										for index, value in ipairs(modules.commands.data.commands.my) do
-											if line:find('/' .. chat_cmd) then
+											if line:find('/' .. value.cmd) then
 												isHelperCmd = true
 												break
 											end

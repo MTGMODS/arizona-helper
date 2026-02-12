@@ -3,7 +3,7 @@
 script_name("Arizona&Rodina Helper")
 script_description('Универсальный хелпер для игроков Arizona Online и Rodina Online')
 script_author("MTG MODS")
-script_version("BETA 12.9.9.6")
+script_version("BETA 12.9.9.7")
 ----------------------------------------------- INIT ---------------------------------------------
 local worked_dir = getWorkingDirectory():gsub('\\','/')
 local IS_MOBILE = MONET_VERSION ~= nil
@@ -3014,18 +3014,7 @@ function register_command(chat_cmd, cmd_arg, cmd_text, cmd_waiting)
 												end
 											end
 										end
-										local isHelperCmd = false
-										for index, value in ipairs(modules.commands.data.commands.my) do
-											if line:find('/' .. chat_cmd) then
-												isHelperCmd = true
-												break
-											end
-										end
-										if isHelperCmd then
-											sampSendChat(line)
-										else
-											sampProcessChatInput(line)
-										end	
+										sampSendChat(line)
 										if MODULE.DEBUG then sampAddChatMessage('[DEBUG] SEND: ' .. line, message_color) end	
 									end
 								else
@@ -3311,16 +3300,7 @@ function initialize_commands()
 			end
 		end)
 		sampRegisterChatCommand("patrool", function(arg)
-			if not MODULE.Binder.state.isActive then
-				if isCharInAnyCar(PLAYER_PED) or MODULE.Patrool.Window[0] then
-					MODULE.Patrool.Window[0] = not MODULE.Patrool.Window[0]
-				else
-					sampAddChatMessage('[Arizona Helper] {ffffff}Нельзя начать патруль, вы должны быть в т/с!', message_color)
-				end
-			else
-				sampAddChatMessage('[Arizona Helper] {ffffff}Дождитесь завершения отыгровки предыдущей команды!', message_color)
-				playNotifySound()
-			end
+			MODULE.Patrool.Window[0] = not MODULE.Patrool.Window[0]
 		end)
 	end
 	if not (isMode('ghetto') or isMode('mafia') or isMode('judge')) then
@@ -4684,18 +4664,7 @@ if (settings.player_info.fraction_rank_number >= 9) then
 									end
 								end
 							end
-							local isHelperCmd = false
-							for index, value in ipairs(modules.commands.data.commands_manage.my) do
-								if line:find('/' .. value.cmd) then
-									isHelperCmd = true
-									break
-								end
-							end
-							if isHelperCmd then
-								sampSendChat(line)
-							else
-								sampProcessChatInput(line)
-							end	
+							sampSendChat(line)
 							wait(1500)	
 						end
 						if not wait_tag then
@@ -9728,18 +9697,7 @@ if isMode('hospital') then
 											sampAddChatMessage('[Arizona Helper] {ffffff}Продолжаю отыгровку команды /' .. command.cmd, message_color)	
 										end					
 									else
-										local isHelperCmd = false
-										for index, value in ipairs(modules.commands.data.commands.my) do
-											if line:find('/' .. value.cmd) then
-												isHelperCmd = true
-												break
-											end
-										end
-										if isHelperCmd then
-											sampSendChat(line)
-										else
-											sampProcessChatInput(line)
-										end	
+										sampSendChat(line)
 										if MODULE.DEBUG then sampAddChatMessage('[DEBUG] SEND: ' .. line, message_color) end	
 										wait(command.waiting * 1000)
 									end
@@ -9828,18 +9786,7 @@ if isMode('hospital') then
 											sampAddChatMessage('[Arizona Helper] {ffffff}Продолжаю отыгровку команды /' .. command.cmd, message_color)	
 										end					
 									else
-										local isHelperCmd = false
-										for index, value in ipairs(modules.commands.data.commands.my) do
-											if line:find('/' .. value.cmd) then
-												isHelperCmd = true
-												break
-											end
-										end
-										if isHelperCmd then
-											sampSendChat(line)
-										else
-											sampProcessChatInput(line)
-										end	
+										sampSendChat(line)
 										if MODULE.DEBUG then sampAddChatMessage('[DEBUG] SEND: ' .. line, message_color) end	
 										wait(command.waiting * 1000)
 									end
@@ -9928,18 +9875,7 @@ if isMode('hospital') then
 											sampAddChatMessage('[Arizona Helper] {ffffff}Продолжаю отыгровку команды /' .. command.cmd, message_color)	
 										end					
 									else
-										local isHelperCmd = false
-										for index, value in ipairs(modules.commands.data.commands.my) do
-											if line:find('/' .. value.cmd) then
-												isHelperCmd = true
-												break
-											end
-										end
-										if isHelperCmd then
-											sampSendChat(line)
-										else
-											sampProcessChatInput(line)
-										end	
+										sampSendChat(line)
 										if MODULE.DEBUG then sampAddChatMessage('[DEBUG] SEND: ' .. line, message_color) end	
 										wait(command.waiting * 1000)
 									end

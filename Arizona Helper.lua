@@ -1061,7 +1061,7 @@ local MODULE = {
 		fly2 = imgui.new.char[12](u8(settings.lc.price.fly2)),
 		fly3 = imgui.new.char[12](u8(settings.lc.price.fly3)),
 		-- rodina
-		train1 = imgui.new.char[12](u8(settings.lc.price.train))
+		train1 = imgui.new.char[12](u8(settings.lc.price.train1))
 	},
 	-- FD
 	Fires = {

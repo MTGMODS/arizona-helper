@@ -3,7 +3,7 @@
 script_name("Arizona&Rodina Helper")
 script_description('Универсальный хелпер для игроков Arizona Online и Rodina Online')
 script_author("MTG MODS")
-script_version("BETA 12.9.9.7.3")
+script_version("BETA 12.9.9.7.4")
 ----------------------------------------------- INIT ---------------------------------------------
 local worked_dir = getWorkingDirectory():gsub('\\','/')
 local IS_MOBILE = MONET_VERSION ~= nil
@@ -11530,6 +11530,8 @@ function onScriptTerminate(script, game_quit)
 		sampAddChatMessage('[Arizona Helper] {ffffff}Произошла неизвестная ошибка, хелпер приостановил свою работу!', message_color)
 		if not IS_MOBILE then 
 			sampAddChatMessage('[Arizona Helper] {ffffff}Используйте ' .. message_color_hex .. 'CTRL {ffffff}+ ' .. message_color_hex .. 'R {ffffff}чтобы перезапустить хелпер.', message_color)
+
+
 		end
     end
 end

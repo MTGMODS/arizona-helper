@@ -1093,7 +1093,6 @@ local MODULE = {
 		Window = imgui.new.bool()
 	},
 	LeadTools = {
-		auto_invite_rank = imgui.new.int(tonumber(settings.general.auto_invite.rank)),
 		vc_vize = {bool = false, player_id = nil},
 		auto_uninvite = {checker = false, msg1 = '', msg2 = '', msg3 = ''},
 		spawncar = false,

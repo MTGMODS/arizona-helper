@@ -7894,7 +7894,7 @@ imgui.OnFrame(
 					if hotkey_no_errors then
 						imgui.OpenPopup(fa.KEYBOARD .. u8' Бинд для команды /' .. MODULE.Binder.data.change_cmd)
 					else
-						sampAddChatMessage('[Arizona Helper] {ffffff}Данная функция недоступна, отсуствуют файлы библиотеки mimgui_hotkeys!', message_color)
+						sampAddChatMessage('[Arizona Helper] {ffffff}Данная функция недоступна, у вас отсуствуют файлы библиотеки mimgui_hotkeys!', message_color)
 					end
 				end
 			else
@@ -10638,8 +10638,8 @@ if (settings.player_info.fraction_rank_number >= 9) then
 			imgui.PushItemWidth(250 * settings.general.custom_dpi)
 			imgui.SliderInt('', MODULE.GiveRank.number, 1, (settings.player_info.fraction_rank_number == 9) and 8 or 9) -- зам не может дать 9 ранг
 			imgui.Separator()
-			local text = IS_MOBILE and " Выдать ранг" or " Выдать ранг [" .. getNameKeysFrom(settings.general.bind_action) .. "]"
-			if imgui.Button(fa.USER .. u8(text), imgui.ImVec2(imgui.GetMiddleButtonX(1), 0)) then
+			local label = ' Выдать ранг' .. ((hotkey_no_errors and settings.general.bind_action) and ('[' .. getNameKeysFrom(settings.general.bind_action) .. ']') or '')
+			if imgui.Button(fa.USER .. u8(label), imgui.ImVec2(imgui.GetMiddleButtonX(1), 0)) then
 				give_rank()
 				MODULE.GiveRank.Window[0] = false
 			end
@@ -10986,12 +10986,7 @@ imgui.OnFrame(
 		change_dpi()
 		if MODULE.Binder.state.isPause then
 			safery_disable_cursor(player)
-			local label = ''
-			if ((not IS_MOBILE) and (hotkey_no_errors) and (settings.general.bind_action)) then
-				label = (' Продолжить [' .. getNameKeysFrom(settings.general.bind_action) .. ']')
-			else
-				label = ' Продолжить'
-			end
+			local label = ' Продолжить' .. (hotkey_no_errors and settings.general.bind_action and ' [' .. getNameKeysFrom(settings.general.bind_action) .. ']' or '')
 			if imgui.Button(fa.CIRCLE_ARROW_RIGHT .. u8(label), imgui.ImVec2(180 * settings.general.custom_dpi, 25 * settings.general.custom_dpi)) then
 				MODULE.Binder.state.isPause = false
 				MODULE.CommandPause.Window[0] = false

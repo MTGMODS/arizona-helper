@@ -6173,32 +6173,32 @@ addEventHandler('onReceivePacket', function(id, bs)
 	if id == 220 then
 		local id = raknetBitStreamReadInt8(bs)
         local cmd = raknetBitStreamReadInt8(bs)
-		if MODULE.DEBUG then
-			local function dumpFullBitStream(bs)
-				local bitsLeft = raknetBitStreamGetNumberOfUnreadBits(bs)
-				if not bitsLeft then
-					print("dumpFullBitStream: raknetBitStreamGetNumberOfUnreadBits ошибка!")
-					return
-				end
-				local bytesLeft = math.floor(bitsLeft / 8)
-				if bytesLeft == 0 then
-					print("dumpFullBitStream: нету доступных байтов для чтения")
-					return
-				end
-				local bytes = {}
-				for i = 1, bytesLeft do
-					bytes[i] = raknetBitStreamReadInt8(bs)
-				end
-				local hexStrParts = {}
-				for i, b in ipairs(bytes) do
-					hexStrParts[i] = string.format("%02X", b)
-				end
-				return(table.concat(hexStrParts, " "))
-			end
-			local dump = dumpFullBitStream(bs)
-			sampAddChatMessage('[ReceivePacket] {ffffff}' .. dump, message_color)
-			print("[ReceivePacket] " .. dump)
-		end
+		-- if MODULE.DEBUG then
+		-- 	local function dumpFullBitStream(bs)
+		-- 		local bitsLeft = raknetBitStreamGetNumberOfUnreadBits(bs)
+		-- 		if not bitsLeft then
+		-- 			print("dumpFullBitStream: raknetBitStreamGetNumberOfUnreadBits ошибка!")
+		-- 			return
+		-- 		end
+		-- 		local bytesLeft = math.floor(bitsLeft / 8)
+		-- 		if bytesLeft == 0 then
+		-- 			print("dumpFullBitStream: нету доступных байтов для чтения")
+		-- 			return
+		-- 		end
+		-- 		local bytes = {}
+		-- 		for i = 1, bytesLeft do
+		-- 			bytes[i] = raknetBitStreamReadInt8(bs)
+		-- 		end
+		-- 		local hexStrParts = {}
+		-- 		for i, b in ipairs(bytes) do
+		-- 			hexStrParts[i] = string.format("%02X", b)
+		-- 		end
+		-- 		return(table.concat(hexStrParts, " "))
+		-- 	end
+		-- 	local dump = dumpFullBitStream(bs)
+		-- 	sampAddChatMessage('[ReceivePacket] {ffffff}' .. dump, message_color)
+		-- 	print("[ReceivePacket] " .. dump)
+		-- end
 		if cmd == 153 then
             local carId = raknetBitStreamReadInt16(bs)
             raknetBitStreamIgnoreBits(bs, 8)

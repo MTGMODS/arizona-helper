@@ -3999,6 +3999,7 @@ function getServerName(number)
 	return ''
 end
 function sampGetPlayerIdByNickname(nick)
+	if not nick then return -1 end
 	local id = -1
 	if not IS_MOBILE then
 		local myid = select(2, sampGetPlayerIdByCharHandle(PLAYER_PED))
@@ -5816,7 +5817,7 @@ function sampev.onShowDialog(dialogid, style, title, button1, button2, text)
 				return false
 			end
 			if MODULE.LeadTools.cleaner.uninvite and text:find("Укажите причину(.+)увольнения(.+)игрока из фракции") then
-				sampSendDialogResponse(dialogid, 1,  0, 'Неактив (' .. MODULE.LeadTools.cleaner.reason_day .. ' дней не в игре)')
+				sampSendDialogResponse(dialogid, 1,  0, 'Пропал из штата (' .. MODULE.LeadTools.cleaner.reason_day .. ' дней не в игре)')
 				return false
 			end
 		end

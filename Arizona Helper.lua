@@ -5178,7 +5178,7 @@ function sampev.onServerMessage(color, text)
 		print('[ServerMessage] Color ' .. color .. " | Text " .. text)
 	end
 
-	if settings.general.ping and text:find('@' .. MODULE.Binder.tags.my_nick()) then
+	if settings.general.ping and text:find('@' .. MODULE.Binder.tags.my_nick(), 1, true) then
 		sampAddChatMessage('[Arizona Helper] {ffffff} то-то упом€нул вас в чате!', message_color)
 		playNotifySound()
 	end

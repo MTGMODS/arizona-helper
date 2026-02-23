@@ -4528,5 +4528,15 @@
         "model_id": 24053,
         "name": "Дирижабль Магната Tier 3",
         "server_id": 1305
+    },
+    {
+        "model_id": 14954,
+        "name": "Mclaren 570s Carbon",
+        "server_id": 1306
+    },
+    {
+        "model_id": 15514,
+        "name": "BMW M5 G90 2k26",
+        "server_id": 1307
     }
 ]

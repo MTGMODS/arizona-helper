@@ -4464,6 +4464,7 @@ function get_fraction_pie(mode)
 		{
 			name = 'Тайзер',
 			icon = 'GUN',
+			action = '/t'
 		}
 	}
 	return (mode == 'police' or mode == 'fbi') and police or default

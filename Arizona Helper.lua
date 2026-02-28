@@ -3,7 +3,7 @@
 script_name("Arizona&Rodina Helper")
 script_description('Универсальный хелпер для игроков Arizona Online и Rodina Online')
 script_author("MTG MODS")
-script_version("1.0")
+script_version("1.1")
 ----------------------------------------------- INIT ---------------------------------------------
 local worked_dir = getWorkingDirectory():gsub('\\','/')
 local IS_MOBILE = MONET_VERSION ~= nil
@@ -237,30 +237,9 @@ function load_settings()
 				if result then	
 					settings = loaded
 					if settings.general.version ~= thisScript().version then
-
-						if settings.general.version:find('BETA') then
-							-- временно, позже удалю этот кусок кода
-							print('Сброс всех данных после BETA версии!')
-							os.remove(config_dir .. "/Settings.json")
-							os.remove(config_dir .. "/Player.json")
-							os.remove(config_dir .. "/Commands.json")
-							os.remove(config_dir .. "/Buttons.json")
-							os.remove(config_dir .. "/Departament.json")
-							os.remove(config_dir .. "/PieMenu.json")
-							os.remove(config_dir .. "/Notes.json")
-							os.remove(config_dir .. "/Vehicles.json")
-							os.remove(config_dir .. "/Guns.json")
-							os.remove(config_dir .. "/Update.json")
-							os.remove(config_dir .. "/SmartUK.json")
-							os.remove(config_dir .. "/SmartPDD.json")
-							os.remove(config_dir .. "/SmartRPTP.json")
-							reload_script = true
-							thisScript():reload()
-						else
-							settings.general.version = thisScript().version
-							merge_defaults(default_settings, settings)
-							save_settings()
-						end
+						settings.general.version = thisScript().version
+						merge_defaults(default_settings, settings)
+						save_settings()
 					else
 						print('Настройки успешно загружены!')
 					end
@@ -7565,7 +7544,7 @@ imgui.OnFrame(
 									sampAddChatMessage('[Arizona Helper] {ffffff}В бесплатной версии ограничение всего 5 кнопок! Купите VIP версию для безлимитных кнопок!', message_color)
 									return
 								end
-								local new_button = {icon = '', name = 'Button ' .. (#modules.buttons.data + 1), action = '', enable = false,  size = {x = 100, y = 25}, pos = {sizeX / 2, y = sizeY / 2}}
+								local new_button = {icon = '', name = 'Button ' .. (#modules.buttons.data + 1), action = '', enable = false,  size = {x = 100, y = 25}, pos = {x = sizeX / 2, y = sizeY / 2}}
 								table.insert(modules.buttons.data, new_button)
 								save_module('buttons')
 							end

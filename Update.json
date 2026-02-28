@@ -1,8 +1,8 @@
 {
-  "current_version": "1.0",
+  "current_version": "1.1",
   "update_url": "https://github.com/MTGMODS/arizona-helper/raw/refs/heads/main/Arizona%20Helper.lua",
   "update_info": "- Ну вроде релиз стабильной версии",
 
-  "vip_current_version": "1.0 VIP",
+  "vip_current_version": "1.1 VIP",
   "vip_update_info": "- Ну вроде релиз стабильной версии"
 }

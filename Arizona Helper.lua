@@ -8466,6 +8466,19 @@ function render_fractions_functions()
 	elseif isMode('army') then
 		if imgui.BeginChild('##army_assist', imgui.ImVec2(589 * settings.general.custom_dpi, 367 * settings.general.custom_dpi), true) then
 			firs_render_assist_gui()
+			render_assist_item(
+				"Доклад CODE 0 при нападении",
+				"При получении урона отправляет доклад /r CODE 0 с указанием ника нападавшего.",
+				settings.md,
+				"auto_doklad_damage"
+			)
+			render_assist_item(
+				"Авто-доклад при патруле територии",
+				"При системном патрулировании территории с оружимем в руках, делает доклады.\n(вы должны начать патрулирование территории, чтобы функция работала)",
+				settings.md,
+				"auto_doklad_patrool",
+				true
+			)
 			imgui.Separator()
 			imgui.EndChild()
 		end
@@ -8474,6 +8487,19 @@ function render_fractions_functions()
 			if imgui.BeginTabItem(fa.ROBOT .. u8' Личный помощник "Ассистент"') then 
 				if imgui.BeginChild('##assist', imgui.ImVec2(589 * settings.general.custom_dpi, 338 * settings.general.custom_dpi), true) then
 					firs_render_assist_gui()
+					render_assist_item(
+						"Доклад CODE 0 при нападении",
+						"При получении урона отправляет доклад /r CODE 0 с указанием ника нападавшего.",
+						settings.md,
+						"auto_doklad_damage"
+					)
+					render_assist_item(
+						"Авто-доклад при патруле територии",
+						"При системном патрулировании территории с оружимем в руках, делает доклады.\n(вы должны начать патрулирование территории, чтобы функция работала)",
+						settings.md,
+						"auto_doklad_patrool",
+						true
+					)
 					imgui.Separator()
 					imgui.EndChild()	
 				end

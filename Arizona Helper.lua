@@ -3,7 +3,7 @@
 script_name("Arizona&Rodina Helper")
 script_description('Универсальный хелпер для игроков Arizona Online и Rodina Online')
 script_author("MTG MODS")
-script_version("BETA 12.9.9.7.4")
+script_version("1.0")
 ----------------------------------------------- INIT ---------------------------------------------
 local worked_dir = getWorkingDirectory():gsub('\\','/')
 local IS_MOBILE = MONET_VERSION ~= nil
@@ -44,7 +44,6 @@ require('lib.moonloader')
 require('encoding').default = 'CP1251'
 local u8 = require('encoding').UTF8
 local ffi = require('ffi')
-local effil = require('effil')
 local imgui = require('mimgui')
 local fa = require('fAwesome6_solid')
 local sampev = require('samp.events')
@@ -79,29 +78,18 @@ local default_settings = {
 		auto_uninvite = false,
 		ping = true,
 		rp_guns = true,
+		rp_chat = true,
+		accent_enable = true,
 		auto_accept_docs = true,
 	},
-	player_info = {
-		nick = '',
-		name_surname = '',
-		fraction = 'none',
-		fraction_tag = '',
-		fraction_rank = '',
-		fraction_rank_number = 0,
-		sex = 'Мужчина',
-		accent_enable = true,
-		accent = '[Иностранный акцент]:',
-		rp_chat = true,
-	},
     mj = {
+		auto_time = true,
 		anti_screpki = true,
-		auto_doklad_damage = false,
-		mobile_taser_button = true,
+		auto_doklad_damage = true,
 		auto_change_code_siren = true,
     },
 	md = {
-		auto_doklad_damage = false,
-		auto_doklad_patrool = true,
+		auto_doklad_damage = true,
 	},
 	mh = {
 		price = {
@@ -119,14 +107,11 @@ local default_settings = {
 			med30 = 150000,
 			med60 = 200000,
 		},
-		heal_in_chat = {
-			enable = true,
-			auto_heal = false
-		},
+		heal_in_chat = {enable = true, auto_heal = false},
+		auto_rp_situation = false,
 	},
 	smi = {
 		ads_history = true,
-		use_ads_buttons = true,
 	},
 	lc = {
 		price = {
@@ -163,7 +148,7 @@ local default_settings = {
 			-- rodina
 			train1 = 500000
 		},
-		auto_find_clorest_repair_znak = true,
+		auto_find_clorest_znak = true,
 	},
 	fd = {
 		doklads = {
@@ -180,6 +165,7 @@ local default_settings = {
 		custom_zeks = true,
 	},
 	ins = {
+		anti_trivoga = true,
 		hint_in_sort = true,
 		notify_new_ticket = true,
 		auto_input_ticket = true,
@@ -191,7 +177,6 @@ local default_settings = {
 		wanteds_menu = {x = sizeX / 1.2, y = sizeY / 2},
 		zeks_menu = {x = sizeX / 1.2, y = sizeY / 2},
 		mobile_fastmenu_button = {x = sizeX / 8.5, y = sizeY / 2.3},
-		taser = {x = sizeX / 4.2, y = sizeY / 2.1},
 	},
 }
 function encode_table(array) 
@@ -201,6 +186,26 @@ function encode_table(array)
 	end
 	local ok, encoded = pcall(encodeJson, array) 
 	if ok then return encoded end 
+end
+function merge_defaults(default, loaded)
+	local checker = false
+    for key, value in pairs(default) do
+        if type(value) == "table" then
+            if type(loaded[key]) ~= "table" then
+				checker = true
+				print('В ваш локальный конфиг импортировано новое значение: ' .. key .. ' = ' .. tostring(value))
+                loaded[key] = {}
+            end
+            merge_defaults(value, loaded[key])
+        else
+            if loaded[key] == nil then
+                loaded[key] = value
+				print('В ваш локальный конфиг импортировано новое значение: ' .. key .. ' = ' .. tostring(value))
+				checker = true
+            end
+        end
+    end
+	return checker
 end
 function save_settings()
     local file, errstr = io.open(config_dir .. "/Settings.json", 'w')
@@ -232,17 +237,30 @@ function load_settings()
 				if result then	
 					settings = loaded
 					if settings.general.version ~= thisScript().version then
-						print('Новая версия, сброс настроек!')
-						local fraction_mode = settings.general.fraction_mode
-						local player_info = settings.player_info
-						local key = settings.general.key
-						settings = default_settings
-						settings.player_info = player_info
-						settings.general.fraction_mode = fraction_mode
-						settings.general.key = key or ''
-						save_settings()
-						reload_script = true
-						thisScript():reload()
+
+						if settings.general.version:find('BETA') then
+							-- временно, позже удалю этот кусок кода
+							print('Сброс всех данных после BETA версии!')
+							os.remove(config_dir .. "/Settings.json")
+							os.remove(config_dir .. "/Player.json")
+							os.remove(config_dir .. "/Commands.json")
+							os.remove(config_dir .. "/Buttons.json")
+							os.remove(config_dir .. "/Departament.json")
+							os.remove(config_dir .. "/PieMenu.json")
+							os.remove(config_dir .. "/Notes.json")
+							os.remove(config_dir .. "/Vehicles.json")
+							os.remove(config_dir .. "/Guns.json")
+							os.remove(config_dir .. "/Update.json")
+							os.remove(config_dir .. "/SmartUK.json")
+							os.remove(config_dir .. "/SmartPDD.json")
+							os.remove(config_dir .. "/SmartRPTP.json")
+							reload_script = true
+							thisScript():reload()
+						else
+							settings.general.version = thisScript().version
+							merge_defaults(default_settings, settings)
+							save_settings()
+						end
 					else
 						print('Настройки успешно загружены!')
 					end
@@ -281,6 +299,20 @@ if not settings.general.autofind_dpi then
 end
 ------------------------------------------ JSON & MODULES ----------------------------------------
 local modules = {
+	player = {
+		name = 'Игрок',
+		path = config_dir .. "/Player.json",
+		data = {
+			nick = '',
+			name_surname = '',
+			sex = 'Мужчина',
+			fraction = 'none',
+			fraction_tag = '',
+			fraction_rank = '',
+			fraction_rank_number = 0,
+			accent = '[Иностранный акцент]:'
+		}
+	},
 	departament = {
 		name = 'Рация Департамента',
 		path = config_dir .. "/Departament.json",
@@ -383,105 +415,102 @@ local modules = {
 		path = config_dir .. "/Commands.json",
 		data = {
 			commands = {
-				my = {
-					{cmd = 'time' , description = 'Посмотреть время' ,  text = '/me взглянул{sex} на часы с гравировкой Arizona Helper и посмотрел{sex} время&/time&/do На часах видно время {get_time}.' , arg = '' , enable = true, waiting = '2', bind = "{}"},
-					{cmd = 'cure' , description = 'Поднять игрока из стадии' ,  text = '/me наклоняется над человеком, и прощупывает его пульс на сонной артерии&/cure {arg_id}&/do Пульс отсутствует.&/me начинает делать человеку непрямой массаж сердца, время от времени проверяя пульс&/do Спустя несколько минут сердце человека начало биться.&/do Человек пришел в сознание.&/todo Отлично*улыбаясь' , arg = '{arg_id}' , enable = true , waiting = '2', bind = "{}"},
-				},
+				my = {},
 				police = {
 					{cmd = '55', description = 'Проведение 10-55', text = '/r {my_doklad_nick} на CONTROL. Провожу 10-55 в районе {get_area} ({get_square}), СODE 4.&/m Водитель {get_drived_car} внимание!&/m Говорит {fraction}! Снизьте скорость и прижмитесь к обочине.&/m После остановки заглушите двигатель, и не выходите из транспорта.&/m В случае неподчинения вы будете объявлены в розыск!', arg = '', enable = true, waiting = '2', bind = "[101]"},
 					{cmd = '66', description = 'Проведение 10-66', text = '/r {my_doklad_nick} на CONTROL. Провожу 10-66 в районе {get_area} ({get_square}), СODE 3!&/m Водитель {get_drived_car} внимание!&/m Говорит {fraction}! Немедленно прижмитесь к обочине!&/m В случае неподчинения по вам будет открыт огонь!', arg = '', enable = true, waiting = '2', bind = "[102]"},
-					{cmd = 'zd' , description = 'Приветствие игрока' , text = 'Здравствуйте, я {my_ru_nick} - {fraction_rank} {fraction_tag}&Чем я могу Вам помочь?', arg = '{arg_id}' , enable = true , waiting = '2', bind = "{}"},
-					{cmd = 'bk' , description = 'Запрос помощи с координатами' , text = '/me достал{sex} свой КПК и отправил{sex} координаты в базу данных {fraction_tag}&/bk 10-20&/r {my_doklad_nick} на CONTROL. Срочно нужна помощь, отправил{sex} свои координаты!', arg = '' , enable = true , waiting = '2', bind = "{}"},
-					{cmd = 'siren' , description = 'Вкл/выкл мигалок в т/с' , text = '{switchCarSiren}', arg = '' , enable = true , waiting = '2', bind = "{}"},
-					{cmd = 'fara' , description = 'Оставить отпечаток на фаре' , text = '/me коснулся левой фары {get_nearest_car}&/do Отпечаток успешно оставлен на левой фаре транспортного средства.', arg = '' , enable = true , waiting = '2', bind = "{}"},
-					{cmd = 'pas' , description = 'Запрос документов' ,  text = 'Здравствуйте, управление {fraction_tag}, я {fraction_rank} {my_ru_nick}&/do Cлева на груди жетон полицейского, справа именная нашивка с именем.&/me достаёт своё удостоверение из кармана&/showbadge {arg_id}&Прошу предъявить документ, удостоверяющий вашу личность.&/n @{get_nick({arg_id})}, введите /showpass {my_id}' , arg = '{arg_id}' , enable = true , waiting = '2', bind = "{}", in_fastmenu = true},
-					{cmd = 'ts' , description = 'Выписать штраф' ,  text = '/do Планшет находиться в кармане формы.&/writeticket {arg_id} {arg2}&/me вносит изменения в базу штрафов&/todo Оплатите штраф*убирая планшет обратно в карман' , arg = '{arg_id} {arg2}' , enable = true, waiting = '2', bind = "{}"},
-					{cmd = 'find' , description = 'Поиск игрока' ,  text = '/me достал{sex} свой КПК и зайдя в базу данных {fraction_tag} открыл{sex} дело гражданина N{arg_id}&/me нажал{sex} на кнопку GPS отслеживания местоположения гражданина&/find {arg_id}' , arg = '{arg_id}' , enable = true, waiting = '2', bind = "{}"},
-					{cmd = 'pr' , description = 'Погоня за преступником' ,  text = '/me достал{sex} свой КПК и зайдя в базу данных {fraction_tag} открыл{sex} дело преступника N{arg_id}&/me нажал{sex} на кнопку GPS отслеживания местоположения гражданина&/pursuit {arg_id}' , arg = '{arg_id}' , enable = true, waiting = '2', bind = "{}"},
-					{cmd = 'su' , description = 'Выдать розыск' ,  text = '/me достал{sex} свой КПК и открыл{sex} базу данных преступников&/me вносит изменения в базу данных преступников&/su {arg_id} {arg2} {arg3}&/z {arg_id}&/todo Отлично, преступник в розыске*убирая КПК' , arg = '{arg_id} {arg2} {arg3}' , enable = true, waiting = '2', bind = "{}"},
-					{cmd = 'fsu' , description = 'Запросить выдачу розыска' ,  text = '/do Рация на тактическом поясе.&/me достал{sex} рацию c пояса, и связавашись с диспетчером, запросил{sex} обьявление человека в розыск&/r {my_doklad_nick} на CONTROL.&/r Прошу обьявить в розыск {arg2} степени дело N{arg_id}. Причина: {arg3}' , arg = '{arg_id} {arg2} {arg3}' , enable = true, waiting = '2', bind = "{}"},
-					{cmd = 'givefsu' , description = 'Выдача розыска по запросу офицера' ,  text = '/r 10-4, обьявляю гражданина в розыск по запросу офицера {get_rp_nick({arg_id})}!&/me достал{sex} свой КПК и открыл{sex} базу данных преступников&/me вносит изменения в базу данных преступников&/su {get_form_su} (по запросу офицера {get_rp_nick({arg_id})})&/todo Отлично, розыск по запросу офицера {get_rp_nick({arg_id})} выдан*убирая КПК' , arg = '{arg_id}' , enable = true, waiting = '2', bind = "{}"},
-					{cmd = 'unsu' , description = 'Понизить розыск' ,  text = '/me достал{sex} свой КПК и открыл{sex} базу данных преступников&/me найдя дело N{arg_id} вносит изменения в базу данных преступников&/unsu {arg_id} {arg2} {arg3}' , arg = '{arg_id} {arg2} {arg3}' , enable = true, waiting = '2', bind = "{}"},
-					{cmd = 'clear' , description = 'Снять розыск' ,  text = '/me достаёт свой КПК и открывает базу данных преступников&/me найдя дело N{arg_id} вносит изменения в базу данных преступников&/clear {arg_id}&/do Дело N{arg_id} больше не находится в списке разыскиваемых преступников.' , arg = '{arg_id}' , enable = true, waiting = '2', bind = "{}"},
-					{cmd = 'gcuff' , description = 'Надеть наручники и вести за собой' ,  text = '/do Наручники на тактическом поясе.&/todo Я надену на вас наручники*снимая наручники с тактического пояса&/cuff {arg_id}&/todo Не двигайтесь*надевая наручники на человека&/me схватывает задержанного за руки и ведёт его за собой&/gotome {arg_id}&/do Задержанный идёт в конвое.' , arg = '{arg_id}' , enable = true , waiting = '2', bind = "{}"},
-					{cmd = 'cuff' , description = 'Надеть наручники' ,  text = '/do Наручники на тактическом поясе.&/todo Я надену на вас наручники*снимая наручники с тактического пояса&/cuff {arg_id}&/todo Не двигайтесь*надевая наручники на человека' , arg = '{arg_id}' , enable = true , waiting = '2', bind = "{}" , in_fastmenu = true},
-					{cmd = 'uncuff' , description = 'Снять наручники' ,  text = '/do На тактическом поясе прикреплены ключи от наручников.&/me взяв с пояса ключи от наручников прокрутил{sex} замок наручников задержанного&/uncuff {arg_id}&/todo Ваши руки свободны*убирая ключи от наручники обратно на пояс', arg = '{arg_id}', enable = true, waiting = '2', bind = "{}", in_fastmenu = true},
-					{cmd = 'gtm' , description = 'Повести за собой' ,  text = '/me крепко схватив задержанного, взял{sex} его за руки&/gotome {arg_id}&/do Задержанный идёт в конвое.', arg = '{arg_id}', enable = true, waiting = '2', bind = "{}", in_fastmenu = true},
-					{cmd = 'ungtm' , description = 'Перестать вести за собой' ,  text = '/me отпускает руки задержанного и перестаёт вести его за собой&/ungotome {arg_id}', arg = '{arg_id}', enable = true, waiting = '2', bind = "{}", in_fastmenu = true},
-					{cmd = 'bot' , description = 'Изьять скрепки у игрока (взлом наручников)' ,  text = '/me увидел{sex} что задержанный использует скрепки для взлома наручников&/bot {arg_id}&/todo Вы что себе позволяете?!*изымая скрепки у {get_rp_nick({arg_id})}' , arg = '{arg_id}' , enable = true , waiting = '2', bind = "{}", in_fastmenu = true},
-					{cmd = 'ss' , description = 'Кричалка' ,  text = '/s Всем поднять руки вверх, работает {fraction_tag}!', arg = '', enable = true, waiting = '2', bind = "{}"},
-					{cmd = 't' , description = 'Достать тазер' ,  text = '/taser', arg = '', enable = true, waiting = '2', bind = "[18,49]" },
-					{cmd = 'frl' , description = 'Первичный обыск' ,  text = 'Сейчас я проверю у вас наличие оружия или других острых предметов, не двигайтесь.&/me прощупывает тело задержанного человека&/me прощупывает карманы задержанного человека', arg = '', enable = true, waiting = '2', bind = "{}"},
-					{cmd = 'fr' , description = 'Полный обыск' ,  text = '/do Резиновые перчатки на тактическом поясе.&/todo Сейчас я полностью обыщу вас, на наличие запрещенных предметов*надевая резиновые перчатки&/me прощупывает тело и карманы задержанного человека&/me достаёт из карманов задержанного все его вещи для изучения&/me внимательно осматривает все найденные вещи у задержанного человека&/frisk {arg_id}&/me снимает резиновые перчатки и убирает их на тактический пояск&/do Блокнот с ручкой в нагрудном кармане.&/me берет в руки блокнот с ручкой, и записывает всю информацию про обыск&/me сделав пометки, убирает блокнот с ручкой в нагрудный карман', arg = '{arg_id}', enable = true, waiting = '2', bind = "{}", in_fastmenu = true},
-					{cmd = 'take' , description = 'Изьять предметы у игрока (6+)' , text = '/do В подсумке находиться небольшой зип-пакет.&/me достаёт из подсумка зип-пакет и отрывает его&/me кладёт в зип-пакет изъятые предметы задержанного человека&/take {arg_id}&/do Изъятые предметы в зип-пакете.&/todo Отлично*убирая зип-пакет в подсумок', arg = '{arg_id}' , enable = true , waiting = '2', bind = "{}", in_fastmenu = true  },
-					{cmd = 'camon' , description = 'Включить cкрытую боди камеру' ,  text = '/do К форме прикреплена скрытая боди камера.&/me незаметным движением руки включил{sex} боди камеру.&/do Скрытая боди камера включена и снимает всё происходящее.', arg = '', enable = true, waiting = '2', bind = "{}"},
-					{cmd = 'camoff' , description = 'Выключить cкрытую боди камеру' ,  text = '/do К форме прикреплена скрытая боди камера.&/me незаметным движением руки выключил{sex} боди камеру.&/do Скрытая боди камера выключена и больше не снимает всё происходящее.', arg = '', enable = true, waiting = '2', bind = "{}"},
-					{cmd = 'inc' , description = 'Затащить в транспорт' ,  text = '/me открывает заднюю дверь транспорта&/todo Наклоните голову, здесь дверь*заталкивая задержанного в транспортное средство&/incar {arg_id} {arg2}&/me закрывает заднюю дверь транспорта&/do Задержанный в транспортном средстве.', arg = '{arg_id} {arg2}', enable = true, waiting = '2', bind = "{}"},
-					{cmd = 'ej' , description = 'Выбросить из транспорта',  text = '/me открывает дверь транспорта&/me помогает человеку выйти из транспорта&/eject {arg_id}&/me закрывает дверь транспорта', arg = '{arg_id}', enable = true, waiting = '2', bind = "{}", in_fastmenu = true},	
-					{cmd = 'pl' , description = 'Выбросить игрока из его транспорта',  text = '/me резким ударом дубинки разбивает стело транспорта задержанного&/pull {arg_id}&/me выбрасывает задержанного из его транспорта и ударом дубинки оглушает его', arg = '{arg_id}', enable = true, waiting = '2', bind = "{}", in_fastmenu = true},	
-					{cmd = 'mr' , description = 'Зачитать правило Миранды',  text = 'Вы имеете право хранить молчание.&Всё, что вы скажете, может и будет использовано против вас в суде.&Вы имеете право на 1 телефонный звонок, например для вызова частного адвоката.&Ваш адвокат может присутствовать при допросе.&Если вы не можете оплатить услуги адвоката, он будет предоставлен вам государством.&Вам ясны Ваши права?', arg = '', enable = true, waiting = '2', bind = "{}"},	
-					{cmd = 'unmask' , description = 'Снять балаклаву с игрока',  text = '/do Задержанный в балаклаве.&/me стягивает балаклаву с головы задеражнного&/unmask {arg_id}', arg = '{arg_id}', enable = true, waiting = '2', bind = "{}" , in_fastmenu = true},
-					{cmd = 'arr' , description = 'Арестовать (в участке)',  text = '/me включает свой бортовой компютер и вводит код доступа сотрудника&/me заходит в раздел оформления протоколов задержаний и указывает данные&/do Протокол задержания заполнен.&/me вызывает по рации дежурный наряд участка и передаёт им задержанного человека&/arrest', arg = '', enable = true, waiting = '2', bind = "{}", in_fastmenu = true},
-					{cmd = 'bribe' , description = 'Получение взятки от игрока' ,  text = '/do Гражданин сейчас ведёт запись через аудио-видео устройства?&/n @{get_nick({arg_id})}, отвечайте на РП, например /do Нет.&{pause}&/do Телефон в кармане.&/me достал{sex} телефон, открыл{sex} заметки, и что-то туда написал{sex}&/do В заметках телефона написан такой текст: {arg2}$&/todo Что скажете?*показав телефон преступнику возле себя&{pause}&/bribe {arg_id} {arg2} 1', arg = '{arg_id} {arg2}', enable = true, waiting = '2', bind = "{}"},
-					{cmd = 'drugs' , description = 'Провести Drugs Test' ,  text = '/do На тактическом поясе прикреплён подсумок.&/me открывает подсумок и достаёт из него набор Drugs Test&/me берёт из набора пробирку с этиловым спиром&/me засыпает найденное вещество в пробирку&/me достаёт из подсумка тест Имуно-Хром-10 и добавляет его в пробирку&/do В пробирке с этиловым спиртом находится неизвестное вещество и Имуно-Хром-10.&/me аккуратными движениями взбалтывает пробирку&/do От теста Имуно-Хром-10 содержимое пробирки изменило цвет.&/todo Да, это точно наркотики*увидев что содержимое пробирки изменило цвет&/me убирает пробирку обратно в подсумок и закрывает его', arg = '', enable = true, waiting = '2', bind = "{}"},
-					{cmd = 'rbomb' , description = 'Деактивировать бомбу' ,  text = '/do На тактическом поясе прикреплён сапёрный набор.&/me снимает с пояса сапёрный набор и кладет его на землю, затем открывает его&/do Открытый сапёрный набор находится на земле.&/me достаёт из сапёрного набора пакет с жидким азотом и кладет его на землю&/me достаёт из сапёрного набора отвёртку&/do Отвертка в руках, а пакет с жидким азотом на земле.&/do На корпусе бомбы находится 2 болтика.&/me откручивает болтики с бомбы и убирает их вместе с отвёрткой в сторону&/me аккуратным движением руки вскрывает крышку бомбы&/me внимательно осматривает бомбу&/do Внутри бомбы видна детонирующая часть.&/me достаёт из сапёрного набора кусачки&/do Кусачки в руках.&/me аккуратным движением кусочок разрезает красный провод бомбы&/do Таймер остановился, тиканье со стороны бомбы не слышно.&/me берёт в руки охлаждающий пакет с жидким азотом и кладёт его детонирующую часть бомбы&/removebomb&/do Бомба обезврежена.&/me убирает кусачки и отвёртку обратно в саперный набор и закрывает его', arg = '', enable = true, waiting = '2', bind = "{}"},
-					{cmd = 'delo' , description = 'Расследование убийства' ,  text = '/do Сотрудник прибыл на место убийства.&/todo Такс, что же здесь произошло*осматривая место убийства&/me осматривает и  изучает все улики&{pause}&/me достаёт из подсумка бланк для расследования и ручку&/me заполняет бланк расследования записывая все изученные улики&{pause}&/me записывает в бланк точную дату и время убийства&{pause}&/do Найдено орудие убийства.&/me записывает в бланк орудие убийства&{pause}&/do Бланк расследования убийства полностью заполнен.&/todo Отлично, расследование окончено*убирая бланк в карман', arg = '', enable = true, waiting = '2', bind = "{}"},
-					{cmd = 'giveplate' , description = 'Выдача разрешений на номера' ,  text = '/do Бланк и ручка в нагрудном кармане.&/me достаёт ручку и бланк из нагрудного кармана&/me заполняет бланк для выдачу разрешения на номерной знак&/do Бланк полностью заполнен.&/todo Вот ваше разрешение, берите*убирая ручку в нагрудный карман&/giveplate {arg_id} {arg2}', arg = '{arg_id} {arg2}', enable = true, waiting = '2', bind = "{}"},
-					{cmd = 'agenda' , description = 'Выдача повестки игроку' ,  text = '/do В папке с документами лежит ручка и пустой бланк с надписью Повестка.&/me достаёт из папки ручку с пустым бланком повестки&/me начинает заполнять все необходимые поля на бланке повестки&/do Все данные в повестке заполнены.&/me ставит на повестку штамп и печать {fraction_tag}&/do Готовый бланк повестки в руках.&/todo Не забудьте явиться в военкомат по указанному адресу и времени*передавая повестку&/agenda {arg_id}', arg = '{arg_id}', enable = true, waiting = '2', bind = "{}", in_fastmenu = true},
+					{cmd = 'zd', description = 'Приветствие игрока', text = 'Здравствуйте, я {my_ru_nick} - {fraction_rank} {fraction_tag}&Чем я могу Вам помочь?', arg = '{id}', enable = true, waiting = '2', bind = "{}"},
+					{cmd = 'bk', description = 'Запрос помощи с координатами', text = '/me достал{sex} свой КПК и отправил{sex} координаты в базу данных {fraction_tag}&/bk 10-20&/r {my_doklad_nick} на CONTROL. Срочно нужна помощь, отправил{sex} свои координаты!', arg = '', enable = true, waiting = '2', bind = "{}"},
+					{cmd = 'siren', description = 'Вкл/выкл мигалок в т/с', text = '{switchCarSiren}', arg = '', enable = true, waiting = '2', bind = "{}"},
+					{cmd = 'fara', description = 'Оставить отпечаток на фаре', text = '/me коснулся левой фары {get_nearest_car}&/do Отпечаток успешно оставлен на левой фаре транспортного средства.', arg = '', enable = true, waiting = '2', bind = "{}"},
+					{cmd = 'pas', description = 'Запрос документов',  text = 'Здравствуйте, управление {fraction_tag}, я {fraction_rank} {my_ru_nick}&/do Cлева на груди жетон полицейского, справа именная нашивка с именем.&/me достаёт своё удостоверение из кармана&/showbadge {id}&Прошу предъявить документ, удостоверяющий вашу личность.&/n @{get_nick({id})}, введите /showpass {my_id}', arg = '{id}', enable = true, waiting = '2', bind = "{}", in_fastmenu = true},
+					{cmd = 'ts', description = 'Выписать штраф',  text = '/do Планшет находиться в кармане формы.&/writeticket {id} {arg}&/me вносит изменения в базу штрафов&/todo Оплатите штраф*убирая планшет обратно в карман', arg = '{id} {arg}', enable = true, waiting = '2', bind = "{}"},
+					{cmd = 'find', description = 'Поиск игрока',  text = '/me достал{sex} свой КПК и зайдя в базу данных {fraction_tag} открыл{sex} дело гражданина N{id}&/me нажал{sex} на кнопку GPS отслеживания местоположения гражданина&/find {id}', arg = '{id}', enable = true, waiting = '2', bind = "{}"},
+					{cmd = 'pr', description = 'Погоня за преступником',  text = '/me достал{sex} свой КПК и зайдя в базу данных {fraction_tag} открыл{sex} дело преступника N{id}&/me нажал{sex} на кнопку GPS отслеживания местоположения гражданина&/pursuit {id}', arg = '{id}', enable = true, waiting = '2', bind = "{}"},
+					{cmd = 'su', description = 'Выдать розыск',  text = '/me достал{sex} свой КПК и открыл{sex} базу данных преступников&/me вносит изменения в базу данных преступников&/su {id} {number} {arg}&/z {id}&/todo Отлично, преступник в розыске*убирая КПК', arg = '{id} {number} {arg}', enable = true, waiting = '2', bind = "{}"},
+					{cmd = 'fsu', description = 'Запросить выдачу розыска',  text = '/do Рация на тактическом поясе.&/me достал{sex} рацию c пояса, и связавашись с диспетчером, запросил{sex} обьявление человека в розыск&/r {my_doklad_nick} на CONTROL.&/r Прошу обьявить в розыск {number} степени дело N{id}. Причина: {arg}', arg = '{id} {number} {arg}', enable = true, waiting = '2', bind = "{}"},
+					{cmd = 'givefsu', description = 'Выдача розыска по запросу',  text = '/r 10-4, обьявляю гражданина в розыск по запросу офицера {get_rp_nick({id})}!&/me достал{sex} свой КПК и открыл{sex} базу данных преступников&/me вносит изменения в базу данных преступников&/su {get_form_su} (по запросу офицера {get_rp_nick({id})})&/todo Отлично, розыск по запросу офицера {get_rp_nick({id})} выдан*убирая КПК', arg = '{id}', enable = true, waiting = '2', bind = "{}"},
+					{cmd = 'unsu', description = 'Понизить розыск',  text = '/me достал{sex} свой КПК и открыл{sex} базу данных преступников&/me найдя дело N{id} вносит изменения в базу данных преступников&/unsu {id} {number} {arg}', arg = '{id} {number} {arg}', enable = true, waiting = '2', bind = "{}"},
+					{cmd = 'clear', description = 'Снять розыск',  text = '/me достаёт свой КПК и открывает базу данных преступников&/me найдя дело N{id} вносит изменения в базу данных преступников&/clear {id}&/do Дело N{id} больше не находится в списке разыскиваемых преступников.', arg = '{id}', enable = true, waiting = '2', bind = "{}"},
+					{cmd = 'gcuff', description = 'Надеть наручники и вести за собой',  text = '/do Наручники на тактическом поясе.&/todo Я надену на вас наручники*снимая наручники с тактического пояса&/cuff {id}&/todo Не двигайтесь*надевая наручники на человека&/me схватывает задержанного за руки и ведёт его за собой&/gotome {id}&/do Задержанный идёт в конвое.', arg = '{id}', enable = true, waiting = '2', bind = "{}"},
+					{cmd = 'cuff', description = 'Надеть наручники',  text = '/do Наручники на тактическом поясе.&/todo Я надену на вас наручники*снимая наручники с тактического пояса&/cuff {id}&/todo Не двигайтесь*надевая наручники на человека', arg = '{id}', enable = true, waiting = '2', bind = "{}", in_fastmenu = true},
+					{cmd = 'uncuff', description = 'Снять наручники',  text = '/do На тактическом поясе прикреплены ключи от наручников.&/me взяв с пояса ключи от наручников прокрутил{sex} замок наручников задержанного&/uncuff {id}&/todo Ваши руки свободны*убирая ключи от наручники обратно на пояс', arg = '{id}', enable = true, waiting = '2', bind = "{}", in_fastmenu = true},
+					{cmd = 'gtm', description = 'Повести за собой',  text = '/me крепко схватив задержанного, взял{sex} его за руки&/gotome {id}&/do Задержанный идёт в конвое.', arg = '{id}', enable = true, waiting = '2', bind = "{}", in_fastmenu = true},
+					{cmd = 'ungtm', description = 'Перестать вести за собой',  text = '/me отпускает руки задержанного и перестаёт вести его за собой&/ungotome {id}', arg = '{id}', enable = true, waiting = '2', bind = "{}", in_fastmenu = true},
+					{cmd = 'bot', description = 'Изьять скрепки у игрока (взлом наручников)',  text = '/me увидел{sex} что задержанный использует скрепки для взлома наручников&/bot {id}&/todo Вы что себе позволяете?!*изымая скрепки у {get_rp_nick({id})}', arg = '{id}', enable = true, waiting = '2', bind = "{}", in_fastmenu = true},
+					{cmd = 'ss', description = 'Кричалка',  text = '/s Всем поднять руки вверх, работает {fraction_tag}!', arg = '', enable = true, waiting = '2', bind = "{}"},
+					{cmd = 't', description = 'Достать тазер',  text = '/taser', arg = '', enable = true, waiting = '2', bind = "[18,49]" },
+					{cmd = 'frl', description = 'Первичный обыск',  text = 'Сейчас я проверю у вас наличие оружия или других острых предметов, не двигайтесь.&/me прощупывает тело задержанного человека&/me прощупывает карманы задержанного человека', arg = '', enable = true, waiting = '2', bind = "{}"},
+					{cmd = 'fr', description = 'Полный обыск',  text = '/do Резиновые перчатки на тактическом поясе.&/todo Сейчас я полностью обыщу вас, на наличие запрещенных предметов*надевая резиновые перчатки&/me прощупывает тело и карманы задержанного человека&/me достаёт из карманов задержанного все его вещи для изучения&/me внимательно осматривает все найденные вещи у задержанного человека&/frisk {id}&/me снимает резиновые перчатки и убирает их на тактический пояск&/do Блокнот с ручкой в нагрудном кармане.&/me берет в руки блокнот с ручкой, и записывает всю информацию про обыск&/me сделав пометки, убирает блокнот с ручкой в нагрудный карман', arg = '{id}', enable = true, waiting = '2', bind = "{}", in_fastmenu = true},
+					{cmd = 'take', description = 'Изьять предметы у игрока (6+)', text = '/do В подсумке находиться небольшой зип-пакет.&/me достаёт из подсумка зип-пакет и отрывает его&/me кладёт в зип-пакет изъятые предметы задержанного человека&/take {id}&/do Изъятые предметы в зип-пакете.&/todo Отлично*убирая зип-пакет в подсумок', arg = '{id}', enable = true, waiting = '2', bind = "{}", in_fastmenu = true },
+					{cmd = 'camon', description = 'Включить cкрытую боди камеру',  text = '/do К форме прикреплена скрытая боди камера.&/me незаметным движением руки включил{sex} боди камеру.&/do Скрытая боди камера включена и снимает всё происходящее.', arg = '', enable = true, waiting = '2', bind = "{}"},
+					{cmd = 'camoff', description = 'Выключить cкрытую боди камеру',  text = '/do К форме прикреплена скрытая боди камера.&/me незаметным движением руки выключил{sex} боди камеру.&/do Скрытая боди камера выключена и больше не снимает всё происходящее.', arg = '', enable = true, waiting = '2', bind = "{}"},
+					{cmd = 'inc', description = 'Затащить в транспорт',  text = '/me открывает заднюю дверь транспорта&/todo Наклоните голову, здесь дверь*заталкивая задержанного в транспортное средство&/incar {id} {arg}&/me закрывает заднюю дверь транспорта&/do Задержанный в транспортном средстве.', arg = '{id} {arg}', enable = true, waiting = '2', bind = "{}"},
+					{cmd = 'ej', description = 'Выбросить из транспорта',  text = '/me открывает дверь транспорта&/me помогает человеку выйти из транспорта&/eject {id}&/me закрывает дверь транспорта', arg = '{id}', enable = true, waiting = '2', bind = "{}", in_fastmenu = true},	
+					{cmd = 'pl', description = 'Выбросить игрока из его транспорта',  text = '/me резким ударом дубинки разбивает стело транспорта задержанного&/pull {id}&/me выбрасывает задержанного из его транспорта и ударом дубинки оглушает его', arg = '{id}', enable = true, waiting = '2', bind = "{}", in_fastmenu = true},	
+					{cmd = 'mr', description = 'Зачитать правило Миранды',  text = 'Вы имеете право хранить молчание.&Всё, что вы скажете, может и будет использовано против вас в суде.&Вы имеете право на 1 телефонный звонок, например для вызова частного адвоката.&Ваш адвокат может присутствовать при допросе.&Если вы не можете оплатить услуги адвоката, он будет предоставлен вам государством.&Вам ясны Ваши права?', arg = '', enable = true, waiting = '2', bind = "{}"},	
+					{cmd = 'unmask', description = 'Снять балаклаву с игрока',  text = '/do Задержанный в балаклаве.&/me стягивает балаклаву с головы задеражнного&/unmask {id}', arg = '{id}', enable = true, waiting = '2', bind = "{}", in_fastmenu = true},
+					{cmd = 'arr', description = 'Арестовать (в участке)',  text = '/me включает свой бортовой компютер и вводит код доступа сотрудника&/me заходит в раздел оформления протоколов задержаний и указывает данные&/do Протокол задержания заполнен.&/me вызывает по рации дежурный наряд участка и передаёт им задержанного человека&/arrest', arg = '', enable = true, waiting = '2', bind = "{}", in_fastmenu = true},
+					{cmd = 'bribe', description = 'Получение взятки от игрока',  text = '/do Гражданин сейчас ведёт запись через аудио-видео устройства?&/n @{get_nick({id})}, отвечайте на РП, например /do Нет.&{pause}&/do Телефон в кармане.&/me достал{sex} телефон, открыл{sex} заметки, и что-то туда написал{sex}&/do В заметках телефона написан такой текст: {arg}$&/todo Что скажете?*показав телефон преступнику возле себя&{pause}&/bribe {id} {arg} 1', arg = '{id} {arg}', enable = true, waiting = '2', bind = "{}"},
+					{cmd = 'drugs', description = 'Провести Drugs Test',  text = '/do На тактическом поясе прикреплён подсумок.&/me открывает подсумок и достаёт из него набор Drugs Test&/me берёт из набора пробирку с этиловым спиром&/me засыпает найденное вещество в пробирку&/me достаёт из подсумка тест Имуно-Хром-10 и добавляет его в пробирку&/do В пробирке с этиловым спиртом находится неизвестное вещество и Имуно-Хром-10.&/me аккуратными движениями взбалтывает пробирку&/do От теста Имуно-Хром-10 содержимое пробирки изменило цвет.&/todo Да, это точно наркотики*увидев что содержимое пробирки изменило цвет&/me убирает пробирку обратно в подсумок и закрывает его', arg = '', enable = true, waiting = '2', bind = "{}"},
+					{cmd = 'rbomb', description = 'Деактивировать бомбу',  text = '/do На тактическом поясе прикреплён сапёрный набор.&/me снимает с пояса сапёрный набор и кладет его на землю, затем открывает его&/do Открытый сапёрный набор находится на земле.&/me достаёт из сапёрного набора пакет с жидким азотом и кладет его на землю&/me достаёт из сапёрного набора отвёртку&/do Отвертка в руках, а пакет с жидким азотом на земле.&/do На корпусе бомбы находится 2 болтика.&/me откручивает болтики с бомбы и убирает их вместе с отвёрткой в сторону&/me аккуратным движением руки вскрывает крышку бомбы&/me внимательно осматривает бомбу&/do Внутри бомбы видна детонирующая часть.&/me достаёт из сапёрного набора кусачки&/do Кусачки в руках.&/me аккуратным движением кусочок разрезает красный провод бомбы&/do Таймер остановился, тиканье со стороны бомбы не слышно.&/me берёт в руки охлаждающий пакет с жидким азотом и кладёт его детонирующую часть бомбы&/removebomb&/do Бомба обезврежена.&/me убирает кусачки и отвёртку обратно в саперный набор и закрывает его', arg = '', enable = true, waiting = '2', bind = "{}"},
+					{cmd = 'delo', description = 'Расследование убийства',  text = '/do Сотрудник прибыл на место убийства.&/todo Такс, что же здесь произошло*осматривая место убийства&/me осматривает и  изучает все улики&{pause}&/me достаёт из подсумка бланк для расследования и ручку&/me заполняет бланк расследования записывая все изученные улики&{pause}&/me записывает в бланк точную дату и время убийства&{pause}&/do Найдено орудие убийства.&/me записывает в бланк орудие убийства&{pause}&/do Бланк расследования убийства полностью заполнен.&/todo Отлично, расследование окончено*убирая бланк в карман', arg = '', enable = true, waiting = '2', bind = "{}"},
+					{cmd = 'giveplate', description = 'Выдача разрешений на номера',  text = '/do Бланк и ручка в нагрудном кармане.&/me достаёт ручку и бланк из нагрудного кармана&/me заполняет бланк для выдачу разрешения на номерной знак&/do Бланк полностью заполнен.&/todo Вот ваше разрешение, берите*убирая ручку в нагрудный карман&/giveplate {id} {arg}', arg = '{id} {arg}', enable = true, waiting = '2', bind = "{}"},
+					{cmd = 'agenda', description = 'Выдача повестки игроку',  text = '/do В папке с документами лежит ручка и пустой бланк с надписью Повестка.&/me достаёт из папки ручку с пустым бланком повестки&/me начинает заполнять все необходимые поля на бланке повестки&/do Все данные в повестке заполнены.&/me ставит на повестку штамп и печать {fraction_tag}&/do Готовый бланк повестки в руках.&/todo Не забудьте явиться в военкомат по указанному адресу и времени*передавая повестку&/agenda {id}', arg = '{id}', enable = true, waiting = '2', bind = "{}", in_fastmenu = true},
 				},
 				fbi = {
-					{cmd = 'doc', description = 'Запросить документы (FBI)' ,  text = 'Здравствуйте, я {fraction_rank} {fraction_tag}&/do Cлева на груди спец-жетон ФБР.&/me указывает пальцем на свой спец-жетон на груди&Прошу предъявить документ, удостоверяющий вашу личность.&/n @{get_nick({arg_id})}, введите /showpass {my_id} или /showbadge {my_id}' , arg = '{arg_id}' , enable = true, waiting = '2', bind = "{}"},
-					{cmd = 'priton1', description = 'Обнаружен притон' ,  text = '/d ФБР - МЮ: В опасном районе найден наркопритон!&/d ФБР - МЮ: Желающие присоедениться к рейду - в гараж ЛСПД&/d ФБР - МЮ: Возьмите с собой оружие, бронижелет, и обязательно маску!' , arg = '' , enable = true , waiting = '2', bind = "{}"},
-					{cmd = 'priton2', description = 'Прибытие на притон' ,  text = '/d ФБР - МЮ: Мы прибыли на територию наркопритона! Я куратор спец-операции.&/d ФБР - МЮ: Оцепляйте територию, и никого не вступайте на територию наркопритона.&/d ФБР - МЮ: Кусты срезают только агенты, остальные защищают!' , arg = '' , enable = true , waiting = '2', bind = "{}"},
-					{cmd = 'priton3', description = 'Конец притона' ,  text = '/d ФБР - МЮ: Спец-операция "Притон" окончена!&/d ФБР - МЮ: Всем спасибо за участие, можете быть свободны!&/d ФБР - МЮ: Не забудьте убрать ограждения с территории.' , arg = '' , enable = true , waiting = '2', bind = "{}"},
-					{cmd = 'gwarn' , description = 'Выдать спец-выговор' ,  text = '/do КПК находиться на поясном держателе.&/me берёт в руки свой КПК и включает его&/me открыв базу данных {fraction_tag} переходит в раздел управление сотрудниками других организаций&/me открывает дело нужного сотрудника и вносит в него изменения&/do Изменения успешно сохранены.&/gwarn {arg_id} {arg2}&/me выходит с базы данных {fraction_tag} и выключив КПК убирает его на поясной держатель', arg = '{arg_id} {arg2}', enable = true, waiting = '2', bind = "{}"},
-					{cmd = 'ungwarn' , description = 'Снять спец-выговор' ,  text = '/do КПК находиться на поясном держателе.&/me берёт в руки свой КПК и включает его&/me открыв базу данных {fraction_tag} переходит в раздел управление сотрудниками других организаций&/me открывает дело нужного сотрудника и вносит в него изменения&/do Изменения успешно сохранены.&/ungwarn {arg_id}&/me выходит с базы данных {fraction_tag} и выключив КПК убирает его на поясной держатель', arg = '{arg_id} {arg2}', enable = true, waiting = '2', bind = "{}"},
-					{cmd = 'dismiss' , description = 'Уволить госслужащего (1-4)' ,  text = '/do КПК находиться на поясном держателе.&/me берёт в руки свой КПК и включает его&/me открыв базу данных {fraction_tag} переходит в раздел управление сотрудниками других организаций&/me открывает дело нужного сотрудника и вносит в него изменения&/do Изменения успешно сохранены.&/dismiss {arg_id} {arg2}&/me выходит с базы данных {fraction_tag} и выключив КПК убирает его на поясной держатель', arg = '{arg_id} {arg2}', enable = true, waiting = '2', bind = "{}"},
+					{cmd = 'doc', description = 'Запросить документы (FBI)',  text = 'Здравствуйте, я {fraction_rank} {fraction_tag}&/do Cлева на груди спец-жетон ФБР.&/me указывает пальцем на свой спец-жетон на груди&Прошу предъявить документ, удостоверяющий вашу личность.&/n @{get_nick({id})}, введите /showpass {my_id} или /showbadge {my_id}', arg = '{id}', enable = true, waiting = '2', bind = "{}"},
+					{cmd = 'priton1', description = 'Обнаружен притон',  text = '/d ФБР - МЮ: В опасном районе найден наркопритон!&/d ФБР - МЮ: Желающие присоедениться к рейду - в гараж ЛСПД&/d ФБР - МЮ: Возьмите с собой оружие, бронижелет, и обязательно маску!', arg = '', enable = true, waiting = '2', bind = "{}"},
+					{cmd = 'priton2', description = 'Прибытие на притон',  text = '/d ФБР - МЮ: Мы прибыли на територию наркопритона! Я куратор спец-операции.&/d ФБР - МЮ: Оцепляйте територию, и никого не вступайте на територию наркопритона.&/d ФБР - МЮ: Кусты срезают только агенты, остальные защищают!', arg = '', enable = true, waiting = '2', bind = "{}"},
+					{cmd = 'priton3', description = 'Конец притона',  text = '/d ФБР - МЮ: Спец-операция "Притон" окончена!&/d ФБР - МЮ: Всем спасибо за участие, можете быть свободны!&/d ФБР - МЮ: Не забудьте убрать ограждения с территории.', arg = '', enable = true, waiting = '2', bind = "{}"},
+					{cmd = 'gwarn', description = 'Выдать спец-выговор',  text = '/do КПК находиться на поясном держателе.&/me берёт в руки свой КПК и включает его&/me открыв базу данных {fraction_tag} переходит в раздел управление сотрудниками других организаций&/me открывает дело нужного сотрудника и вносит в него изменения&/do Изменения успешно сохранены.&/gwarn {id} {arg}&/me выходит с базы данных {fraction_tag} и выключив КПК убирает его на поясной держатель', arg = '{id} {arg}', enable = true, waiting = '2', bind = "{}"},
+					{cmd = 'ungwarn', description = 'Снять спец-выговор',  text = '/do КПК находиться на поясном держателе.&/me берёт в руки свой КПК и включает его&/me открыв базу данных {fraction_tag} переходит в раздел управление сотрудниками других организаций&/me открывает дело нужного сотрудника и вносит в него изменения&/do Изменения успешно сохранены.&/ungwarn {id}&/me выходит с базы данных {fraction_tag} и выключив КПК убирает его на поясной держатель', arg = '{id} {arg}', enable = true, waiting = '2', bind = "{}"},
+					{cmd = 'dismiss', description = 'Уволить госслужащего (1-4)',  text = '/do КПК находиться на поясном держателе.&/me берёт в руки свой КПК и включает его&/me открыв базу данных {fraction_tag} переходит в раздел управление сотрудниками других организаций&/me открывает дело нужного сотрудника и вносит в него изменения&/do Изменения успешно сохранены.&/dismiss {id} {arg}&/me выходит с базы данных {fraction_tag} и выключив КПК убирает его на поясной держатель', arg = '{id} {arg}', enable = true, waiting = '2', bind = "{}"},
 				},
 				army = {
-					{cmd = 'pas', description = 'Проверка документов (кпп)', text = 'Здравствуйте, я {fraction_rank} {fraction_tag} - {my_doklad_nick}.&/do Удостоверение находиться в левом кармане брюк.&/me достал{sex} удостоверение и раскрыл{sex} его перед человеком.&/do В удостоверении указано: {fraction} - {fraction_rank} {my_doklad_nick}.&Назовите причину прибытия на территорию на нашу базу.&И предоставьте мне свои документы для проверки!', arg = '', enable = true, waiting = '2', in_fastmenu = true  },
-					{cmd = 'agenda' , description = 'Выдача повестки игроку' ,  text = '/do В папке с документами лежит ручка и пустой бланк с надписью Повестка.&/me достаёт из папки ручку с пустым бланком повестки&/me начинает заполнять все необходимые поля на бланке повестки&/do Все данные в повестке заполнены.&/me ставит на повестку штамп и печать {fraction_tag}&/do Готовый бланк повестки в руках.&/todo Не забудьте явиться в военкомат по указанному адресу и времени*передавая повестку&/agenda {arg_id}', arg = '{arg_id}', enable = true, waiting = '2', bind = "{}", in_fastmenu = true},
-					{cmd = 'siren' , description = 'Вкл/выкл мигалок в т/с' , text = '{switchCarSiren}', arg = '' , enable = true , waiting = '2', bind = "{}"},
+					{cmd = 'pas', description = 'Проверка документов (кпп)', text = 'Здравствуйте, я {fraction_rank} {fraction_tag} - {my_doklad_nick}.&/do Удостоверение находиться в левом кармане брюк.&/me достал{sex} удостоверение и раскрыл{sex} его перед человеком.&/do В удостоверении указано: {fraction} - {fraction_rank} {my_doklad_nick}.&Назовите причину прибытия на территорию на нашу базу.&И предоставьте мне свои документы для проверки!', arg = '', enable = true, waiting = '2', in_fastmenu = true},
+					{cmd = 'agenda', description = 'Выдача повестки игроку',  text = '/do В папке с документами лежит ручка и пустой бланк с надписью Повестка.&/me достаёт из папки ручку с пустым бланком повестки&/me начинает заполнять все необходимые поля на бланке повестки&/do Все данные в повестке заполнены.&/me ставит на повестку штамп и печать {fraction_tag}&/do Готовый бланк повестки в руках.&/todo Не забудьте явиться в военкомат по указанному адресу и времени*передавая повестку&/agenda {id}', arg = '{id}', enable = true, waiting = '2', bind = "{}", in_fastmenu = true},
+					{cmd = 'siren', description = 'Вкл/выкл мигалок в т/с', text = '{switchCarSiren}', arg = '', enable = true, waiting = '2', bind = "{}"},
 				},
 				prison = {
-					{cmd = 't' , description = 'Достать тазер' ,  text = '/taser', arg = '', enable = true, waiting = '2', },
-					{cmd = 'cuff', description = 'Надеть наручники', text = '/do Наручники на тактическом поясе.&/me снимает наручники с пояса и надевает их на задержанного&/cuff {arg_id}&/do Задержанный в наручниках.', arg = '{arg_id}', enable = true, waiting = '2', in_fastmenu = true},
-					{cmd = 'uncuff', description = 'Снять наручники', text = '/do На тактическом поясе прикреплены ключи от наручников.&/me снимает с пояса ключ от наручников и вставляет их в наручники задержанного&/me прокручивает ключ в наручниках и снимает их с задержанного&/uncuff {arg_id}&/do Наручники сняты с задержанного&/me кладёт ключ и наручники обратно на тактический пояс', arg = '{arg_id}', enable = true, waiting = '2', in_fastmenu = true},
-					{cmd = 'gotome', description = 'Повести за собой', text = '/me схватывает задержанного за руки и ведёт его за собой&/gotome {arg_id}&/do Задержанный идёт в конвое.', arg = '{arg_id}', enable = true, waiting = '2', in_fastmenu = true},
-					{cmd = 'ungotome', description = 'Перестать вести за собой', text = '/me отпускает руки задержанного и перестаёт вести его за собой&/ungotome {arg_id}', arg = '{arg_id}', enable = true, waiting = '2', in_fastmenu = true},
-					{cmd = 'take', description = 'Изьять предметы у игрока (6+)', text = '/do В подсумке находиться небольшой зип-пакет.&/me достаёт из подсумка зип-пакет и отрывает его&/me кладёт в зип-пакет изъятые предметы задержанного человека&/take {arg_id}&/do Изъятые предметы в зип-пакете.&/todo Отлично*убирая зип-пакет в подсумок', arg = '{arg_id}', enable = true, waiting = '2', in_fastmenu = true},
-					{cmd = 'carcer', description = 'Посадка игрока в карцер',text = '/do На поясе висит связка ключей.&/me прислонив заключённого к стене, снял ключ со связки, открыл дверцу камеры&/me лёгкими движениями рук затолкнул заключённого в камеру, после чего закрыл её&/me лёгкими движениями рук закрепил ключ к связке&/carcer {arg_id} {arg2} {arg3} {arg4}',arg = '{arg_id} {arg2} {arg3} {arg4}', enable = true, waiting = '2'},
-					{cmd = 'setcarcer', description = 'Смена карцера игроку', text = '/do На поясе висит связка ключей.&/me лёгкими движениями рук снял ключ со связки, открыл свободную камеру и камеру заключённого&/me вытолкнул заключённого из первой камеры, затолкнул во вторую, закрыв двери обоих камер&/me лёгкими движениями рук закрепил ключ к связке&/setcarcer {arg_id} {arg2}', arg = '{arg_id}, {arg2}', enable = true, waiting = '2'},
-					{cmd = 'uncarcer', description = 'Выпуск игрока из карцера', text = '/do На поясе висит связка ключей.&/me движениями рук снял ключ со связки, открыл камеру и вытолкнул из неё заключённого&/me закрыл дверцу камеры, закрепил ключ к связке&/uncarcer {arg_id}', arg = '{arg_id}', enable = true, waiting = '2' },
-					{cmd = 'frisk', description = 'Обыск заключённого', text = '/do Перчатки на поясе.&/me схватил перчатки и одел&/do Перчатки одеты.&/me начал нащупывать человека напротив&/frisk {arg_id}', arg = '{arg_id}', enable = true, waiting = '2', in_fastmenu = true},
-					{cmd = 'punishsu', description = 'Повысить уровень наказания.', text ='/me достаёт свой КПК и открывает базу данных тюрьмы&/me вносит изменения в базу данных тюрьмы&/do Изменения занесены в базу данных тюрьмы.&/punish {arg_id} {arg2} 2 {arg3}', arg = '{arg_id} {arg2} {arg3}', enable = true, waiting = '2'},
-					{cmd = 'punishclear', description = 'Понизить уровень наказания', text = '/me достаёт блокнот из нагрудного кармана&/do Блокнот в руке.&/me открывает его на странице с записями о поведении заключённых.&/do В блокноте видна запись: "{get_rp_nick({arg_id})}, примерное поведение...&/do ...участие в уборке территории, отсутствие нарушений."&/me берёт ручку и записывает новую информацию о заключённом.&/do В блокноте добавлена запись: "Рекомендация на сокращение срока...&/do ...на {arg2} года за добросовестное выполнение обязанностей."&/me закрывает блокнот и убирает его обратно в карман формы.&/do Данные о заключённом зафиксированы...&/do ...для последующего рассмотрения администрацией.&/punish {arg_id} {arg2} 1 {arg3}', arg = '{arg_id} {arg2} {arg3}', enable = true, waiting = '2'},
+					{cmd = 't', description = 'Достать тазер',  text = '/taser', arg = '', enable = true, waiting = '2', },
+					{cmd = 'cuff', description = 'Надеть наручники', text = '/do Наручники на тактическом поясе.&/me снимает наручники с пояса и надевает их на задержанного&/cuff {id}&/do Задержанный в наручниках.', arg = '{id}', enable = true, waiting = '2', in_fastmenu = true},
+					{cmd = 'uncuff', description = 'Снять наручники', text = '/do На тактическом поясе прикреплены ключи от наручников.&/me снимает с пояса ключ от наручников и вставляет их в наручники задержанного&/me прокручивает ключ в наручниках и снимает их с задержанного&/uncuff {id}&/do Наручники сняты с задержанного&/me кладёт ключ и наручники обратно на тактический пояс', arg = '{id}', enable = true, waiting = '2', in_fastmenu = true},
+					{cmd = 'gotome', description = 'Повести за собой', text = '/me схватывает задержанного за руки и ведёт его за собой&/gotome {id}&/do Задержанный идёт в конвое.', arg = '{id}', enable = true, waiting = '2', in_fastmenu = true},
+					{cmd = 'ungotome', description = 'Перестать вести за собой', text = '/me отпускает руки задержанного и перестаёт вести его за собой&/ungotome {id}', arg = '{id}', enable = true, waiting = '2', in_fastmenu = true},
+					{cmd = 'take', description = 'Изьять предметы у игрока (6+)', text = '/do В подсумке находиться небольшой зип-пакет.&/me достаёт из подсумка зип-пакет и отрывает его&/me кладёт в зип-пакет изъятые предметы задержанного человека&/take {id}&/do Изъятые предметы в зип-пакете.&/todo Отлично*убирая зип-пакет в подсумок', arg = '{id}', enable = true, waiting = '2', in_fastmenu = true},
+					{cmd = 'carcer', description = 'Посадка игрока в карцер',text = '/do На поясе висит связка ключей.&/me прислонив заключённого к стене, снял ключ со связки, открыл дверцу камеры&/me лёгкими движениями рук затолкнул заключённого в камеру, после чего закрыл её&/me лёгкими движениями рук закрепил ключ к связке&/carcer {id} {number} {arg}',arg = '{id} {number} {arg}', enable = true, waiting = '2'},
+					{cmd = 'setcarcer', description = 'Смена карцера игроку', text = '/do На поясе висит связка ключей.&/me лёгкими движениями рук снял ключ со связки, открыл свободную камеру и камеру заключённого&/me вытолкнул заключённого из первой камеры, затолкнул во вторую, закрыв двери обоих камер&/me лёгкими движениями рук закрепил ключ к связке&/setcarcer {id} {arg}', arg = '{id} {arg}', enable = true, waiting = '2'},
+					{cmd = 'uncarcer', description = 'Выпуск игрока из карцера', text = '/do На поясе висит связка ключей.&/me движениями рук снял ключ со связки, открыл камеру и вытолкнул из неё заключённого&/me закрыл дверцу камеры, закрепил ключ к связке&/uncarcer {id}', arg = '{id}', enable = true, waiting = '2' },
+					{cmd = 'frisk', description = 'Обыск заключённого', text = '/do Перчатки на поясе.&/me схватил перчатки и одел&/do Перчатки одеты.&/me начал нащупывать человека напротив&/frisk {id}', arg = '{id}', enable = true, waiting = '2', in_fastmenu = true},
+					{cmd = 'punishsu', description = 'Повысить уровень наказания.', text ='/me достаёт свой КПК и открывает базу данных тюрьмы&/me вносит изменения в базу данных тюрьмы&/do Изменения занесены в базу данных тюрьмы.&/punish {id} {number} 2 {arg}', arg = '{id} {number} {arg}', enable = true, waiting = '2'},
+					{cmd = 'punishclear', description = 'Понизить уровень наказания', text = '/me достаёт блокнот из нагрудного кармана&/do Блокнот в руке.&/me открывает его на странице с записями о поведении заключённых.&/do В блокноте видна запись: "{get_rp_nick({id})}, примерное поведение...&/do ...участие в уборке территории, отсутствие нарушений."&/me берёт ручку и записывает новую информацию о заключённом.&/do В блокноте добавлена запись: "Рекомендация на сокращение срока...&/do ...на {number} года за добросовестное выполнение обязанностей."&/me закрывает блокнот и убирает его обратно в карман формы.&/do Данные о заключённом зафиксированы...&/do ...для последующего рассмотрения администрацией.&/punish {id} {number} 1 {arg}', arg = '{id} {number} {arg}', enable = true, waiting = '2'},
 				},
 				hospital = {
-					{cmd = 'siren' , description = 'Вкл/выкл мигалок в т/с' , text = '{switchCarSiren}', arg = '' , enable = true , waiting = '2', bind = "{}"},
-					{cmd = 'zd' , description = 'Привествие игрока' , text = 'Здравствуйте, я {my_ru_nick} - {fraction_rank} {fraction_tag}&Чем я могу Вам помочь?', arg = '{arg_id}' , enable = true , waiting = '2', bind = "{}", in_fastmenu = true},
-					{cmd = 'go' , description = 'Позвать игрока за собой' , text = 'Хорошо {get_ru_nick({arg_id})}, следуйте за мной.', arg = '{arg_id}' , enable = true, waiting = '2', bind = "{}", in_fastmenu = true},
-					{cmd = 'hl' , description = 'Обычное лечение игрока' , text = '/me достаёт из своего мед.кейса нужное лекарство и передаёт его человеку напротив&/todo Принимайте это лекарство, оно вам поможет*улыбаясь&/heal {arg_id} {get_price_heal}', arg = '{arg_id}' , enable = true, waiting = '2', bind = "{}", in_fastmenu = true},
-					{cmd = 'hla' , description = 'Лечение охранника игрока' ,  text = '/me достаёт из своего мед.кейса лекарство и передаёт его человеку напротив&/todo Давайте своему охраннику это лекарство, оно ему поможет*улыбаясь&/healactor {arg_id} {get_price_actorheal}' , arg = '{arg_id}' , enable = true , waiting = '2', bind = "{}", in_fastmenu = true},
-					{cmd = 'hlb' , description = 'Лечение игрока от наркозависимости' ,  text = '/me достаёт из своего мед.кейса таблетки от наркозависимости и передаёт их пациенту напротив&/todo Принимайте эти таблетки, и в скором времени Вы излечитесь от наркозависимости*улыбаясь&/healbad {arg_id}' , arg = '{arg_id}' , enable = true , waiting = '2', bind = "{}", in_fastmenu = true},	
-					{cmd = 'mt' , description = 'Мед.оcмотр для военного билета' ,  text = 'Хорошо, сейчас я проведу вам мед.осмотр для получения военного ... &... билета по стану здоровья, но шанс на успех всего 1 процент!&/mticket {arg_id} {get_price_mticket}' , arg = '{arg_id}' , enable = true, waiting = '2', bind = "{}"},
-					{cmd = 'pilot' , description = 'Мед.осмотр для пилотов' ,  text = 'Хорошо, сейчас я проведу вам мед.осмотр для пилотов.&/medcheck {arg_id} {get_price_medosm}&{pause}&И так...&/me достаёт из мед.кейса стерильные перчатки и надевает их на руки&/do Перчатки на руках.&/todo Начнём мед.осмотр*улыбаясь.&Сейчас я проверю ваше горло, откройте рот и высуните язык.&/me достаёт из мед.кейса фонарик и включив его осматривает горло человека напротив&Хорошо, можете закрывать рот, сейчас я проверю ваши глаза.&/me проверяет реакцию человека на свет, посветив фонарик в глаза&/do Зрачки глаз обследуемого человека сузились.&/todo Отлично*выключая фонарик и убирая его в мед.кейс&Такс, сейчас я проверю ваше сердцебиение, поэтому приподнимите верхную одежду!&/me достаёт из мед.кейса стетоскоп и приложив его к груди человека проверяет сердцебиение&/do Сердцебиение в районе 65 ударов в минуту.&/todo С сердцебиением у вас все в порядке*убирая стетоскоп обратно в мед.кейс&/me снимает со своих рук использованные перчатки и выбрасывает их&Ну что-ж я могу вам сказать, со здоровьем у вас все в порядке, вы свободны!' , arg = '{arg_id}' , enable = true, waiting = '2', bind = "{}", in_fastmenu = true},
-					{cmd = 'medin' , description = 'Оформление игроку мед.страховки' ,  text = 'Для оформления мед.страховки Вам необходимо оплатить определнную cумму.&Стоимость зависит от срока действия будущей мед.страховки.&На 1 неделю - $4ОО.ООО. На 2 недели - $8ОО.ООО. На 3 недели - $1.2ОО.ООО.&И так, скажите, на какой срок Вам оформить мед.страховку?&{pause}&/me достаёт из своего мед.кейса пустой бланк мед.страховки, ручку и печать {fraction_tag}&/me открывает бланк мед.страховки и начинает его заполнять, затем ставит печать {fraction_tag}&/me полностью заполнив бланк мед.страховки убирает ручку и печать обратно в свой мед.кейс&/givemedinsurance {arg_id}&/todo Вот ваша мед.страховка, берите*протягивая бланк с мед.страховкой человеку напротив себя' , arg = '{arg_id}' , enable = true, waiting = '2', bind = "{}", in_fastmenu = true},
-					{cmd = 'med' , description = 'Оформление игроку мед.карты' ,  text = 'Оформление мед. карты платное и зависит от её срока действия!&Мед. карта на 7 дней - ${get_price_med7}&Мед. карта на 14 дней - ${get_price_med14}&Мед. карта на 30 дней - ${get_price_med30}&Мед. карта на 60 дней - ${get_price_med60}&Скажите, вам на какой срок оформить мед. карту?&{show_medcard_menu}&Хорошо, тогда приступим к оформлению.&/me достаёт из своего мед.кейса пустую мед.карту, ручку и печать {fraction_tag}&/me открывает пустую мед.карту и начинает её заполнять, затем ставит печать {fraction_tag}&/me полностью заполнив мед.карту убирает ручку и печать обратно в свой мед.кейс&/todo Вот ваша мед.карта, берите*протягивая заполненную мед.карту человеку напротив себя&/medcard {arg_id} {get_medcard_status} {get_medcard_days} {get_medcard_price}' , arg = '{arg_id}' , enable = true, waiting = '2', bind = "{}", in_fastmenu = true},
-					{cmd = 'recept' , description = 'Выдача игроку рецептов' ,  text = 'Стоимость одного рецепта составляет ${get_price_recept}&Скажите сколько Вам требуется рецептов, после чего мы продолжим.&/n Внимание! В течении часа выдаётся максимум 5 рецептов!&{show_recept_menu}&Хорошо, сейчас я выдам вам рецепты.&/me достаёт из своего мед.кейса бланк для оформления рецептов и начает его заполнять&/me ставит на бланк рецепта печать {fraction_tag}&/do Бланк успешно заполнен.&/todo Вот, держите!*передавая бланк  рецепта человеку напротив&/recept {arg_id} {get_recepts}' , arg = '{arg_id}' , enable = true, waiting = '2', bind = "{}", in_fastmenu = true},
-					{cmd = 'ant' , description = 'Выдача игроку антибиотиков' ,  text = 'Стоимость одного антибиотика составляет ${get_price_ant}&Скажите сколько Вам требуется антибиотиков, после чего мы продолжим.&/n Внимание! Вы можете купить от 1 до 20 антибитиков за один раз!&{show_ant_menu}&Хорошо, сейчас я выдам вам антибиотики.&/me открывает свой мед.кейс и достаёт из него пачку антибиотиков, после чего закрывает мед.кейс&/do Антибиотики находятся в руках.&/todo Вот держите, употребляйте их строго по рецепту!*передавая антибиотики человеку напротив&/antibiotik {arg_id} {get_ants}' , arg = '{arg_id}' , enable = true, waiting = '2', bind = "{}", in_fastmenu = true},
-					{cmd = 'osm' , description = 'Полный мед.осмотр игрока (РП)' ,  text = 'Хорошо, сейчас я проведу вам мед.осмотр.&Дайте мне вашу мед.карту для проверки.&/n @{get_nick({arg_id})}, введите /showmc {my_id} чтобы показать мне мед.карту.&{pause}&/me достаёт из мед.кейса стерильные перчатки и надевает их на руки&/do Перчатки на руках.&/todo Начнём мед.осмотр*улыбаясь.&Сейчас я проверю ваше горло, откройте рот и высуните язык.&/n Используйте /me открыл(-а) рот чтоб мы продолжили&{pause}&/me достаёт из мед.кейса фонарик и включив его осматривает горло человека напротив&Хорошо, можете закрывать рот, сейчас я проверю ваши глаза.&/me проверяет реакцию человека на свет, посветив фонарик в глаза&/do Зрачки глаз обследуемого человека сузились.&/todo Отлично*выключая фонарик и убирая его в мед.кейс&Такс, сейчас я проверю ваше сердцебиение, поэтому приподнимите верхную одежду!&/n @{get_nick({arg_id})}, введите /showtatu чтобы снять одежду по РП&{pause}&/me достаёт из мед.кейса стетоскоп и приложив его к груди человека проверяет сердцебиение&/do Сердцебиение в районе 65 ударов в минуту.&/todo С сердцебиением у вас все в порядке*убирая стетоскоп обратно в мед.кейс&/me снимает со своих рук использованные перчатки и выбрасывает их&Ну что-ж я могу вам сказать...&Со здоровьем у вас все в порядке, вы свободны!' , arg = '{arg_id}', enable = true, waiting = '2', bind = "{}"} , 
-					{cmd = 'gd' , description = 'Экстренный вызов (/godeath)' ,  text = '/me достаёт из кармана свой телефон и заходит в базу данных {fraction_tag}&/me просматривает информацию и включает навигатор к выбранному месту экстренного вызова&/godeath {arg_id}' , arg = '{arg_id}' , enable = true, waiting = '2', bind = "{}"},
-					{cmd = 'exp' , description = 'Выгнать игрока из больницы' ,  text = 'Вы больше не можете здесь находиться, я выгоняю вас из больницы!&/me схватив человека ведёт к выходу из больницы и закрывает за ним дверь&/expel {arg_id} Н.П.Б.' , arg = '{arg_id}' , enable = true , waiting = '2', bind = "{}", in_fastmenu = true},
+					{cmd = 'siren', description = 'Вкл/выкл мигалок в т/с', text = '{switchCarSiren}', arg = '', enable = true, waiting = '2', bind = "{}"},
+					{cmd = 'zd', description = 'Привествие игрока', text = 'Здравствуйте, я {my_ru_nick} - {fraction_rank} {fraction_tag}&Чем я могу Вам помочь?', arg = '{id}', enable = true, waiting = '2', bind = "{}", in_fastmenu = true},
+					{cmd = 'go', description = 'Позвать игрока за собой', text = 'Хорошо {get_ru_nick({id})}, следуйте за мной.', arg = '{id}', enable = true, waiting = '2', bind = "{}", in_fastmenu = true},
+					{cmd = 'hl', description = 'Обычное лечение игрока', text = '/me достаёт из своего мед.кейса нужное лекарство и передаёт его человеку напротив&/todo Принимайте это лекарство, оно вам поможет*улыбаясь&/heal {id} {get_price_heal}', arg = '{id}', enable = true, waiting = '2', bind = "{}", in_fastmenu = true},
+					{cmd = 'hla', description = 'Лечение охранника игрока',  text = '/me достаёт из своего мед.кейса лекарство и передаёт его человеку напротив&/todo Давайте своему охраннику это лекарство, оно ему поможет*улыбаясь&/healactor {id} {get_price_actorheal}', arg = '{id}', enable = true, waiting = '2', bind = "{}", in_fastmenu = true},
+					{cmd = 'hlb', description = 'Лечение игрока от наркозависимости',  text = '/me достаёт из своего мед.кейса таблетки от наркозависимости и передаёт их пациенту напротив&/todo Принимайте эти таблетки, и в скором времени Вы излечитесь от наркозависимости*улыбаясь&/healbad {id}', arg = '{id}', enable = true, waiting = '2', bind = "{}", in_fastmenu = true},	
+					{cmd = 'mt', description = 'Мед.оcмотр для военного билета',  text = 'Хорошо, сейчас я проведу вам мед.осмотр для получения военного ... &... билета по стану здоровья, но шанс на успех всего 1 процент!&/mticket {id} {get_price_mticket}', arg = '{id}', enable = true, waiting = '2', bind = "{}"},
+					{cmd = 'pilot', description = 'Мед.осмотр для пилотов',  text = 'Хорошо, сейчас я проведу вам мед.осмотр для пилотов.&/medcheck {id} {get_price_medosm}&{pause}&И так...&/me достаёт из мед.кейса стерильные перчатки и надевает их на руки&/do Перчатки на руках.&/todo Начнём мед.осмотр*улыбаясь.&Сейчас я проверю ваше горло, откройте рот и высуните язык.&/me достаёт из мед.кейса фонарик и включив его осматривает горло человека напротив&Хорошо, можете закрывать рот, сейчас я проверю ваши глаза.&/me проверяет реакцию человека на свет, посветив фонарик в глаза&/do Зрачки глаз обследуемого человека сузились.&/todo Отлично*выключая фонарик и убирая его в мед.кейс&Такс, сейчас я проверю ваше сердцебиение, поэтому приподнимите верхную одежду!&/me достаёт из мед.кейса стетоскоп и приложив его к груди человека проверяет сердцебиение&/do Сердцебиение в районе 65 ударов в минуту.&/todo С сердцебиением у вас все в порядке*убирая стетоскоп обратно в мед.кейс&/me снимает со своих рук использованные перчатки и выбрасывает их&Ну что-ж я могу вам сказать, со здоровьем у вас все в порядке, вы свободны!', arg = '{id}', enable = true, waiting = '2', bind = "{}", in_fastmenu = true},
+					{cmd = 'medin', description = 'Оформление игроку мед.страховки',  text = 'Для оформления мед.страховки Вам необходимо оплатить определнную cумму.&Стоимость зависит от срока действия будущей мед.страховки.&На 1 неделю - $4ОО.ООО. На 2 недели - $8ОО.ООО. На 3 недели - $1.2ОО.ООО.&И так, скажите, на какой срок Вам оформить мед.страховку?&{pause}&/me достаёт из своего мед.кейса пустой бланк мед.страховки, ручку и печать {fraction_tag}&/me открывает бланк мед.страховки и начинает его заполнять, затем ставит печать {fraction_tag}&/me полностью заполнив бланк мед.страховки убирает ручку и печать обратно в свой мед.кейс&/givemedinsurance {id}&/todo Вот ваша мед.страховка, берите*протягивая бланк с мед.страховкой человеку напротив себя', arg = '{id}', enable = true, waiting = '2', bind = "{}", in_fastmenu = true},
+					{cmd = 'med', description = 'Оформление игроку мед.карты',  text = 'Оформление мед. карты платное и зависит от её срока действия!&Мед. карта на 7 дней - ${get_price_med7}&Мед. карта на 14 дней - ${get_price_med14}&Мед. карта на 30 дней - ${get_price_med30}&Мед. карта на 60 дней - ${get_price_med60}&Скажите, вам на какой срок оформить мед. карту?&{show_medcard_menu}&Хорошо, тогда приступим к оформлению.&/me достаёт из своего мед.кейса пустую мед.карту, ручку и печать {fraction_tag}&/me открывает пустую мед.карту и начинает её заполнять, затем ставит печать {fraction_tag}&/me полностью заполнив мед.карту убирает ручку и печать обратно в свой мед.кейс&/todo Вот ваша мед.карта, берите*протягивая заполненную мед.карту человеку напротив себя&/medcard {id} {get_medcard_status} {get_medcard_days} {get_medcard_price}', arg = '{id}', enable = true, waiting = '2', bind = "{}", in_fastmenu = true},
+					{cmd = 'recept', description = 'Выдача игроку рецептов',  text = 'Стоимость одного рецепта составляет ${get_price_recept}&Скажите сколько Вам требуется рецептов, после чего мы продолжим.&/n Внимание! В течении часа выдаётся максимум 5 рецептов!&{show_recept_menu}&Хорошо, сейчас я выдам вам рецепты.&/me достаёт из своего мед.кейса бланк для оформления рецептов и начает его заполнять&/me ставит на бланк рецепта печать {fraction_tag}&/do Бланк успешно заполнен.&/todo Вот, держите!*передавая бланк  рецепта человеку напротив&/recept {id} {get_recepts}', arg = '{id}', enable = true, waiting = '2', bind = "{}", in_fastmenu = true},
+					{cmd = 'ant', description = 'Выдача игроку антибиотиков',  text = 'Стоимость одного антибиотика составляет ${get_price_ant}&Скажите сколько Вам требуется антибиотиков, после чего мы продолжим.&/n Внимание! Вы можете купить от 1 до 20 антибитиков за один раз!&{show_ant_menu}&Хорошо, сейчас я выдам вам антибиотики.&/me открывает свой мед.кейс и достаёт из него пачку антибиотиков, после чего закрывает мед.кейс&/do Антибиотики находятся в руках.&/todo Вот держите, употребляйте их строго по рецепту!*передавая антибиотики человеку напротив&/antibiotik {id} {get_ants}', arg = '{id}', enable = true, waiting = '2', bind = "{}", in_fastmenu = true},
+					{cmd = 'osm', description = 'Полный мед.осмотр игрока (РП)',  text = 'Хорошо, сейчас я проведу вам мед.осмотр.&Дайте мне вашу мед.карту для проверки.&/n @{get_nick({id})}, введите /showmc {my_id} чтобы показать мне мед.карту.&{pause}&/me достаёт из мед.кейса стерильные перчатки и надевает их на руки&/do Перчатки на руках.&/todo Начнём мед.осмотр*улыбаясь.&Сейчас я проверю ваше горло, откройте рот и высуните язык.&/n Используйте /me открыл(-а) рот чтоб мы продолжили&{pause}&/me достаёт из мед.кейса фонарик и включив его осматривает горло человека напротив&Хорошо, можете закрывать рот, сейчас я проверю ваши глаза.&/me проверяет реакцию человека на свет, посветив фонарик в глаза&/do Зрачки глаз обследуемого человека сузились.&/todo Отлично*выключая фонарик и убирая его в мед.кейс&Такс, сейчас я проверю ваше сердцебиение, поэтому приподнимите верхную одежду!&{pause}&/me достаёт из мед.кейса стетоскоп и приложив его к груди человека проверяет сердцебиение&/do Сердцебиение в районе 65 ударов в минуту.&/todo С сердцебиением у вас все в порядке*убирая стетоскоп обратно в мед.кейс&/me снимает со своих рук использованные перчатки и выбрасывает их&Ну что-ж я могу вам сказать...&Со здоровьем у вас все в порядке, вы свободны!', arg = '{id}', enable = true, waiting = '2', bind = "{}"}, 
+					{cmd = 'gd', description = 'Экстренный вызов (/godeath)',  text = '/me достаёт из кармана свой телефон и заходит в базу данных {fraction_tag}&/me просматривает информацию и включает навигатор к выбранному месту экстренного вызова&/godeath {id}', arg = '{id}', enable = true, waiting = '2', bind = "{}"},
+					{cmd = 'exp', description = 'Выгнать игрока из больницы',  text = 'Вы больше не можете здесь находиться, я выгоняю вас из больницы!&/me схватив человека ведёт к выходу из больницы и закрывает за ним дверь&/expel {id} Н.П.Б.', arg = '{id}', enable = true, waiting = '2', bind = "{}", in_fastmenu = true},
 				},
 				smi = {
-					{cmd = 'ads' , description = 'Открыть список обьявлений' ,  text = '/newsredak', arg = '', enable = true, waiting = '2', bind = "[18,49]" },
-					{cmd = 'zd', description = 'Привествие игрока' , text = 'Здравствуйте, я {my_ru_nick} - {fraction_rank} {fraction_tag}&Чем я могу Вам помочь?', arg = '{arg_id}' , enable = true , waiting = '2', bind = "{}" , in_fastmenu = true},
-					{cmd = 'go' , description = 'Позвать игрока за собой' , text = 'Хорошо {get_ru_nick({arg_id})}, следуйте за мной.', arg = '{arg_id}' , enable = true, waiting = '2', bind = "{}", in_fastmenu = true},
-					{cmd = 'expel' , description = 'Выгнать игрока из здания' ,  text = 'Вы больше не можете здесь находиться, я выгоняю вас из здания!&/me схватив человека ведёт к выходу из здания и закрывает за ним дверь&/expel {arg_id} Н.П.Р.' , arg = '{arg_id}' , enable = true , waiting = '2', bind = "{}", in_fastmenu = true},
-					{cmd = 'live_sobes' , description = 'Собеседование' , text = "/me нажимает на необходимые кнопки в аппаратуре, тем самым включает ее&/do Аппаратура включена и работает исправно.&/me проверяет на исправность аппаратуру и микрофон&/me берет наушники со столика и надевает их на свою голову&/todo Раз, раз, раз*стуча по микрофону.&/do Микрофон исправен и готов к работе.&/d [{fraction_tag}] - [СМИ]: Занимаю новостную волну.&/news •°•°•°•°• Музыкальная заставка радиостанции {fraction_tag} •°•°•°•°•&/news [Собеседование]: Доброго времени суток, уважаемые граждане Штата!&/news [Собеседование]: С Вами - Я, {fraction_rank} - {my_ru_nick}.&/news [Собеседование]: Давно мечтали изменить свою жизнь в лучшую сторону?&/news [Собеседование]: Поставить новые и не запланированные цели?&/news [Собеседование]: Спешу Вас обрадовать! Ведь именно сейчас ...&/news [Собеседование]: ... проходит собеседование в Радиоцентр {fraction_tag}!&/news [Собеседование]: Что нужно иметь для прохождения собеседования?&/news [Собеседование]: Критерии очень просты, при себе необходимо иметь: ...&/news [Собеседование]: ... Паспорт, мед. карту с отметкой Полностью здоров&/news [Собеседование]: Ведь именно у нас: Доброе и отзывчивое начальство ...&/news [Собеседование]: ... достойный карьерный рост и высокие зарплаты!&/news [Собеседование]: Заинтересовавшихся пройти собеседование ожидаем в ...&/news [Собеседование]: ... холле главного офиса {fraction_tag}.&/news [Собеседование]: А на этом наш эфир подходит к концу!&/news [Собеседование]: С Вами был - Я, {my_ru_nick}. До скорых встреч!&/news •°•°•°•°• Музыкальная заставка радиостанции {fraction_tag} •°•°•°•°•&/d [{fraction_tag}] - [СМИ]: Освобождаю новостную волну!&/me нажимает на необходимые клавиши и выходит из эфира, после чего отключает микрофон&/do Эфир окончен и микрофон отключен.&/me снимает с головы наушники и кладет их на место", arg = '' , enable = true, waiting = '6', bind = "{}", in_fastmenu = false},
-					{cmd = 'live_mp1' , description = 'Викторина "Столицы"' , text = "/me нажимает на необходимые кнопки в аппаратуре, тем самым включает ее&/do Аппаратура включена и работает исправно.&/me проверяет на исправность аппаратуру и микрофон&/me берет наушники со столика и надевает их на свою голову&/todo Раз, раз, раз*стуча по микрофону.&/do Микрофон исправен и готов к работе.&/d [{fraction_tag}] - [СМИ]: Занимаю эфирную волну! Просьба не перебивать.&/news •°•°•°•° Музыкальная заставка радиостанции {fraction_tag} •°•°•°•°•&/news [Викторина]: Добрый день, уважаемые радиослушатели!&/news [Викторина]: У микрофона - {my_ru_nick}!&/news [Викторина]: Сегодня мы проведём - Столицы.&/news [Викторина]: Суть викторины такова: Я говорю вам страну, А вы мне её столицу.&/news [Викторина]: Ответы присылать на номер студии, его вы можете найти...&/news [Викторина]: ...в своём телефоне, в разделе: Контакты.&/news [Викторина]: Призовой Фонд сегодня составляет целый 1 милион долларов!&/news [Викторина]: Ну что же, давайте начинать.&/news [Викторина]: Открывает сегодняшний марафон стран поистине прекрасное государство.&/news [Викторина]: Страна, которая подарила миру необычную поп культуру. И это...&/news [Викторина]: ...Республика Корея. Или как её называют еще - Южная Корея.&{pause}&/news [Викторина]: Стоп! Наша студия получила правильный ответ.&/news [Викторина]: Правильный ответ - Сеул...&/news [Викторина]: ...густо населённый город с миллионом развлечений на любой вкус.&/news [Викторина]: Первый правильный ответ мы получили от гражданина...&{pause}&/news [Викторина]: Продолжаем. Следующее Государство известно во всём мире как страна футбола...&/news [Викторина]: ...и самбы - Бразилия.&{pause}&/news [Викторина]: Стоп!&/news [Викторина]: Как бы абсурдно это не звучало, столица страны Бразилия - Бразилиа.&/news [Викторина]: Ответов было много... Но самым быстрым оказался гражданин...&{pause}&/news [Викторина]: Большую часть следующего государства занимают трудно проходимые Джунгли...&/news [Викторина]: Я говорю о Вьетнаме.&{pause}&/news [Викторина]: На студию поступил правильный ответ!&/news [Викторина]: Столицей Вьетнама является город Ханой.&/news [Викторина]: Правильный ответ нам дал гражданин...&{pause}&/news [Викторина]: Вы, уважаемый радиослушатель, и правда не прогуливали географию в школе.&/news [Викторина]: Именно в этой стране находится действующий вулкан 'Кракатау'.&/news [Викторина]: ...Индонезия.&{pause}&/news [Викторина]: Стоп!&/news [Викторина]: И... Правильный ответ... Джакарта.&/news [Викторина]: Город контрастов, в котором переплелись разные языки и культуры...&/news [Викторина]: ...богатство и бедность.&/news [Викторина]: Уверен с этим городом знаком наш слушатель под именем...&{pause}&/news [Викторина]: Ведь именно он и дал правильный ответ!&/news [Викторина]: Густые леса, скалистые острова, горнолыжные курорты. Это всё про...&/news [Викторина]: ...страну - Финляндия.&{pause}&/news [Викторина]: Стоп! Наша студия получила правильный ответ.&/news [Викторина]: Правильным ответом является - Хельсинки! И этот ответ дал штата с именем...&{pause}&/news [Викторина]: Больше всего об этой стране знают лыжники и сноубордисты...&/news [Викторина]: ...Австрия.&/news [Викторина]: На студию поступил правильный ответ!&/news [Викторина]: Любой разговор об Австрии всегда сводится к ее столице, и не спроста.&/news [Викторина]: Ведь 'Вена' - крупнейший культурно-исторический центр Европы.&/news [Викторина]: Первым правильный ответ в студию прислал гражданин с именем...&{pause}&/news [Викторина]: И так, сейчас я озвучу победителя нашей викторины, вы готовы?&{pause}&/news [Викторина]: Просим победителя приехать к нам за наградой...&/news [Викторина]: На этом наша викторина окончена, спасибо всем вам за участие!&/news •°•°•°•°• Музыкальная заставка радиостанции {fraction_tag} •°•°•°•°•&/d [{fraction_tag}] - [СМИ]: Освобождаю эфирную волну!&/me нажимает на необходимые клавиши и выходит из эфира, после чего отключает микрофон&/do Эфир окончен и микрофон отключен.&/me снимает с головы наушники и кладет их на место", arg = '' , enable = true, waiting = '6', bind = "{}", in_fastmenu = false},
-					{cmd = 'live_mp2' , description = 'Викторина "Математика"' , text = "/me нажимает на необходимые кнопки в аппаратуре, тем самым включает ее&/do Аппаратура включена и работает исправно.&/me проверяет на исправность аппаратуру и микрофон&/me берет наушники со столика и надевает их на свою голову&/todo Раз, раз, раз*стуча по микрофону.&/do Микрофон исправен и готов к работе.&/d [{fraction_tag}] - [СМИ]: Занимаю эфирную волну.&/news •°•°•°•°• Музыкальная заставка радиостанции {fraction_tag} •°•°•°•°•&/news [Викторина]: Добрый день, уважаемые радиослушатели!&/news [Викторина]: У микрофона - {my_ru_nick}!&/news [Викторина]: Сегодня мы проведём викторину - Математика.&/news [Викторина]: Суть викторины: Я говорю вам примеры, а вы мне ответы на них.&/news [Викторина]: В примерах могут использоваться такие операторы, как...&/news [Викторина]: ...сложение +, умножение *, вычитание -, деление /.&/news [Викторина]: Ответы присылать на номер студии, его вы можете найти...&/news [Викторина]: ...в своём телефоне, в разделе: Контакты.&/news [Викторина]: Призовой Фонд сегодня составляет аж целых 500.000$!&/news [Викторина]: Ну что же, давайте начинать.&/news [Викторина]: Первый пример...&/news [Викторина]: ... '3 + 3 * 3'.&{pause}&/news [Викторина]: Стоп! На студию поступил верный ответ.&/news [Викторина]: Правильный ответ - '12'.&/news [Викторина]: Верный ответ нам дал гражданин с именем ...&{pause}&/news [Викторина]: Мы только начинаем разгоняться...&/news [Викторина]: ... '66 - 44 + 1'.&{pause}&/news [Викторина]: Стоп!&/news [Викторина]: Корректным ответом является - '23'.&/news [Викторина]: Первый правильный ответ мы получили от граждана ...&{pause}&/news [Викторина]: Следующий пример...&/news [Викторина]: ... '35 + 75'.&/news [Викторина]: И... У нас есть корректный ответ!&/news [Викторина]: И так, правильный ответ '110', и мы получили этот ответ от гражданина ...&{pause}&/news [Викторина]: Без лишних слов, следующий пример...&/news [Викторина]: ... '25 - 28 + 1'.&{pause}&/news [Викторина]: Стоп!&/news [Викторина]: Не ожидали отрицательных чисел в ответе? Правильный ответ - '-2'.&/news [Викторина]: Этот ответ нам подарил граждинин с именем ...&{pause}&/news [Викторина]: Давайте добавим разнообразия. Я загадаю пример при помощи...&/news [Викторина]: ...римских чисел. Ответ должен быть в виде римского числа!&/news [Викторина]: ... 'X - IV'.&{pause}&/news [Викторина]: Стоп! На студию поступил правильный ответ!&/news [Викторина]: Корректным ответом является - 'VI'.&/news [Викторина]: Самым быстрым был граждинин ...&{pause}&/news [Викторина]: Опять римские числа.&/news [Викторина]: ... 'XV - VIII'.&{pause}&/news [Викторина]: Стоп!&/news [Викторина]: 'VII' - верный ответ.&/news [Викторина]: Этот ответ нам подарил гражданин штата -&{pause}&/news [Викторина]: И... Последний пример с римскими числами на сегодня.&/news [Викторина]: ... 'XII - III'.&{pause}&/news [Викторина]: Стоп! Наша студия получила правильный ответ.&/news [Викторина]: Верный ответ - 'IX'. А первый ответчик - гражданин ...&{pause}&/news [Викторина]: И так, сейчас я озвучу победителя нашей викторины, вы готовы?&{pause}&/news [Викторина]: Просим победителя приехать к нам за наградой...&/news [Викторина]: На этом наша викторина окончена, спасибо всем вам за участие!/news •°•°•°•°• Музыкальная заставка радиостанции {fraction_tag} •°•°•°•°•&/d [{fraction_tag}] - [СМИ]: Освобождаю эфирную волну!&/me нажимает на необходимые клавиши и выходит из эфира, после чего отключает микрофон&/do Эфир окончен и микрофон отключен.&/me снимает с головы наушники и кладет их на место", arg = '' , enable = true, waiting = '6', bind = "{}", in_fastmenu = false},
+					{cmd = 'ads', description = 'Открыть список обьявлений',  text = '/newsredak', arg = '', enable = true, waiting = '2', bind = "[18,49]" },
+					{cmd = 'zd', description = 'Привествие игрока', text = 'Здравствуйте, я {my_ru_nick} - {fraction_rank} {fraction_tag}&Чем я могу Вам помочь?', arg = '{id}', enable = true, waiting = '2', bind = "{}", in_fastmenu = true},
+					{cmd = 'go', description = 'Позвать игрока за собой', text = 'Хорошо {get_ru_nick({id})}, следуйте за мной.', arg = '{id}', enable = true, waiting = '2', bind = "{}", in_fastmenu = true},
+					{cmd = 'expel', description = 'Выгнать игрока из здания',  text = 'Вы больше не можете здесь находиться, я выгоняю вас из здания!&/me схватив человека ведёт к выходу из здания и закрывает за ним дверь&/expel {id} Н.П.Р.', arg = '{id}', enable = true, waiting = '2', bind = "{}", in_fastmenu = true},
+					{cmd = 'live_sobes', description = 'Собеседование', text = "/me нажимает на необходимые кнопки в аппаратуре, тем самым включает ее&/do Аппаратура включена и работает исправно.&/me проверяет на исправность аппаратуру и микрофон&/me берет наушники со столика и надевает их на свою голову&/todo Раз, раз, раз*стуча по микрофону.&/do Микрофон исправен и готов к работе.&/d [{fraction_tag}] - [СМИ]: Занимаю новостную волну.&/news •°•°•°•°• Музыкальная заставка радиостанции {fraction_tag} •°•°•°•°•&/news [Собеседование]: Доброго времени суток, уважаемые граждане Штата!&/news [Собеседование]: С Вами - Я, {fraction_rank} - {my_ru_nick}.&/news [Собеседование]: Давно мечтали изменить свою жизнь в лучшую сторону?&/news [Собеседование]: Поставить новые и не запланированные цели?&/news [Собеседование]: Спешу Вас обрадовать! Ведь именно сейчас ...&/news [Собеседование]: ... проходит собеседование в Радиоцентр {fraction_tag}!&/news [Собеседование]: Что нужно иметь для прохождения собеседования?&/news [Собеседование]: Критерии очень просты, при себе необходимо иметь: ...&/news [Собеседование]: ... Паспорт, мед. карту с отметкой Полностью здоров&/news [Собеседование]: Ведь именно у нас: Доброе и отзывчивое начальство ...&/news [Собеседование]: ... достойный карьерный рост и высокие зарплаты!&/news [Собеседование]: Заинтересовавшихся пройти собеседование ожидаем в ...&/news [Собеседование]: ... холле главного офиса {fraction_tag}.&/news [Собеседование]: А на этом наш эфир подходит к концу!&/news [Собеседование]: С Вами был - Я, {my_ru_nick}. До скорых встреч!&/news •°•°•°•°• Музыкальная заставка радиостанции {fraction_tag} •°•°•°•°•&/d [{fraction_tag}] - [СМИ]: Освобождаю новостную волну!&/me нажимает на необходимые клавиши и выходит из эфира, после чего отключает микрофон&/do Эфир окончен и микрофон отключен.&/me снимает с головы наушники и кладет их на место", arg = '', enable = true, waiting = '6', bind = "{}", in_fastmenu = false},
+					{cmd = 'live_mp1', description = 'Викторина "Столицы"', text = "/me нажимает на необходимые кнопки в аппаратуре, тем самым включает ее&/do Аппаратура включена и работает исправно.&/me проверяет на исправность аппаратуру и микрофон&/me берет наушники со столика и надевает их на свою голову&/todo Раз, раз, раз*стуча по микрофону.&/do Микрофон исправен и готов к работе.&/d [{fraction_tag}] - [СМИ]: Занимаю эфирную волну! Просьба не перебивать.&/news •°•°•°•° Музыкальная заставка радиостанции {fraction_tag} •°•°•°•°•&/news [Викторина]: Добрый день, уважаемые радиослушатели!&/news [Викторина]: У микрофона - {my_ru_nick}!&/news [Викторина]: Сегодня мы проведём - Столицы.&/news [Викторина]: Суть викторины такова: Я говорю вам страну, А вы мне её столицу.&/news [Викторина]: Ответы присылать на номер студии, его вы можете найти...&/news [Викторина]: ...в своём телефоне, в разделе: Контакты.&/news [Викторина]: Призовой Фонд сегодня составляет целый 1 милион долларов!&/news [Викторина]: Ну что же, давайте начинать.&/news [Викторина]: Открывает сегодняшний марафон стран поистине прекрасное государство.&/news [Викторина]: Страна, которая подарила миру необычную поп культуру. И это...&/news [Викторина]: ...Республика Корея. Или как её называют еще - Южная Корея.&{pause}&/news [Викторина]: Стоп! Наша студия получила правильный ответ.&/news [Викторина]: Правильный ответ - Сеул...&/news [Викторина]: ...густо населённый город с миллионом развлечений на любой вкус.&/news [Викторина]: Первый правильный ответ мы получили от гражданина...&{pause}&/news [Викторина]: Продолжаем. Следующее Государство известно во всём мире как страна футбола...&/news [Викторина]: ...и самбы - Бразилия.&{pause}&/news [Викторина]: Стоп!&/news [Викторина]: Как бы абсурдно это не звучало, столица страны Бразилия - Бразилиа.&/news [Викторина]: Ответов было много... Но самым быстрым оказался гражданин...&{pause}&/news [Викторина]: Большую часть следующего государства занимают трудно проходимые Джунгли...&/news [Викторина]: Я говорю о Вьетнаме.&{pause}&/news [Викторина]: На студию поступил правильный ответ!&/news [Викторина]: Столицей Вьетнама является город Ханой.&/news [Викторина]: Правильный ответ нам дал гражданин...&{pause}&/news [Викторина]: Вы, уважаемый радиослушатель, и правда не прогуливали географию в школе.&/news [Викторина]: Именно в этой стране находится действующий вулкан 'Кракатау'.&/news [Викторина]: ...Индонезия.&{pause}&/news [Викторина]: Стоп!&/news [Викторина]: И... Правильный ответ... Джакарта.&/news [Викторина]: Город контрастов, в котором переплелись разные языки и культуры...&/news [Викторина]: ...богатство и бедность.&/news [Викторина]: Уверен с этим городом знаком наш слушатель под именем...&{pause}&/news [Викторина]: Ведь именно он и дал правильный ответ!&/news [Викторина]: Густые леса, скалистые острова, горнолыжные курорты. Это всё про...&/news [Викторина]: ...страну - Финляндия.&{pause}&/news [Викторина]: Стоп! Наша студия получила правильный ответ.&/news [Викторина]: Правильным ответом является - Хельсинки! И этот ответ дал штата с именем...&{pause}&/news [Викторина]: Больше всего об этой стране знают лыжники и сноубордисты...&/news [Викторина]: ...Австрия.&/news [Викторина]: На студию поступил правильный ответ!&/news [Викторина]: Любой разговор об Австрии всегда сводится к ее столице, и не спроста.&/news [Викторина]: Ведь 'Вена' - крупнейший культурно-исторический центр Европы.&/news [Викторина]: Первым правильный ответ в студию прислал гражданин с именем...&{pause}&/news [Викторина]: И так, сейчас я озвучу победителя нашей викторины, вы готовы?&{pause}&/news [Викторина]: Просим победителя приехать к нам за наградой...&/news [Викторина]: На этом наша викторина окончена, спасибо всем вам за участие!&/news •°•°•°•°• Музыкальная заставка радиостанции {fraction_tag} •°•°•°•°•&/d [{fraction_tag}] - [СМИ]: Освобождаю эфирную волну!&/me нажимает на необходимые клавиши и выходит из эфира, после чего отключает микрофон&/do Эфир окончен и микрофон отключен.&/me снимает с головы наушники и кладет их на место", arg = '', enable = true, waiting = '6', bind = "{}", in_fastmenu = false},
+					{cmd = 'live_mp2', description = 'Викторина "Математика"', text = "/me нажимает на необходимые кнопки в аппаратуре, тем самым включает ее&/do Аппаратура включена и работает исправно.&/me проверяет на исправность аппаратуру и микрофон&/me берет наушники со столика и надевает их на свою голову&/todo Раз, раз, раз*стуча по микрофону.&/do Микрофон исправен и готов к работе.&/d [{fraction_tag}] - [СМИ]: Занимаю эфирную волну.&/news •°•°•°•°• Музыкальная заставка радиостанции {fraction_tag} •°•°•°•°•&/news [Викторина]: Добрый день, уважаемые радиослушатели!&/news [Викторина]: У микрофона - {my_ru_nick}!&/news [Викторина]: Сегодня мы проведём викторину - Математика.&/news [Викторина]: Суть викторины: Я говорю вам примеры, а вы мне ответы на них.&/news [Викторина]: В примерах могут использоваться такие операторы, как...&/news [Викторина]: ...сложение +, умножение *, вычитание -, деление /.&/news [Викторина]: Ответы присылать на номер студии, его вы можете найти...&/news [Викторина]: ...в своём телефоне, в разделе: Контакты.&/news [Викторина]: Призовой Фонд сегодня составляет аж целых 500.000$!&/news [Викторина]: Ну что же, давайте начинать.&/news [Викторина]: Первый пример...&/news [Викторина]: ... '3 + 3 * 3'.&{pause}&/news [Викторина]: Стоп! На студию поступил верный ответ.&/news [Викторина]: Правильный ответ - '12'.&/news [Викторина]: Верный ответ нам дал гражданин с именем ...&{pause}&/news [Викторина]: Мы только начинаем разгоняться...&/news [Викторина]: ... '66 - 44 + 1'.&{pause}&/news [Викторина]: Стоп!&/news [Викторина]: Корректным ответом является - '23'.&/news [Викторина]: Первый правильный ответ мы получили от граждана ...&{pause}&/news [Викторина]: Следующий пример...&/news [Викторина]: ... '35 + 75'.&/news [Викторина]: И... У нас есть корректный ответ!&/news [Викторина]: И так, правильный ответ '110', и мы получили этот ответ от гражданина ...&{pause}&/news [Викторина]: Без лишних слов, следующий пример...&/news [Викторина]: ... '25 - 28 + 1'.&{pause}&/news [Викторина]: Стоп!&/news [Викторина]: Не ожидали отрицательных чисел в ответе? Правильный ответ - '-2'.&/news [Викторина]: Этот ответ нам подарил граждинин с именем ...&{pause}&/news [Викторина]: Давайте добавим разнообразия. Я загадаю пример при помощи...&/news [Викторина]: ...римских чисел. Ответ должен быть в виде римского числа!&/news [Викторина]: ... 'X - IV'.&{pause}&/news [Викторина]: Стоп! На студию поступил правильный ответ!&/news [Викторина]: Корректным ответом является - 'VI'.&/news [Викторина]: Самым быстрым был граждинин ...&{pause}&/news [Викторина]: Опять римские числа.&/news [Викторина]: ... 'XV - VIII'.&{pause}&/news [Викторина]: Стоп!&/news [Викторина]: 'VII' - верный ответ.&/news [Викторина]: Этот ответ нам подарил гражданин штата -&{pause}&/news [Викторина]: И... Последний пример с римскими числами на сегодня.&/news [Викторина]: ... 'XII - III'.&{pause}&/news [Викторина]: Стоп! Наша студия получила правильный ответ.&/news [Викторина]: Верный ответ - 'IX'. А первый ответчик - гражданин ...&{pause}&/news [Викторина]: И так, сейчас я озвучу победителя нашей викторины, вы готовы?&{pause}&/news [Викторина]: Просим победителя приехать к нам за наградой...&/news [Викторина]: На этом наша викторина окончена, спасибо всем вам за участие!/news •°•°•°•°• Музыкальная заставка радиостанции {fraction_tag} •°•°•°•°•&/d [{fraction_tag}] - [СМИ]: Освобождаю эфирную волну!&/me нажимает на необходимые клавиши и выходит из эфира, после чего отключает микрофон&/do Эфир окончен и микрофон отключен.&/me снимает с головы наушники и кладет их на место", arg = '', enable = true, waiting = '6', bind = "{}", in_fastmenu = false},
 					{cmd = 'live_weather1', description = 'Прогноз погоды (утренний дождь)', text = "/me нажимает на необходимые кнопки в аппаратуре, тем самым включает ее&/do Аппаратура включена и работает исправно.&/me проверяет на исправность аппаратуру и микрофон&/me берет наушники со столика и надевает их на свою голову&/todo Раз, раз, раз*стуча по микрофону.&/do Микрофон исправен и готов к работе.&/d [{fraction_tag}] - [СМИ]: Занимаю новостную волну.&/news •°•°•°•°• Музыкальная заставка радиостанции {fraction_tag} •°•°•°•°•&/news Доброе утро, уважаемые радиослушатели!&/news У микрофона {fraction_rank} - {my_ru_nick}.&/news Сегодняшний день начался с пасмурной погоды и дождя.&/news Синоптики сообщают, что осадки продлятся до полудня, так что не забудьте взять зонт!&/news Ветер северо-западный, умеренный, но может усиливаться порывами до 15 м/c.&/news Температура воздуха +16°C, однако ощущается как +13°C.&/news Внимание водителям: дороги могут быть скользкими, соблюдайте дистанцию!&/news Ближе к обеду тучи начнут рассеиваться, а дождь прекратится.&/news А пока держитесь теплее и не забывайте наслаждаться свежестью после дождя!&/news На этом наш утренний прогноз погоды завершается.&/news С вами был {fraction_rank} - {my_ru_nick}.&/news •°•°•°•°• Музыкальная заставка радиостанции {fraction_tag} •°•°•°•°•&/d [{fraction_tag}] - [СМИ]: Освобождаю новостную волну!&/me нажимает на необходимые клавиши и выходит из эфира, после чего отключает микрофон&/do Эфир окончен и микрофон отключен.&/me снимает с головы наушники и кладет их на место", arg = '', enable = true, waiting = '2', bind = "{}", in_fastmenu = false},
 					{cmd = 'live_weather2', description = 'Прогноз погоды (дневной)', text = "/me нажимает на необходимые кнопки в аппаратуре, тем самым включает ее&/do Аппаратура включена и работает исправно.&/me проверяет на исправность аппаратуру и микрофон&/me берет наушники со столика и надевает их на свою голову&/todo Раз, раз, раз*стуча по микрофону.&/do Микрофон исправен и готов к работе.&/d [{fraction_tag}] - [СМИ]: Занимаю новостную волну.&/news •°•°•°•°• Музыкальная заставка радиостанции {fraction_tag} •°•°•°•°•&/news Добрый день, дорогие радиослушатели!&/news У микрофона {fraction_rank} - {my_ru_nick}.&/news Сейчас самое время узнать, какая погода ждёт нас днём.&/news Температура воздуха в данный момент составляет +22°C, солнечно, но возможна переменная облачность.&/news Ветер южный, слабый, около 5 м/с, комфортные условия для прогулок.&/news Осадков не ожидается, но к вечеру возможны лёгкие порывы ветра.&/news Если планировали провести день на свежем воздухе — отличная возможность!&/news На этом наш дневной прогноз завершается.&/news С вами был {fraction_rank} - {my_ru_nick}. До скорых встреч!&/news •°•°•°•°• Музыкальная заставка радиостанции {fraction_tag} •°•°•°•°•&/d [{fraction_tag}] - [СМИ]: Освобождаю новостную волну!&/me нажимает на необходимые клавиши и выходит из эфира, после чего отключает микрофон&/do Эфир окончен и микрофон отключен.&/me снимает с головы наушники и кладет их на место", arg = '', enable = true, waiting = '6', bind = "{}", in_fastmenu = false},
 					{cmd = 'live_weather3', description = 'Прогноз погоды (вечерний торнадо)', text = "/me нажимает на необходимые кнопки в аппаратуре, тем самым включает ее&/do Аппаратура включена и работает исправно.&/me проверяет на исправность аппаратуру и микрофон&/me берет наушники со столика и надевает их на свою голову&/todo Раз, раз, раз*стуча по микрофону.&/do Микрофон исправен и готов к работе.&/d [{fraction_tag}] - [СМИ]: Занимаю новостную волну.&/news •°•°•°•°• Музыкальная заставка радиостанции {fraction_tag} •°•°•°•°•&/news Добрый вечер, дорогие радиослушатели!&/news У микрофона {fraction_rank} - {my_ru_nick}.&/news И в нашем вечернем эфире речь пойдёт о прогнозе погоды.&/news Сейчас я вам зачитаю, что говорят нам наши синоптики...&/news В 21:52 предполагается песчаная буря, которая продлится всего несколько минут.&/news В связи с этим просим вас остаться дома и плотно закрыть окна и двери.&/news Также в районе Паломино Крит замечено торнадо.&/news Призываем Вас избегать поездок в этот район Штата.&/news И уже в 22:10 нас ожидает спокойная, ночная погода.&/news Но не стоит так сильно радоваться, ближе к ночи чередование спокойной погоды и песчаной бури продолжится.&/news С чем это связано - неизвестно! Но мы попытаемся уведомить Вас об изменениях как можно скорее.&/news А на этом наш эфир подходит к концу.&/news С вами был {fraction_rank} - {my_ru_nick}.&/news •°•°•°•°• Музыкальная заставка радиостанции {fraction_tag} •°•°•°•°•&/d [{fraction_tag}] - [СМИ]: Освобождаю новостную волну!&/me нажимает на необходимые клавиши и выходит из эфира, после чего отключает микрофон&/do Эфир окончен и микрофон отключен.&/me снимает с головы наушники и кладет их на место", arg = '', enable = true, waiting = '6', bind = "{}", in_fastmenu = false},
@@ -489,144 +518,131 @@ local modules = {
 					{cmd = 'live_int2', description = 'Интервью (конец)', text = "/news [Интервью]: И наш эфир к сожалению подходит к концу.&/news [Префикс]: С вами был Я - {my_ru_nick}.&/news [Интервью]: До свидания, штат! Не переключайтесь!&/news •°•°•°•°• Музыкальная заставка радиостанции {fraction_tag} •°•°•°•°•&/d [{fraction_tag}] - [СМИ]: Освобождаю эфирную волну!&/me нажимает на необходимые клавиши и выходит из эфира, после чего отключает микрофон&/do Эфир окончен и микрофон отключен.&/me снимает с головы наушники и кладет их на место", arg = '', enable = true, waiting = '6', bind = "{}", in_fastmenu = false},
 				},
 				fd = {
-					{cmd = 'siren' , description = 'Вкл/выкл мигалок в т/с' , text = '{switchCarSiren}', arg = '' , enable = true , waiting = '2', bind = "{}"},
-					{cmd = 'zd' , description = 'Привествие игрока' , text = 'Здравствуйте, я {my_ru_nick} - {fraction_rank} {fraction_tag}&Чем я могу Вам помочь?', arg = '{arg_id}' , enable = true , waiting = '2', bind = "{}" , in_fastmenu = true},
+					{cmd = 'siren', description = 'Вкл/выкл мигалок в т/с', text = '{switchCarSiren}', arg = '', enable = true, waiting = '2', bind = "{}"},
+					{cmd = 'zd', description = 'Привествие игрока', text = 'Здравствуйте, я {my_ru_nick} - {fraction_rank} {fraction_tag}&Чем я могу Вам помочь?', arg = '{id}', enable = true, waiting = '2', bind = "{}", in_fastmenu = true},
 				},
 				lc = {
-					{cmd = 'zd' , description = 'Привествие игрока' , text = 'Здравствуйте, я {my_ru_nick} - {fraction_rank} {fraction_tag}&Чем я могу Вам помочь? Если нужна лицензия - скажите тип и срок', arg = '{arg_id}' , enable = true , waiting = '2', bind = "{}", in_fastmenu = true},
-					{cmd = 'go', description = 'Позвать игрока за собой', text = 'Хорошо {get_ru_nick({arg_id})}, следуйте за мной.', arg = '{arg_id}', enable = true, waiting = '2', bind = "{}", in_fastmenu = true},
-					{cmd = 'gl' , description = 'Выдача лицензии игроку' , text = '/me взял{sex} со стола бланк на получение лицензии и заполнил{sex} его&/do Спустя некоторое время бланк на получение лицензии был заполнен.&/me распечатав лицензию передал{sex} её человеку напротив&/givelicense {arg_id}&Вот ваша лицензия, всего Вам хорошего!', arg = '{arg_id}' , enable = true, waiting = '2', bind = "{}", in_fastmenu = true},
-					{cmd = 'prices' , description = 'Ознакомить игрока с ценами' , text = '/todo Сейчас я скажу вам цены на лицензии*доставая изпод стойки бланк с ценами&/do Бланк с ценами всех лицензий в руках.&/me подвинул{sex} бланк поближе к себе и начал{sex} читать цены&На автомобиль: 1 месяц - ${get_price_avto1}, 2 месяца - ${get_price_avto2}, 3 месяца - ${get_price_avto3}&На мото: 1 месяц - ${get_price_moto1}, 2 месяца - ${get_price_moto2}, 3 месяца - ${get_price_moto3}&На водный: 1 месяц - ${get_price_swim1}, 2 месяца - ${get_price_swim2}, 3 месяца - ${get_price_swim3}&На полёты: 1 месяц - ${get_price_fly1}&На оружие: 1 месяц - ${get_price_gun1}, 2 месяца - ${get_price_gun2}, 3 месяца - ${get_price_gun3}&На охоту: 1 месяц - ${get_price_hunt1}, 2 месяца - ${get_price_hunt2}, 3 месяца - ${get_price_hunt3}&На рыбалку: 1 месяц - ${get_price_fish1}, 2 месяца - ${get_price_fish2}, 3 месяца - ${get_price_fish3}&На клады: 1 месяц - ${get_price_klad1}, 2 месяца - ${get_price_klad2}, 3 месяца - ${get_price_klad3}&На такси: 1 месяц - ${get_price_taxi1}, 2 месяца - ${get_price_taxi2}, 3 месяца - ${get_price_taxi3}&На механика: 1 месяц - ${get_price_mexa1}, 2 месяца - ${get_price_mexa2}, 3 месяца - ${get_price_mexa3}&/todo Вот такие у нас цены*убирая бланк с ценами' , arg = '' , enable = true , waiting = '2', bind = "{}", in_fastmenu = true},
-					{cmd = 'medka' , description = 'Запросить медкарту для проверки' , text = 'Чтобы получить эту лицензию, покажите мне вашу мед.карту&/n @{get_nick({arg_id})}, введите команду /showmc {my_id} чтобы показать мне мед.карту' , arg = '{arg_id}' , enable = true , waiting = '2', bind = "{}", in_fastmenu = true},
-					{cmd = 'exp' , description = 'Выгнать игрока из ЦЛ' ,  text = 'Вы больше не можете здесь находиться, я выгоняю вас из ЦЛ!&/me схватив человека ведёт к выходу из ЦЛ и закрывает за ним дверь&/expel {arg_id} Н.П.Ц.Л.' , arg = '{arg_id}' , enable = true , waiting = '2', bind = "{}", in_fastmenu = true},
+					{cmd = 'zd', description = 'Привествие игрока', text = 'Здравствуйте, я {my_ru_nick} - {fraction_rank} {fraction_tag}&Чем я могу Вам помочь? Если нужна лицензия - скажите тип и срок', arg = '{id}', enable = true, waiting = '2', bind = "{}", in_fastmenu = true},
+					{cmd = 'go', description = 'Позвать игрока за собой', text = 'Хорошо {get_ru_nick({id})}, следуйте за мной.', arg = '{id}', enable = true, waiting = '2', bind = "{}", in_fastmenu = true},
+					{cmd = 'gl', description = 'Выдача лицензии игроку', text = '/me взял{sex} со стола бланк на получение лицензии и заполнил{sex} его&/do Спустя некоторое время бланк на получение лицензии был заполнен.&/me распечатав лицензию передал{sex} её человеку напротив&/givelicense {id}&Вот ваша лицензия, всего Вам хорошего!', arg = '{id}', enable = true, waiting = '2', bind = "{}", in_fastmenu = true},
+					{cmd = 'prices', description = 'Ознакомить игрока с ценами', text = '/todo Сейчас я скажу вам цены на лицензии*доставая изпод стойки бланк с ценами&/do Бланк с ценами всех лицензий в руках.&/me подвинул{sex} бланк поближе к себе и начал{sex} читать цены&На автомобиль: 1 месяц - ${get_price_avto1}, 2 месяца - ${get_price_avto2}, 3 месяца - ${get_price_avto3}&На мото: 1 месяц - ${get_price_moto1}, 2 месяца - ${get_price_moto2}, 3 месяца - ${get_price_moto3}&На водный: 1 месяц - ${get_price_swim1}, 2 месяца - ${get_price_swim2}, 3 месяца - ${get_price_swim3}&На полёты: 1 месяц - ${get_price_fly1}&На оружие: 1 месяц - ${get_price_gun1}, 2 месяца - ${get_price_gun2}, 3 месяца - ${get_price_gun3}&На охоту: 1 месяц - ${get_price_hunt1}, 2 месяца - ${get_price_hunt2}, 3 месяца - ${get_price_hunt3}&На рыбалку: 1 месяц - ${get_price_fish1}, 2 месяца - ${get_price_fish2}, 3 месяца - ${get_price_fish3}&На клады: 1 месяц - ${get_price_klad1}, 2 месяца - ${get_price_klad2}, 3 месяца - ${get_price_klad3}&На такси: 1 месяц - ${get_price_taxi1}, 2 месяца - ${get_price_taxi2}, 3 месяца - ${get_price_taxi3}&На механика: 1 месяц - ${get_price_mexa1}, 2 месяца - ${get_price_mexa2}, 3 месяца - ${get_price_mexa3}&/todo Вот такие у нас цены*убирая бланк с ценами', arg = '', enable = true, waiting = '2', bind = "{}", in_fastmenu = true},
+					{cmd = 'medka', description = 'Запросить медкарту для проверки', text = 'Чтобы получить эту лицензию, покажите мне вашу мед.карту&/n @{get_nick({id})}, введите команду /showmc {my_id} чтобы показать мне мед.карту', arg = '{id}', enable = true, waiting = '2', bind = "{}", in_fastmenu = true},
+					{cmd = 'exp', description = 'Выгнать игрока из ЦЛ',  text = 'Вы больше не можете здесь находиться, я выгоняю вас из ЦЛ!&/me схватив человека ведёт к выходу из ЦЛ и закрывает за ним дверь&/expel {id} Н.П.Ц.Л.', arg = '{id}', enable = true, waiting = '2', bind = "{}", in_fastmenu = true},
 				},
 				ins = {
-					{cmd = 'zd' , description = 'Привествие игрока' , text = 'Здравствуйте, я {my_ru_nick} - {fraction_rank} {fraction_tag}&Чем я могу Вам помочь? Если нужна лицензия - скажите тип и срок', arg = '{arg_id}' , enable = true , waiting = '2', bind = "{}", in_fastmenu = true},
-					{cmd = 'go', description = 'Позвать игрока за собой', text = 'Хорошо {get_ru_nick({arg_id})}, следуйте за мной.', arg = '{arg_id}', enable = true, waiting = '2', bind = "{}", in_fastmenu = true},
-					{cmd = 'ins' , description = 'Предложить доп.услуги' ,  text = 'Я могу оформить "Семейный сертификат" или "Пенсионное страхование"&Что вам нужно? Страхование для депозита, сертификат для выплат&/insurance {arg_id}&/me достаёт нужные бумаги для оформления и передаёт их человеку напротив' , arg = '{arg_id}' , enable = true , waiting = '2', bind = "{}", in_fastmenu = true},
-					{cmd = 'exp' , description = 'Выгнать игрока из СТК' ,  text = 'Вы больше не можете здесь находиться, я выгоняю вас из СТК!&/me схватив человека ведёт к выходу из СТК и закрывает за ним дверь&/expel {arg_id} Н.П.С.К.' , arg = '{arg_id}' , enable = true , waiting = '2', bind = "{}", in_fastmenu = true},
+					{cmd = 'zd', description = 'Привествие игрока', text = 'Здравствуйте, я {my_ru_nick} - {fraction_rank} {fraction_tag}&Чем я могу Вам помочь? Если нужна лицензия - скажите тип и срок', arg = '{id}', enable = true, waiting = '2', bind = "{}", in_fastmenu = true},
+					{cmd = 'go', description = 'Позвать игрока за собой', text = 'Хорошо {get_ru_nick({id})}, следуйте за мной.', arg = '{id}', enable = true, waiting = '2', bind = "{}", in_fastmenu = true},
+					{cmd = 'ins', description = 'Предложить доп.услуги',  text = 'Я могу оформить "Семейный сертификат" или "Пенсионное страхование"&Что вам нужно? Страхование для депозита, сертификат для выплат&/insurance {id}&/me достаёт нужные бумаги для оформления и передаёт их человеку напротив', arg = '{id}', enable = true, waiting = '2', bind = "{}", in_fastmenu = true},
+					{cmd = 'exp', description = 'Выгнать игрока из СТК',  text = 'Вы больше не можете здесь находиться, я выгоняю вас из СТК!&/me схватив человека ведёт к выходу из СТК и закрывает за ним дверь&/expel {id} Н.П.С.К.', arg = '{id}', enable = true, waiting = '2', bind = "{}", in_fastmenu = true},
 				},
 				gov = {		
-					{cmd = 'zd' , description = 'Привествие игрока' , text = 'Здравствуйте, я {my_ru_nick} - {fraction_rank} {fraction_tag}&Чем я могу Вам помочь?', arg = '{arg_id}' , enable = true , waiting = '2', in_fastmenu = true},
-					{cmd = 'go' , description = 'Позвать игрока за собой' , text = 'Хорошо {get_ru_nick({arg_id})}, следуйте за мной.', arg = '{arg_id}' , enable = true, waiting = '2', in_fastmenu = true},
-					{cmd = 'visit' , description = 'Показать визитку адвоката' ,  text = '/me вытащил{sex} из нагрудного кармана визитку адвоката&/do На визитке написано: "{my_ru_nick}, адвокат штата".&/showvisit {arg_id}' , arg = '{arg_id}', enable = true, waiting = '2', in_fastmenu = true} ,
-					{cmd = 'freely' , description = 'Предложить услуги адвоката' ,  text = '/do Папка с документами находится в левой руке.&/me открыв папку, вытащил{sex} из неё бланк для освобождения заключённого&/me достав из кармана ручку, заполнил{sex} документ и передал{sex} человеку напротив&/todo Впишите сюда свои данные и поставьте подпись снизу*передавая лист с ручкой&/free {arg_id} 500000' , arg = '{arg_id}' , enable = true, waiting = '2'},
-					{cmd = 'visa' , description = 'Выдать рабочую визу для VC' ,  text = 'Стоимость услуги составляет 600 тысяч. Вы согласны?&Если да, то приступаем к оформлению&{pause}&/do Бланк для оформления визы находится в кармане.&/me засунув руку в карман, взял{sex} бланк, после чего протянул{sex} его человеку напротив&/todo Впишите сюда Ваши данные и поставьте подпись снизу*протягивая лист с ручкой&/givevisa {arg_id}', arg = '{arg_id}' , enable = true, waiting = '2', in_fastmenu = true},
-					{cmd = 'tsr' , description = 'Оповещение ТСР про прибытие' ,  text = '/d [Пра-во] - [ТСР] Заезжаю на вашу територию для оказания адвокатских услуг!' , arg = '' , enable = true, waiting = '2'},
-					{cmd = 'car' , description = 'Превратить личный т/c в сертификат' , text = 'Перед тем, как начать, попрошу полностью опустошить багажник и снять весь тюнинг&А также убедиться, что пробег меньше либо равен 200 км&Если Вы все сделали, то можем приступать&{pause}&Окей, приступаем&/do Бланк для получения сертификата находится под в кармане.&/me засунув руку в карман, взял{sex} бланк, после чего протянул{sex} его человеку напротив&/todo Впишите сюда Ваши данные и поставьте подпись снизу*протягивая лист с ручкой&/givepass {arg_id}', arg = '{arg_id}' , enable = true, waiting = '2', in_fastmenu = true},
-					{cmd = 'wed' , description = 'Заключение брака' ,  text = 'Добрый день, уважаемые новобрачные и гости!&Уважаемые невеста и жених!&Сегодня - самое прекрасное и незабываемое событие в вашей жизни.&Создание семьи – это начало доброго союза двух любящих сердец.&С этого дня вы пойдёте по жизни рука об руку, вместе переживая и радость счастливых дней, и огорчения.&Создавая семью, вы добровольно приняли на себя великий долг друг перед другом и перед будущим ваших детей.&Перед началом регистрации прошу вас ещё раз подтвердить, является ли ваше решение стать супругами, создать семью&{pause}&С вашего взаимного согласия, выраженного в присутствии свидетелей, ваш брак регистрируется.&Прошу вас в знак любви и преданности друг другу обменяться обручальными кольцами.&/wedding {arg_id} {arg2}' , arg = '{arg_id} {arg2}' , enable = true, waiting = '2'},
-					{cmd = 'pass' , description = 'Исправить дату рождения в паспорте' ,  text = '/do Бланк для замены информации в паспорте находится в кармане.&/me засунув руку в карман, взял{sex} бланк, после чего протянул{sex} его человеку напротив&/todo Впишите сюда новую дату и поставьте подпись снизу*протягивая лист с ручкой&/givepass {arg_id}' , arg = '{arg_id}' , enable = true , waiting = '2'},	
-					{cmd = 'givesocial' , description = 'Выдать соц.жильё новичку' ,  text = '/me взял{sex} документы на Социальное Жильё у {get_ru_nick({arg_id})} для подписания&/do Документы в руках.&/me достал{sex} ручку из правого кармана пиджака, затем подписал{sex} документ&/do Документ на Социальное Жильё подписан.&/me передал{sex} подписанные документы на Соц.Жильё {get_ru_nick({arg_id})}&/givesocial {arg_id}' , arg = '{arg_id}' , enable = true , waiting = '2', in_fastmenu = true},
-					{cmd = 'frisk', description = 'Обыск (7+)', text = '/do Перчатки находятся в кармане.&/me взял{sex} перчатки с кармана и надел{sex} их&/do Перчатки одеты.&/me начал нащупывать человека напротив&/frisk {arg_id}&/me полностью прощупав человека убрал{sex} перчатки обратно в карман', arg = '{arg_id}', enable = false, waiting = '2' },
-					{cmd = 'gwarn' , description = 'Выдать спец-выговор (8+)' ,  text = '/do КПК находиться на поясном держателе.&/me берёт в руки свой КПК и включает его&/me открыв базу данных {fraction_tag} переходит в раздел управление сотрудниками других организаций&/me открывает дело нужного сотрудника и вносит в него изменения&/do Изменения успешно сохранены.&/gwarn {arg_id} {arg2}&/me выходит с базы данных {fraction_tag} и выключив КПК убирает его на поясной держатель', arg = '{arg_id} {arg2}', enable = false, waiting = '2', bind = "{}"},
-					{cmd = 'ungwarn' , description = 'Снять спец-выговор (8+)' ,  text = '/do КПК находиться на поясном держателе.&/me берёт в руки свой КПК и включает его&/me открыв базу данных {fraction_tag} переходит в раздел управление сотрудниками других организаций&/me открывает дело нужного сотрудника и вносит в него изменения&/do Изменения успешно сохранены.&/ungwarn {arg_id}&/me выходит с базы данных {fraction_tag} и выключив КПК убирает его на поясной держатель', arg = '{arg_id} {arg2}', enable = false, waiting = '2', bind = "{}"},
-					{cmd = 'exp' , description = 'Выгнать игрока из правительства' ,  text = 'Вы больше не можете здесь находиться, я выгоняю вас из Мэрии!&/me схватив человека ведёт к выходу из мэрии и закрывает за ним дверь&/expel {arg_id} Н.П.П.' , arg = '{arg_id}' , enable = true , waiting = '2', in_fastmenu = true},
+					{cmd = 'zd', description = 'Привествие игрока', text = 'Здравствуйте, я {my_ru_nick} - {fraction_rank} {fraction_tag}&Чем я могу Вам помочь?', arg = '{id}', enable = true, waiting = '2', in_fastmenu = true},
+					{cmd = 'go', description = 'Позвать игрока за собой', text = 'Хорошо {get_ru_nick({id})}, следуйте за мной.', arg = '{id}', enable = true, waiting = '2', in_fastmenu = true},
+					{cmd = 'visit', description = 'Показать визитку адвоката',  text = '/me вытащил{sex} из нагрудного кармана визитку адвоката&/do На визитке написано: "{my_ru_nick}, адвокат штата".&/showvisit {id}', arg = '{id}', enable = true, waiting = '2', in_fastmenu = true},
+					{cmd = 'freely', description = 'Предложить услуги адвоката',  text = '/do Папка с документами находится в левой руке.&/me открыв папку, вытащил{sex} из неё бланк для освобождения заключённого&/me достав из кармана ручку, заполнил{sex} документ и передал{sex} человеку напротив&/todo Впишите сюда свои данные и поставьте подпись снизу*передавая лист с ручкой&/free {id} 500000', arg = '{id}', enable = true, waiting = '2'},
+					{cmd = 'visa', description = 'Выдать рабочую визу для VC',  text = 'Стоимость услуги составляет 600 тысяч. Вы согласны?&Если да, то приступаем к оформлению&{pause}&/do Бланк для оформления визы находится в кармане.&/me засунув руку в карман, взял{sex} бланк, после чего протянул{sex} его человеку напротив&/todo Впишите сюда Ваши данные и поставьте подпись снизу*протягивая лист с ручкой&/givevisa {id}', arg = '{id}', enable = true, waiting = '2', in_fastmenu = true},
+					{cmd = 'tsr', description = 'Оповещение ТСР про прибытие',  text = '/d [Пра-во] - [ТСР] Заезжаю на вашу територию для оказания адвокатских услуг!', arg = '', enable = true, waiting = '2'},
+					{cmd = 'car', description = 'Превратить личный т/c в сертификат', text = 'Перед тем, как начать, попрошу полностью опустошить багажник и снять весь тюнинг&А также убедиться, что пробег меньше либо равен 200 км&Если Вы все сделали, то можем приступать&{pause}&Окей, приступаем&/do Бланк для получения сертификата находится под в кармане.&/me засунув руку в карман, взял{sex} бланк, после чего протянул{sex} его человеку напротив&/todo Впишите сюда Ваши данные и поставьте подпись снизу*протягивая лист с ручкой&/givepass {id}', arg = '{id}', enable = true, waiting = '2', in_fastmenu = true},
+					{cmd = 'wed', description = 'Заключение брака',  text = 'Добрый день, уважаемые новобрачные и гости!&Уважаемые невеста и жених!&Сегодня - самое прекрасное и незабываемое событие в вашей жизни.&Создание семьи – это начало доброго союза двух любящих сердец.&С этого дня вы пойдёте по жизни рука об руку, вместе переживая и радость счастливых дней, и огорчения.&Создавая семью, вы добровольно приняли на себя великий долг друг перед другом и перед будущим ваших детей.&Перед началом регистрации прошу вас ещё раз подтвердить, является ли ваше решение стать супругами, создать семью&{pause}&С вашего взаимного согласия, выраженного в присутствии свидетелей, ваш брак регистрируется.&Прошу вас в знак любви и преданности друг другу обменяться обручальными кольцами.&/wedding {id} {arg}', arg = '{id} {arg}', enable = true, waiting = '2'},
+					{cmd = 'pass', description = 'Исправить дату рождения в паспорте',  text = '/do Бланк для замены информации в паспорте находится в кармане.&/me засунув руку в карман, взял{sex} бланк, после чего протянул{sex} его человеку напротив&/todo Впишите сюда новую дату и поставьте подпись снизу*протягивая лист с ручкой&/givepass {id}', arg = '{id}', enable = true, waiting = '2'},	
+					{cmd = 'givesocial', description = 'Выдать соц.жильё новичку',  text = '/me взял{sex} документы на Социальное Жильё у {get_ru_nick({id})} для подписания&/do Документы в руках.&/me достал{sex} ручку из правого кармана пиджака, затем подписал{sex} документ&/do Документ на Социальное Жильё подписан.&/me передал{sex} подписанные документы на Соц.Жильё {get_ru_nick({id})}&/givesocial {id}', arg = '{id}', enable = true, waiting = '2', in_fastmenu = true},
+					{cmd = 'frisk', description = 'Обыск (7+)', text = '/do Перчатки находятся в кармане.&/me взял{sex} перчатки с кармана и надел{sex} их&/do Перчатки одеты.&/me начал нащупывать человека напротив&/frisk {id}&/me полностью прощупав человека убрал{sex} перчатки обратно в карман', arg = '{id}', enable = false, waiting = '2' },
+					{cmd = 'gwarn', description = 'Выдать спец-выговор (8+)',  text = '/do КПК находиться на поясном держателе.&/me берёт в руки свой КПК и включает его&/me открыв базу данных {fraction_tag} переходит в раздел управление сотрудниками других организаций&/me открывает дело нужного сотрудника и вносит в него изменения&/do Изменения успешно сохранены.&/gwarn {id} {arg}&/me выходит с базы данных {fraction_tag} и выключив КПК убирает его на поясной держатель', arg = '{id} {arg}', enable = false, waiting = '2', bind = "{}"},
+					{cmd = 'ungwarn', description = 'Снять спец-выговор (8+)',  text = '/do КПК находиться на поясном держателе.&/me берёт в руки свой КПК и включает его&/me открыв базу данных {fraction_tag} переходит в раздел управление сотрудниками других организаций&/me открывает дело нужного сотрудника и вносит в него изменения&/do Изменения успешно сохранены.&/ungwarn {id}&/me выходит с базы данных {fraction_tag} и выключив КПК убирает его на поясной держатель', arg = '{id} {arg}', enable = false, waiting = '2', bind = "{}"},
+					{cmd = 'exp', description = 'Выгнать игрока из правительства',  text = 'Вы больше не можете здесь находиться, я выгоняю вас из Мэрии!&/me схватив человека ведёт к выходу из мэрии и закрывает за ним дверь&/expel {id} Н.П.П.', arg = '{id}', enable = true, waiting = '2', in_fastmenu = true},
 				},
 				judge = {		
-					{cmd = 'ud' , description = 'Показать удостоверение' , text = '/do В кармане пиджака лежит удостоверение.&/me сунул{sex} руку в карман и достал{sex} удостоверение&/todo Ознакомтесь*показав удостоверение человеку напротив&/do Обложка «Судейская коллегия штата Сан-Сити».&/do «J2025 - <{my_ru_nick}> - Судья штата».', arg = '' , enable = true , waiting = '2'},
+					{cmd = 'ud', description = 'Показать удостоверение', text = '/do В кармане пиджака лежит удостоверение.&/me сунул{sex} руку в карман и достал{sex} удостоверение&/todo Ознакомтесь*показав удостоверение человеку напротив&/do Обложка «Судейская коллегия штата Сан-Сити».&/do «J2025 - <{my_ru_nick}> - Судья штата».', arg = '', enable = true, waiting = '2'},
 				},
 				mafia = {
-					{cmd = 'tie', description = 'Связать жертву', text = '/do В кармане бронежилета лежит шпагат.&/me легким движением руки достал{sex} из кармана шпагат&/me обвязывает руки жертвы веревкой и стягивает её&/tie {arg_id}', arg = '{arg_id}', enable = true, waiting = '2', bind = '{}' , in_fastmenu = true},
-					{cmd = 'untie', description = 'Развязать жертву', text = '/do На правом бедре закреплено тактическое крепление для ножа.&/me движением правой руки открепив нож, берёт его в руки&/do В правой руке держит нож.&/me подойдя к жертве со спины, отрезал{sex} верёвку&/untie {arg_id}', arg = '{arg_id}', enable = true, waiting = '2', bind = '{}' , in_fastmenu = true},
-					{cmd = 'lead', description = 'Вести жертву за собой', text = '/me движением руки схватив за шкирку жертвы, ведёт его за собой&/lead {arg_id}', arg = '{arg_id}', enable = true, waiting = '2', bind = '{}' , in_fastmenu = true},
-					{cmd = 'unlead', description = 'Прекратить вести жертву', text = '/me расслабив схватку, перестаёт контролировать жертву&/unlead {arg_id}', arg = '{arg_id}', enable = true, waiting = '2', bind = '{}' , in_fastmenu = true},
-					{cmd = 'gag', description = 'Заткнуть рот жертве тряпкой', text = '/do На поясе закреплена сумка.&/me правой рукой отстегнув молнию, открывает сумку&/do Внутри сумки лежит тряпка.&/me подходя к жертве, попутно достал{sex} из сумки тряпку&/do Тряпка в руках в развёрнутом виде.&/me обеими руками завернув тряпку, запихнул{sex} в рот жертвы&/gag {arg_id}', arg = '{arg_id}', enable = true, waiting = '2', bind = '{}', in_fastmenu = true},
-					{cmd = 'ungag', description = 'Вытащить тряпку изо рта жертвы', text = '/me подойдя ближе к жертве, движением правой руки потянул{sex} за тряпку и забрал{sex} себе&/ungag {arg_id}', arg = '{arg_id}', enable = true, waiting = '2', bind = '{}' , in_fastmenu = true},
-					{cmd = 'bag', description = 'Надеть пакет на голову жертвы', text = '/do В кармане куртки лежит мусорный пакет.&/me достал{sex} мусорный пакет из кармана, развернул{sex} его&/me надевает мусорный пакет на голову жертвы, не затягивая его&/bag {arg_id}', arg = '{arg_id}', enable = true, waiting = '2', bind = '{}' , in_fastmenu = true},
-					{cmd = 'unbag', description = 'Снять пакет с головы жертвы', text = '/me легким движением руки схватив за пакет, потянул{sex} его вверх, тем самым стянув пакет с головы жертвы&/unbag {arg_id}', arg = '{arg_id}', enable = true, waiting = '2', bind = '{}', in_fastmenu = true},
-					{cmd = 'inс', description = 'Затолкать жертву в фургон', text = '/me открывает двери фургона&/me берет жертву под руки и заталкивает вперёд головой в фургон&/me закрывает двери и садится в фургон&/incar {arg_id} 3', arg = '{arg_id}', enable = true, waiting = '2', bind = '{}', in_fastmenu = true},
+					{cmd = 'tie', description = 'Связать жертву', text = '/do В кармане бронежилета лежит шпагат.&/me легким движением руки достал{sex} из кармана шпагат&/me обвязывает руки жертвы веревкой и стягивает её&/tie {id}', arg = '{id}', enable = true, waiting = '2', bind = '{}', in_fastmenu = true},
+					{cmd = 'untie', description = 'Развязать жертву', text = '/do На правом бедре закреплено тактическое крепление для ножа.&/me движением правой руки открепив нож, берёт его в руки&/do В правой руке держит нож.&/me подойдя к жертве со спины, отрезал{sex} верёвку&/untie {id}', arg = '{id}', enable = true, waiting = '2', bind = '{}', in_fastmenu = true},
+					{cmd = 'lead', description = 'Вести жертву за собой', text = '/me движением руки схватив за шкирку жертвы, ведёт его за собой&/lead {id}', arg = '{id}', enable = true, waiting = '2', bind = '{}', in_fastmenu = true},
+					{cmd = 'unlead', description = 'Прекратить вести жертву', text = '/me расслабив схватку, перестаёт контролировать жертву&/unlead {id}', arg = '{id}', enable = true, waiting = '2', bind = '{}', in_fastmenu = true},
+					{cmd = 'gag', description = 'Заткнуть рот жертве тряпкой', text = '/do На поясе закреплена сумка.&/me правой рукой отстегнув молнию, открывает сумку&/do Внутри сумки лежит тряпка.&/me подходя к жертве, попутно достал{sex} из сумки тряпку&/do Тряпка в руках в развёрнутом виде.&/me обеими руками завернув тряпку, запихнул{sex} в рот жертвы&/gag {id}', arg = '{id}', enable = true, waiting = '2', bind = '{}', in_fastmenu = true},
+					{cmd = 'ungag', description = 'Вытащить тряпку изо рта жертвы', text = '/me подойдя ближе к жертве, движением правой руки потянул{sex} за тряпку и забрал{sex} себе&/ungag {id}', arg = '{id}', enable = true, waiting = '2', bind = '{}', in_fastmenu = true},
+					{cmd = 'bag', description = 'Надеть пакет на голову жертвы', text = '/do В кармане куртки лежит мусорный пакет.&/me достал{sex} мусорный пакет из кармана, развернул{sex} его&/me надевает мусорный пакет на голову жертвы, не затягивая его&/bag {id}', arg = '{id}', enable = true, waiting = '2', bind = '{}', in_fastmenu = true},
+					{cmd = 'unbag', description = 'Снять пакет с головы жертвы', text = '/me легким движением руки схватив за пакет, потянул{sex} его вверх, тем самым стянув пакет с головы жертвы&/unbag {id}', arg = '{id}', enable = true, waiting = '2', bind = '{}', in_fastmenu = true},
+					{cmd = 'inс', description = 'Затолкать жертву в фургон', text = '/me открывает двери фургона&/me берет жертву под руки и заталкивает вперёд головой в фургон&/me закрывает двери и садится в фургон&/incar {id} 3', arg = '{id}', enable = true, waiting = '2', bind = '{}', in_fastmenu = true},
 				},
 				ghetto = {}
 			},
 			commands_manage = {
 				my = {},
 				goss = {
-					{cmd = 'inv' , description = 'Принятие игрока в организацию' , text = '/do В кармане есть связка с ключами от раздевалки.&/me достаёт из кармана один ключ из связки ключей от раздевалки&/todo Возьмите, это ключ от нашей раздевалки*передавая ключ человеку напротив&/invite {arg_id}' , arg = '{arg_id}', enable = true, waiting = '2'  , bind = "{}", in_fastmenu = true  },
-					{cmd = 'sr' , description = 'Продажа ранга (частные)' , text = '/me достаёт документы на подпись и передаёт их человеку напротив&{sellrank({arg_id})}' , arg = '{arg_id}', enable = true, waiting = '2'  , bind = "{}", in_fastmenu = true },
-					{cmd = 'rp' , description = 'Выдача сотруднику /fractionrp' , text = '/fractionrp {arg_id}' , arg = '{arg_id}', enable = true, waiting = '2', bind = "{}", in_fastmenu = true  },
-					{cmd = 'gr' , description = 'Повышение/понижение cотрудника' , text = '{show_rank_menu}&/me достаёт из кармана свой телефон и заходит в базу данных {fraction_tag}&/me изменяет информацию о сотруднике {get_ru_nick({arg_id})} в базе данных {fraction_tag}&/me выходит с базы данных и убирает телефон обратно в карман&/giverank {arg_id} {get_rank}&/r Сотрудник {get_ru_nick({arg_id})} получил новую должность!' , arg = '{arg_id}', enable = true, waiting = '2', bind = "{}", in_fastmenu = true   },
-					{cmd = 'vize' , description = 'Управление Vice City визой сотрудника' , text = '/me достаёт из кармана свой телефон и заходит в базу данных {fraction_tag}&/me изменяет информацию о сотруднике {get_ru_nick({arg_id})} в базе данных {fraction_tag}&/me выходит с базы данных и убирает телефон обратно в карман&{lmenu_vc_vize}' , arg = '{arg_id}', enable = true, waiting = '2', bind = "{}", in_fastmenu = true    },
-					{cmd = 'cjob' , description = 'Посмотреть успешность сотрудника' , text = '/checkjobprogress {arg_id}' , arg = '{arg_id}', enable = true, waiting = '2', bind = "{}", in_fastmenu = true   },	
-					{cmd = 'fmutes' , description = 'Выдать мут сотруднику (10 min)' , text = '/fmutes {arg_id} Н.У.&/r Сотрудник {get_ru_nick({arg_id})} лишился права использовать рацию на 10 минут!' , arg = '{arg_id}', enable = true, waiting = '2', bind = "{}", in_fastmenu = true },
-					{cmd = 'funmute' , description = 'Снять мут сотруднику' , text = '/funmute {arg_id}&/r Сотрудник {get_ru_nick({arg_id})} теперь может пользоваться рацией!' , arg = '{arg_id}', enable = true, waiting = '2', bind = "{}", in_fastmenu = true   },
-					{cmd = 'vig' , description = 'Выдача выговора cотруднику' , text = '/me достаёт из кармана свой телефон и заходит в базу данных {fraction_tag}&/me изменяет информацию о сотруднике {get_ru_nick({arg_id})} в базе данных {fraction_tag}&/me выходит с базы данных и убирает телефон обратно в карман&/fwarn {arg_id} {arg2}&/r Сотруднику {get_ru_nick({arg_id})} выдан выговор! Причина: {arg2}' , arg = '{arg_id} {arg2}', enable = true, waiting = '2'  , bind = "{}"},
-					{cmd = 'unvig' , description = 'Снятие выговора cотруднику' , text = '/me достаёт из кармана свой телефон и заходит в базу данных {fraction_tag}&/me изменяет информацию о сотруднике {get_ru_nick({arg_id})} в базе данных {fraction_tag}&/me выходит с базы данных и убирает телефон обратно в карман&/unfwarn {arg_id}&/r Сотруднику {get_ru_nick({arg_id})} был снят выговор!' , arg = '{arg_id}', enable = true, waiting = '2', bind = "{}" , in_fastmenu = true  },
-					{cmd = 'unv' , description = 'Увольнение игрока из фракции' , text = '/me достаёт из кармана свой телефон и заходит в базу данных {fraction_tag}&/me изменяет информацию о сотруднике {get_ru_nick({arg_id})} в базе данных {fraction_tag}&/me выходит с базы данных и убирает свой телефон обратно в карман&/uninvite {arg_id} {arg2}&/r Сотрудник {get_ru_nick({arg_id})} был уволен по причине: {arg2}' , arg = '{arg_id} {arg2}', enable = true, waiting = '2', bind = "{}"   },
-					{cmd = 'point' , description = 'Установить метку для сотрудников' , text = '/r Срочно выдвигайтесь ко мне, отправляю вам координаты...&/point' , arg = '', enable = true, waiting = '2', bind = "{}"},
-					{cmd = 'govka' , description = 'Собеседование по госс.волне' , text = '/d [{fraction_tag}] - [Всем]: Занимаю государственную волну, просьба не перебивать!&/gov [{fraction_tag}]: Доброго времени суток, уважаемые жители нашего штата!&/gov [{fraction_tag}]: Сейчас проходит собеседование в организацию {fraction}&/gov [{fraction_tag}]: Для вступления вам нужно иметь документы и приехать к нам в холл.&/d [{fraction_tag}] - [Всем]: Освобождаю  государственную волну, спасибо что не перебивали.' , arg = '', enable = true, waiting = '2', bind = "{}"},
+					{cmd = 'inv', description = 'Принятие игрока в организацию', text = '/do В кармане есть связка с ключами от раздевалки.&/me достаёт из кармана один ключ из связки ключей от раздевалки&/todo Возьмите, это ключ от нашей раздевалки*передавая ключ человеку напротив&/invite {id}', arg = '{id}', enable = true, waiting = '2', bind = "{}", in_fastmenu = true  },
+					{cmd = 'sr', description = 'Продажа ранга (частные)', text = '/me достаёт документы на подпись и передаёт их человеку напротив&{sellrank({id})}', arg = '{id}', enable = true, waiting = '2', bind = "{}", in_fastmenu = true },
+					{cmd = 'rp', description = 'Выдача сотруднику /fractionrp', text = '/fractionrp {id}', arg = '{id}', enable = true, waiting = '2', bind = "{}", in_fastmenu = true},
+					{cmd = 'gr', description = 'Повышение/понижение cотрудника', text = '{show_rank_menu}&/me достаёт из кармана свой телефон и заходит в базу данных {fraction_tag}&/me изменяет информацию о сотруднике {get_ru_nick({id})} в базе данных {fraction_tag}&/me выходит с базы данных и убирает телефон обратно в карман&/giverank {id} {get_rank}&/r Сотрудник {get_ru_nick({id})} получил новую должность!', arg = '{id}', enable = true, waiting = '2', bind = "{}", in_fastmenu = true},
+					{cmd = 'vize', description = 'Управление Vice City визой сотрудника', text = '/me достаёт из кармана свой телефон и заходит в базу данных {fraction_tag}&/me изменяет информацию о сотруднике {get_ru_nick({id})} в базе данных {fraction_tag}&/me выходит с базы данных и убирает телефон обратно в карман&{lmenu_vc_vize}', arg = '{id}', enable = true, waiting = '2', bind = "{}", in_fastmenu = true},
+					{cmd = 'cjob', description = 'Посмотреть успешность сотрудника', text = '/checkjobprogress {id}', arg = '{id}', enable = true, waiting = '2', bind = "{}", in_fastmenu = true},	
+					{cmd = 'fmutes', description = 'Выдать мут сотруднику (10 min)', text = '/fmutes {id} Н.У.&/r Сотрудник {get_ru_nick({id})} лишился права использовать рацию на 10 минут!', arg = '{id}', enable = true, waiting = '2', bind = "{}", in_fastmenu = true },
+					{cmd = 'funmute', description = 'Снять мут сотруднику', text = '/funmute {id}&/r Сотрудник {get_ru_nick({id})} теперь может пользоваться рацией!', arg = '{id}', enable = true, waiting = '2', bind = "{}", in_fastmenu = true},
+					{cmd = 'vig', description = 'Выдача выговора cотруднику', text = '/me достаёт из кармана свой телефон и заходит в базу данных {fraction_tag}&/me изменяет информацию о сотруднике {get_ru_nick({id})} в базе данных {fraction_tag}&/me выходит с базы данных и убирает телефон обратно в карман&/fwarn {id} {arg}&/r Сотруднику {get_ru_nick({id})} выдан выговор! Причина: {arg}', arg = '{id} {arg}', enable = true, waiting = '2', bind = "{}"},
+					{cmd = 'unvig', description = 'Снятие выговора cотруднику', text = '/me достаёт из кармана свой телефон и заходит в базу данных {fraction_tag}&/me изменяет информацию о сотруднике {get_ru_nick({id})} в базе данных {fraction_tag}&/me выходит с базы данных и убирает телефон обратно в карман&/unfwarn {id}&/r Сотруднику {get_ru_nick({id})} был снят выговор!', arg = '{id}', enable = true, waiting = '2', bind = "{}", in_fastmenu = true},
+					{cmd = 'unv', description = 'Увольнение игрока из фракции', text = '/me достаёт из кармана свой телефон и заходит в базу данных {fraction_tag}&/me изменяет информацию о сотруднике {get_ru_nick({id})} в базе данных {fraction_tag}&/me выходит с базы данных и убирает свой телефон обратно в карман&/uninvite {id} {arg}&/r Сотрудник {get_ru_nick({id})} был уволен по причине: {arg}', arg = '{id} {arg}', enable = true, waiting = '2', bind = "{}"},
+					{cmd = 'point', description = 'Установить метку для сотрудников', text = '/r Срочно выдвигайтесь ко мне, отправляю вам координаты...&/point', arg = '', enable = true, waiting = '2', bind = "{}"},
+					{cmd = 'govka', description = 'Собеседование по госс.волне', text = '/d [{fraction_tag}] - [Всем]: Занимаю государственную волну, просьба не перебивать!&/gov [{fraction_tag}]: Доброго времени суток, уважаемые жители нашего штата!&/gov [{fraction_tag}]: Сейчас проходит собеседование в организацию {fraction}&/gov [{fraction_tag}]: Для вступления вам нужно иметь документы и приехать к нам в холл.&/d [{fraction_tag}] - [Всем]: Освобождаю  государственную волну, спасибо что не перебивали.', arg = '', enable = true, waiting = '2', bind = "{}"},
 				},
 				goss_fbi = {
-					{cmd = 'demoute' , description = 'Уволить госслужащего' ,  text = '/do КПК находиться на поясном держателе.&/me берёт в руки свой КПК и включает его&/me заходит в базу данных {fraction_tag} и переходит в раздел управление сотрудниками других организаций&/me открывает дело нужного сотрудника и вносит в него изменения&/do Изменения успешно сохранены.&/demoute {arg_id} {arg2}&/me выходит с базы данных {fraction_tag} и выключив КПК убирает его на поясной держатель', arg = '{arg_id} {arg2}', enable = false, waiting = '2', bind = "{}"},
+					{cmd = 'demoute', description = 'Уволить госслужащего',  text = '/do КПК находиться на поясном держателе.&/me берёт в руки свой КПК и включает его&/me заходит в базу данных {fraction_tag} и переходит в раздел управление сотрудниками других организаций&/me открывает дело нужного сотрудника и вносит в него изменения&/do Изменения успешно сохранены.&/demoute {id} {arg}&/me выходит с базы данных {fraction_tag} и выключив КПК убирает его на поясной держатель', arg = '{id} {arg}', enable = false, waiting = '2', bind = "{}"},
 				},
 				goss_prison = {
-					{cmd = 'unpunish', description = 'Выпуск заключённых из ТСР', text = '/me лёгкими движениями рук берёт дело заключённого с полки, кладёт его на стол&/do На столе лежит ручка и печать.&/me лёгким движением правой руки берёт ручку, заполняет поле в деле заключённого&/me лёгкими движениями рук кладёт ручку на стол, берёт печать и ставит её в деле&/me лёгкими движениями рук ставит печать на стол, после чего закрывает дело&Ваш срок укорочен, возвращайтесь в камеру и ожидайте ...&... транспортировки до ближайшего населённого пункта.&/unpunish {arg_id} {arg2}', arg = '{arg_id} {arg2}', enable = true, waiting = '2'},
+					{cmd = 'unpunish', description = 'Выпуск заключённых из ТСР', text = '/me лёгкими движениями рук берёт дело заключённого с полки, кладёт его на стол&/do На столе лежит ручка и печать.&/me лёгким движением правой руки берёт ручку, заполняет поле в деле заключённого&/me лёгкими движениями рук кладёт ручку на стол, берёт печать и ставит её в деле&/me лёгкими движениями рук ставит печать на стол, после чего закрывает дело&Ваш срок укорочен, возвращайтесь в камеру и ожидайте ...&... транспортировки до ближайшего населённого пункта.&/unpunish {id} {arg}', arg = '{id} {arg}', enable = true, waiting = '2'},
 					{cmd = 'rjailreklama', description = 'Реклама УДО', text = '/rjail Доброго времени суток заключенные.&/rjail В данный момент Вы можете покинуть тюрьму досрочно, через кабинет начальства тюрьмы.&/rjail Обратите внимание, УДО (условно дорочное освобожение) платное!&/rjail Спасибо за внимание.', arg = '', enable = true, waiting = '2'}
 				},
 				goss_gov = {
-					{cmd = 'lic' , description = 'Выдать лицензию адвоката' , text = '/do Бланк для выдачи лицензии находится под столом.&/me засунув руку под стол, взял{sex} бланк, после чего заполнил{sex} его нужной информацией&/todo Впишите сюда Ваши данные и поставьте подпись снизу*передавая бланк и ручку&/givelicadvokat {arg_id}' , arg = '{arg_id}', enable = true, waiting = '2', },
-					{cmd = 'demoute' , description = 'Уволить госслужащего' ,  text = '/do КПК находиться на поясном держателе.&/me берёт в руки свой КПК и включает его&/me заходит в базу данных {fraction_tag} и переходит в раздел управление сотрудниками других организаций&/me открывает дело нужного сотрудника и вносит в него изменения&/do Изменения успешно сохранены.&/demoute {arg_id} {arg2}&/me выходит с базы данных {fraction_tag} и выключив КПК убирает его на поясной держатель', arg = '{arg_id} {arg2}', enable = false, waiting = '2', bind = "{}"},
+					{cmd = 'lic', description = 'Выдать лицензию адвоката', text = '/do Бланк для выдачи лицензии находится под столом.&/me засунув руку под стол, взял{sex} бланк, после чего заполнил{sex} его нужной информацией&/todo Впишите сюда Ваши данные и поставьте подпись снизу*передавая бланк и ручку&/givelicadvokat {id}', arg = '{id}', enable = true, waiting = '2', },
+					{cmd = 'demoute', description = 'Уволить госслужащего',  text = '/do КПК находиться на поясном держателе.&/me берёт в руки свой КПК и включает его&/me заходит в базу данных {fraction_tag} и переходит в раздел управление сотрудниками других организаций&/me открывает дело нужного сотрудника и вносит в него изменения&/do Изменения успешно сохранены.&/demoute {id} {arg}&/me выходит с базы данных {fraction_tag} и выключив КПК убирает его на поясной держатель', arg = '{id} {arg}', enable = false, waiting = '2', bind = "{}"},
 				},
 				mafia = {
-					{cmd = 'inv' , description = 'Принятие игрока в организацию' , text = '/do В кармане есть связка с ключами от раздевалки.&/me достаёт из кармана один ключ из связки ключей от раздевалки&/todo Возьмите, это ключ от нашей раздевалки*передавая ключ человеку напротив&/invite {arg_id}' , arg = '{arg_id}', enable = true, waiting = '2'  , bind = "{}"},
-					{cmd = 'rp' , description = 'Выдача сотруднику /fractionrp' , text = '/fractionrp {arg_id}' , arg = '{arg_id}', enable = true, waiting = '2', bind = "{}"},
-					{cmd = 'gr' , description = 'Повышение/понижение cотрудника' , text = '{show_rank_menu}&/todo Вот тебе новая форма!*протягивая форму человеку напротив &/giverank {arg_id} {get_rank}' , arg = '{arg_id}', enable = true, waiting = '2', bind = "{}"   },
-					{cmd = 'fmutes' , description = 'Выдать мут сотруднику (10 min)' , text = '/fmutes {arg_id} Подумай о своём поведении' , arg = '{arg_id}', enable = true, waiting = '2', bind = "{}"   },
-					{cmd = 'funmute' , description = 'Снять мут сотруднику' , text = '/funmute {arg_id}' , arg = '{arg_id}', enable = true, waiting = '2', bind = "{}"   },
-					{cmd = 'vig' , description = 'Выдача выговора' , text = '/f {get_ru_nick({arg_id})}, ты провинился(-лась) в {arg2}!&/fwarn {arg_id} {arg2}' , arg = '{arg_id} {arg2}', enable = true, waiting = '2'  , bind = "{}"},
-					{cmd = 'unvig' , description = 'Снятие выговора cотруднику' , text = '/f {get_ru_nick({arg_id})}, ты прощён(-а)!&unfwarn {arg_id}' , arg = '{arg_id}', enable = true, waiting = '2', bind = "{}"   },
-					{cmd = 'unv' , description = 'Увольнение игрока из фракции' , text = '/me забирает организационную форму у человека&/uninvite {arg_id} {arg2}' , arg = '{arg_id} {arg2}', enable = true, waiting = '2', bind = "{}"   },
-					{cmd = 'point' , description = 'Установить метку для сотрудников' , text = '/f Срочно выдвигайтесь ко мне, отправляю вам координаты...&/point' , arg = '', enable = true, waiting = '2', bind = "{}"},
+					{cmd = 'inv', description = 'Принятие игрока в мафию', text = '/do В кармане есть связка с ключами от раздевалки.&/me достаёт из кармана один ключ из связки ключей от раздевалки&/todo Возьмите, это ключ от нашей раздевалки*передавая ключ человеку напротив&/invite {id}', arg = '{id}', enable = true, waiting = '2', bind = "{}"},
+					{cmd = 'rp', description = 'Выдача /fractionrp', text = '/fractionrp {id}', arg = '{id}', enable = true, waiting = '2', bind = "{}"},
+					{cmd = 'gr', description = 'Повышение/понижение cотрудника', text = '{show_rank_menu}&/todo Вот тебе новая форма!*протягивая форму человеку напротив &/giverank {id} {get_rank}', arg = '{id}', enable = true, waiting = '2', bind = "{}"},
+					{cmd = 'fmutes', description = 'Выдать мут (10 min)', text = '/fmutes {id} Подумай о своём поведении', arg = '{id}', enable = true, waiting = '2', bind = "{}"},
+					{cmd = 'funmute', description = 'Снять мут', text = '/funmute {id}', arg = '{id}', enable = true, waiting = '2', bind = "{}"},
+					{cmd = 'vig', description = 'Выдача выговора', text = '/f {get_ru_nick({id})}, ты провинился(-лась) в {arg}!&/fwarn {id} {arg}', arg = '{id} {arg}', enable = true, waiting = '2', bind = "{}"},
+					{cmd = 'unvig', description = 'Снятие выговора', text = '/f {get_ru_nick({id})}, ты прощён(-а)!&/unfwarn {id}', arg = '{id}', enable = true, waiting = '2', bind = "{}"},
+					{cmd = 'unv', description = 'Увольнение игрока', text = '/me забирает организационную форму у человека&/uninvite {id} {arg}', arg = '{id} {arg}', enable = true, waiting = '2', bind = "{}"},
+					{cmd = 'point', description = 'Установить метку для сотрудников', text = '/f Срочно выдвигайтесь ко мне, отправляю вам координаты...&/point', arg = '', enable = true, waiting = '2', bind = "{}"},
 				},
-				ghetto = {}
+				ghetto = {
+					{cmd = 'inv', description = 'Инвайт', text = '/todo Бери, это теперь твоя*протягивая бандану человеку напротив.&/invite {id}', arg = '{id}', enable = true, waiting = '2', bind = "{}"},
+					{cmd = 'rp', description = 'Квест РП', text = '/fractionrp {id}', arg = '{id}', enable = true, waiting = '2', bind = "{}"},
+					{cmd = 'gr', description = 'Сменить ранг', text = '{show_rank_menu}&/todo Вот тебе новая форма!*протягивая форму человеку напротив &/giverank {id} {get_rank}', arg = '{id}', enable = true, waiting = '2', bind = "{}"},
+					{cmd = 'fmutes', description = 'Выдать мут (10м)', text = '/fmutes {id} Подумай о своём поведении', arg = '{id}', enable = true, waiting = '2', bind = "{}"},
+					{cmd = 'funmute', description = 'Снять мут', text = '/funmute {id}', arg = '{id}', enable = true, waiting = '2', bind = "{}"},
+					{cmd = 'vig', description = 'Дать выговор', text = '/f {get_ru_nick({id})}, ты провинился(-лась) в {arg}!&/fwarn {id} {arg}', arg = '{id} {arg}', enable = true, waiting = '2', bind = "{}"},
+					{cmd = 'unvig', description = 'Снять выговор', text = '/f {get_ru_nick({id})}, ты прощён(-а)!&/unfwarn {id}', arg = '{id}', enable = true, waiting = '2', bind = "{}"},
+					{cmd = 'unv', description = 'Уволить', text = '/r Аривидерчи, {get_ru_nick({id})}&/uninvite {id} {arg}', arg = '{id} {arg}', enable = true, waiting = '2', bind = "{}"},
+					{cmd = 'point', description = 'Установить метку', text = '/f Фастом все ко мне!&/point', arg = '', enable = true, waiting = '2', bind = "{}"},
+				}
 			}
 		}
 	},
 	piemenu = {
 		name = 'Круговое меню',
 		path = config_dir .. "/PieMenu.json",
+		data = {}
+	},
+	buttons = {
+		name = 'Кнопочки',
+		path = config_dir .. "/Buttons.json",
 		data = {
-			my = {},
-    		mj = {
-				{
-					name = 'Кричалка',
-					icon = 'VOLUME_HIGH',
-					action = '/ss'
-				},
-				{
-					name = 'Миранда',
-					icon = '',
-					action = '/mr'
-				},
-				{
-					name = 'Траффик стоп',
-					icon = 'BULLHORN',
-					next = {
-						{
-							name = '10-55',
-							icon = '',
-							action = '/55'
-						},
-						{
-							name = '10-66',
-							icon = '',
-							action = '/66'
-						}
-					}
-				},
-				{
-					name = 'Тайзер',
-					icon = 'GUN',
-					action = '/t'
-				}
-			},
+			{
+				enable = true,
+				name = 'Броник',
+				icon = 'SHIELD',
+				action = '/armour',
+				size = {x = 100, y = 25},
+				pos = {x = 100, y = 400}
+			}
 		}
 	},
 	notes = {
 		name = 'Заметки',
 		path = config_dir .. "/Notes.json",
-		data = {
-			{ note_name = 'Зарплата в фракции', note_text = 'Почему ваша зарплата может быть меньше, чем указано:&-20 процентов если нету жилья (дом/отель/трейлер)&-20/-40 процентов если у вас есть выговоры&-10 процентов из-за фикса экономики от разрабов&&Способы повысить свою зарплату во фракции:&+10 процентов если арендовать номер в отеле&+7 процентов если вступить в семью с фам.флагом&+15 процентов если есть \"Военный билет\"&+11 процентов если есть \"Грамота Ветерана\"&+3 процента если есть акс \"Оранжевая магическая шляпа\"&+10/+15/+20/+25/+26/+30/+35 процентов если купить охранника&- Повышайтесь на ранг повыше :)'},
-		}
+		data = {}
 	},
 	rpgun = {
 		name = 'RP оружие',
@@ -766,35 +782,6 @@ local modules = {
 		data = {}
 	}
 }
-function load_module(key)
-    local obj = modules[key]
-	if not obj then
-		print('Ошибка: неизвестный модуль "' .. key .. '"!')
-	else
-		if doesFileExist(obj.path) then
-			local file, errstr = io.open(obj.path, 'r')
-			if file then
-				local contents = file:read('*a')
-				file:close()
-				if #contents == 0 then
-					print('Не удалось открыть модуль "' .. obj.name .. '". Причина: файл пустой')
-				else
-					local result, loaded = pcall(decodeJson, contents)
-					if result then
-						obj.data = loaded
-						print('Модуль "' .. obj.name .. '" инициализирован! (есть ваши кастомные данные)')
-					else
-						print('Не удалось открыть модуль "' .. obj.name .. '". Ошибка: decode json')
-					end
-				end
-			else
-				print('Не удалось открыть модуль "' .. obj.name .. '". Ошибка: ' .. (errstr or "Unknown"))
-			end
-		else
-			print('Модуль "' .. obj.name .. '" инициализирован!')
-		end
-	end
-end
 function save_module(key)
     local obj = modules[key]
 	if not obj then
@@ -812,6 +799,37 @@ function save_module(key)
 			file:close()
 		else
 			print('Не удалось сохранить модуль "' .. obj.name .. '", ошибка: ' .. (errstr or "Unknown"))
+		end
+	end
+end
+function load_module(key)
+    local obj = modules[key]
+	if not obj then
+		print('Ошибка: неизвестный модуль "' .. key .. '"!')
+	else
+		if doesFileExist(obj.path) then
+			local file, errstr = io.open(obj.path, 'r')
+			if file then
+				local contents = file:read('*a')
+				file:close()
+				if #contents == 0 then
+					print('Не удалось открыть модуль "' .. obj.name .. '". Причина: файл пустой')
+				else
+					local result, loaded = pcall(decodeJson, contents)
+					if result then
+						print('Модуль "' .. obj.name .. '" инициализирован! (есть кастомные данные)')
+						local changed = merge_defaults(obj.data, loaded)
+						obj.data = loaded
+						if changed then save_module(key) end
+					else
+						print('Не удалось открыть модуль "' .. obj.name .. '". Ошибка: decode json')
+					end
+				end
+			else
+				print('Не удалось открыть модуль "' .. obj.name .. '". Ошибка: ' .. (errstr or "Unknown"))
+			end
+		else
+			print('Модуль "' .. obj.name .. '" инициализирован!')
 		end
 	end
 end
@@ -836,12 +854,10 @@ local MODULE = {
 		slider_dpi = imgui.new.float(tonumber(settings.general.custom_dpi)),
 		input = imgui.new.char[256](),
 		checkbox = {
-			accent_enable = imgui.new.bool(settings.player_info.accent_enable or false),
+			accent_enable = imgui.new.bool(settings.general.accent_enable),
 			mobile_stop_button = imgui.new.bool(settings.general.mobile_stop_button or false),
 			mobile_fastmenu_button = imgui.new.bool(settings.general.mobile_fastmenu_button or false),
 			mobile_piemenu_button = imgui.new.bool(settings.general.piemenu or false),
-			-- MJ
-			mobile_taser_button = imgui.new.bool(settings.mj.mobile_taser_button or false),
 		},
 		selector = {
 			heal = imgui.new.int((settings.mh.heal_in_chat.auto_heal and 1 or 0))
@@ -858,11 +874,10 @@ local MODULE = {
 		input_text = imgui.new.char[8192](),
 		item_list = {
 			u8('Без аргументов'),
-			u8('{arg} Любое значение'),
-			u8('{arg_id} ID игрока | Пример /cure 429'),
-			u8('{arg_id} ID {arg2} любое значение | Пример /vig 429 Без бейджика'),
-			u8('{arg_id} ID {arg2} число {arg3} любое | Пример /su 429 2 Неподчинение'),
-			u8('{arg_id} ID {arg2} число {arg3} любое {arg4} любое | Пример /carcer 429 1 5 Н.П.Т')
+			u8('Любое значение'),
+			u8('ID игрока'),
+			u8('ID игрока и любое значение (пример /vig 429 Без бейджика)'),
+			u8('ID игрока и любое число и любое значение  (пример /su 429 2 Неподчинение)')
 		},
 		ImItems = nil,
 		data = {
@@ -879,8 +894,9 @@ local MODULE = {
 			isStop = false,
 			isPause = false
 		},
+		input_search_tag = imgui.new.char[64](),
+		tag = {},
 		tags = {},
-		tags_text = ''
 	},
 	Note = {
 		Window = imgui.new.bool(),
@@ -888,6 +904,14 @@ local MODULE = {
 		input_name = imgui.new.char[256](),
 		show_note_name = '',
 		show_note_text = '',
+	},
+	Buttons = {
+		Editor = {
+			icon = '',
+			name = imgui.new.char[256](),
+			action = imgui.new.char[256](),
+			size = {x = imgui.new.int(75), y = imgui.new.int(25)}
+		}
 	},
 	Members = {
 		Window = imgui.new.bool(),
@@ -939,10 +963,7 @@ local MODULE = {
 		updwanteds = {},
 		all = {},
 		new = {},
-		checker = false
-	},
-	Taser = {
-		Window = imgui.new.bool()
+		checker = false,
 	},
 	Patrool = {
 		Window = imgui.new.bool(),
@@ -992,7 +1013,7 @@ local MODULE = {
 		Window = imgui.new.bool(),
 		bool = false,
 		player_id = nil,
-		worlds = {'вылечи', 'лечи', 'хил', 'лек', 'heal', 'hil', 'lek', 'табл', 'болит', 'голова', 'лекни' , 'ktr', 'ktxb', 'ujkjdf'},
+		worlds = {'вылечи', 'лечи', 'хил', 'лек', 'heal', 'hil', 'lek', 'табл', 'болит', 'голова', 'лекни', 'ktr', 'ktxb', 'ujkjdf'},
 	},
 	GoDeath = {
 		player_id = nil,
@@ -1018,7 +1039,7 @@ local MODULE = {
 	SmiEdit = {
 		Window = imgui.new.bool(),
 		input_edit_text = imgui.new.char[512](),
-		input_ads_search = imgui.new.char[256](),
+		input_search = imgui.new.char[256](),
 		ad_message = '',
 		ad_from = '',
 		ad_dialog_id = '',
@@ -1147,943 +1168,765 @@ local MODULE = {
 	},
 	InfraredVision = false,
 	NightVision = false,
+	INPUT = {
+		CURSOR_POS = 0,
+		SELECTION_START = 0,
+		SELECTION_END = 0,
+		USER_MOVED_CURSOR = false,
+	},
 	FONT = nil,
-	DEBUG = false
+	DEBUG = false,
+	MOBILE_PLAYER_ID = -1
 }
 MODULE.Patrool.ImItemsMark = imgui.new['const char*'][#MODULE.Patrool.marks](MODULE.Patrool.marks)
 MODULE.Patrool.ImItemsCode = imgui.new['const char*'][#MODULE.Patrool.codes](MODULE.Patrool.codes)
 MODULE.Post.ImItemsCode = imgui.new['const char*'][#MODULE.Post.codes](MODULE.Post.codes)
 MODULE.Binder.ImItems = imgui.new['const char*'][#MODULE.Binder.item_list](MODULE.Binder.item_list)
 MODULE.Binder.tags = {
-	my_id = function()
-		if IS_MOBILE then
-			local nick = settings.player_info.nick
-			return sampGetPlayerIdByNickname(nick)
-		else
-			return select(2, sampGetPlayerIdByCharHandle(PLAYER_PED))
+	-- Игрок
+    {
+        key = "my_id",
+        description = "Ваш ID",
+        category = "Игрок",
+		mode = 'all',
+        func = function()
+			if IS_MOBILE then
+				return MODULE.MOBILE_PLAYER_ID
+			else
+				return select(2, sampGetPlayerIdByCharHandle(PLAYER_PED))
+			end
+        end
+    },
+	{
+		key = "my_ru_nick",
+		description = "Ваше Имя Фамилия",
+		category = "Игрок",
+		mode = "all",
+		func = function() return modules.player.data.name_surname end
+	},
+    {
+        key = "my_nick",
+        description = "Ваш никнейм",
+        category = "Игрок",
+		mode = 'all',
+        func = function()
+            return modules.player.data.nick
+        end
+    },
+	{
+		key = "my_rp_nick",
+		description = "Ваш никнейм без _",
+		category = "Игрок",
+		mode = "all",
+		func = function()
+			return modules.player.data.nick:gsub('_',' ')
 		end
-	end,
-    my_nick = function()
-		return settings.player_info.nick
-	end,
-	my_ru_nick = function() return settings.player_info.name_surname end,
-    my_rp_nick = function()
-		return settings.player_info.nick:gsub('_', ' ')
-	end,
-    my_doklad_nick = function()
-		local nick = settings.player_info.nick
-		local name, surname = nick:match('^(.+)%_(.+)$')
-		if name and surname then
-			return name:sub(1, 1) .. '.' .. surname
-		else
+	},
+	{
+		key = "my_doklad_nick",
+		description = "Ваше И.Фамилия по форме",
+		category = "Игрок",
+		mode = "all",
+		func = function()
+			local nick = modules.player.data.nick
+			local name, surname = nick:match('^(.+)%_(.+)$')
+			if name and surname then
+				return name:sub(1,1).."."..surname
+			end
 			return nick
 		end
-    end,
-	fraction_rank_number = function() return settings.player_info.fraction_rank_number end,
-	fraction_rank = function() return settings.player_info.fraction_rank end,
-	fraction_tag = function() return settings.player_info.fraction_tag end,
-	fraction = function() return settings.player_info.fraction end,
-	sex = function() 
-		return (settings.player_info.sex == 'Женщина') and 'a' or ''
-	end,
-	get_time = function()
-		return os.date("%H:%M:%S")
-	end,
-	get_date = function()
-		return os.date("%H:%M:%S")
-	end,
-	get_rank = function()
-		return MODULE.GiveRank.number[0]
-	end,
-	get_square = function()
-		local KV = {
-			[1] = "А",
-			[2] = "Б",
-			[3] = "В",
-			[4] = "Г",
-			[5] = "Д",
-			[6] = "Ж",
-			[7] = "З",
-			[8] = "И",
-			[9] = "К",
-			[10] = "Л",
-			[11] = "М",
-			[12] = "Н",
-			[13] = "О",
-			[14] = "П",
-			[15] = "Р",
-			[16] = "С",
-			[17] = "Т",
-			[18] = "У",
-			[19] = "Ф",
-			[20] = "Х",
-			[21] = "Ц",
-			[22] = "Ч",
-			[23] = "Ш",
-			[24] = "Я",
-		}
-		local X, Y, Z = getCharCoordinates(playerPed)
-		X = math.ceil((X + 3000) / 250)
-		Y = math.ceil((Y * - 1 + 3000) / 250)
-		Y = KV[Y]
-		if Y ~= nil then
-			local KVX = (Y.."-"..X)
-			return KVX
-		else
-			return X
+	},
+	{
+		key = "sex",
+		description = "Символ 'а' если женский пол",
+		category = "Игрок",
+		mode = "all",
+		func = function()
+			return (modules.player.data.sex == 'Женщина') and 'a' or ''
 		end
-	end,
-	get_area = function()
-		local x,y,z = getCharCoordinates(PLAYER_PED)
-		return getAreaRu(x,y,z)
-	end,
-	get_city = function()
-		local city = {
-			[0] = "Вне города",
-			[1] = "Лос Сантос",
-			[2] = "Сан Фиерро",
-			[3] = "Лас Вентурас"
-		}
-		return city[getCityPlayerIsIn(PLAYER_PED)]
-	end,
-	get_drived_car = function()
-		local closest_car = nil
-		local closest_distance = 50
-		local my_pos = {getCharCoordinates(PLAYER_PED)}
-		local my_car
-		if isCharInAnyCar(PLAYER_PED) then
-			my_car = storeCarCharIsInNoSave(PLAYER_PED)
+	},
+	-- Фракция
+	{
+		key = "fraction",
+		description = "Название вашей фракции",
+		category = "Фракция",
+		mode = "all",
+		func = function() return modules.player.data.fraction end
+	},
+	{
+		key = "fraction_rank",
+		description = "Название вашего ранга",
+		category = "Фракция",
+		mode = "all",
+		func = function() return modules.player.data.fraction_rank end
+	},
+	{
+		key = "fraction_rank_number",
+		description = "Номер вашего ранга",
+		category = "Фракция",
+		mode = "all",
+		func = function() return modules.player.data.fraction_rank_number end
+	},
+	{
+		key = "fraction_tag",
+		description = "Тег вашей фракции",
+		category = "Фракция",
+		mode = "all",
+		func = function() return modules.player.data.fraction_tag end
+	},
+	-- Общие
+	{
+		key = "get_nick({id})",
+		description = "Никнейм игрока из ID",
+		category = "Общее",
+		mode = "all",
+		func = function() return '' end
+	},
+	{
+		key = "get_rp_nick({id})",
+		description = "Никнейм игрока из ID без _",
+		category = "Общее",
+		mode = "all",
+		func = function() return '' end
+	},
+	{
+		key = "get_ru_nick({id})",
+		description = "Имя Фамилия игрока из ID",
+		category = "Общее",
+		mode = "all",
+		func = function() return '' end
+	},
+	{
+		key = "get_time",
+		description = "Текущее время",
+		category = "Общее",
+		mode = "all",
+		func = function() return os.date("%H:%M:%S") end
+	},
+	{
+		key = "get_date",
+		description = "Текущая дата",
+		category = "Общее",
+		mode = "all",
+		func = function() return os.date("%d.%m.%Y") end
+	},
+	{
+		key = "get_rank",
+		description = "Выбранный ранг",
+		category = "Общее",
+		mode = "all",
+		func = function() return MODULE.GiveRank.number[0] end
+	},
+	{
+		key = "get_square",
+		description = "Текущий квадрат",
+		category = "Общее",
+		mode = "all",
+		func = function()
+			local KV = {[1]="А",[2]="Б",[3]="В",[4]="Г",[5]="Д",[6]="Ж",[7]="З",[8]="И",[9]="К",[10]="Л",[11]="М",[12]="Н",[13]="О",[14]="П",[15]="Р",[16]="С",[17]="Т",[18]="У",[19]="Ф",[20]="Х",[21]="Ц",[22]="Ч",[23]="Ш",[24]="Я"}
+			local X,Y,Z = getCharCoordinates(playerPed)
+			X = math.ceil((X+3000)/250)
+			Y = math.ceil((Y*-1+3000)/250)
+			Y = KV[Y]
+			if Y then return (Y .. '-' .. X) else return X end
 		end
-		for _, vehicle in ipairs(getAllVehicles()) do
-			if doesCharExist(getDriverOfCar(vehicle)) and vehicle ~= my_car then
-				local vehicle_pos = {getCarCoordinates(vehicle)}
-				local distance = getDistanceBetweenCoords3d(my_pos[1], my_pos[2], my_pos[3], vehicle_pos[1], vehicle_pos[2], vehicle_pos[3])
-				if distance < closest_distance then
-					closest_distance = distance
-					closest_car = vehicle
+	},
+	{
+		key = "get_area",
+		description = "Текущий район",
+		category = "Общее",
+		mode = "all",
+		func = function()
+			local x,y,z = getCharCoordinates(PLAYER_PED)
+			return get_area(x,y,z)
+		end
+	},
+	{
+		key = "get_city",
+		description = "Текущий город",
+		category = "Общее",
+		mode = "all",
+		func = function()
+			local city = {[0]="Вне города",[1]="Лос Сантос",[2]="Сан Фиерро",[3]="Лас Вентурас"}
+			return city[getCityPlayerIsIn(PLAYER_PED)]
+		end
+	},
+	{
+		key = "get_nearest_car",
+		description = "Ближайший т/с",
+		category = "Общее",
+		mode = "all",
+		func = function() return get_near_car() end
+	},
+	{
+		key = "get_drived_car",
+		description = "Ближайший т/с с водителем",
+		category = "Общее",
+		mode = "all",
+		func = function() return get_near_car(true) end
+	},
+	-- ТРАНСПОРТ
+	{
+		key = "get_car_units",
+		description = "Напарники в вашем т/с",
+		category = "Транспорт",
+		mode = "all",
+		func = function()
+			if isCharInAnyCar(PLAYER_PED) then
+				local car = storeCarCharIsInNoSave(PLAYER_PED)
+				local success, passengers = getNumberOfPassengers(car)
+				if IS_MOBILE and success and passengers == nil then
+					passengers = success
 				end
-			end
-		end
-		if closest_car then
-			local colorNames = {
-				[0] = "чёрного",
-				[1] = "белого",
-				[2] = "бирюзового",
-				[3] = "бордового",
-				[4] = "хвойного",
-				[5] = "пурпурного",
-				[6] = "жёлтого",
-				[7] = "голубого",
-				[8] = "серого",
-				[9] = "оливкового",
-				[10] = "синего",
-				[11] = "серого",
-				[12] = "голубого",
-				[13] = "графитового",
-				[14] = "светлого",
-				[15] = "светлого",
-				[16] = "хвойного",
-				[17] = "бордового",
-				[18] = "бордового",
-				[19] = "серого",
-				[20] = "синего",
-				[21] = "бордового",
-				[22] = "бордового",
-				[23] = "серого",
-				[24] = "графитового",
-				[25] = "серого",
-				[26] = "светлого",
-				[27] = "тусклого",
-				[28] = "синего",
-				[29] = "светлого",
-				[30] = "бордового",
-				[31] = "бордового",
-				[32] = "голубоватого",
-				[33] = "серого",
-				[34] = "тусклого",
-				[35] = "коричневого",
-				[36] = "синего",
-				[37] = "хвойного",
-				[38] = "серого",
-				[39] = "синего",
-				[40] = "тёмного",
-				[41] = "коричневого",
-				[42] = "коричневого",
-				[43] = "бордового",
-				[44] = "хвойного",
-				[45] = "бордового",
-				[46] = "бежевого",
-				[47] = "оливкового",
-				[48] = "оливкового",
-				[49] = "серого",
-				[50] = "серебристого",
-				[51] = "хвойного",
-				[52] = "синего",
-				[53] = "синего",
-				[54] = "синего",
-				[55] = "коричневого",
-				[56] = "голубого",
-				[57] = "оливкового",
-				[58] = "тёмнокрасного",
-				[59] = "синего",
-				[60] = "светлого",
-				[61] = "оранжевого",
-				[62] = "тёмнокрасного",
-				[63] = "серебристого",
-				[64] = "светлого",
-				[65] = "оливкового",
-				[66] = "коричневого",
-				[67] = "асфальтового",
-				[68] = "оливкового",
-				[69] = "кварцевого",
-				[70] = "тёмнокрасного",
-				[71] = "светлого",
-				[72] = "тёмносерого",
-				[73] = "оливкового",
-				[74] = "бордового",
-				[75] = "синего",
-				[76] = "оливкового",
-				[77] = "оранжевого",
-				[78] = "бордового",
-				[79] = "синего",
-				[80] = "розового",
-				[81] = "оливкового",
-				[82] = "тёмнокрасного",
-				[83] = "бирюзового",
-				[84] = "коричневого",
-				[85] = "розового",
-				[86] = "хвойного",
-				[87] = "синего",
-				[88] = "винного",
-				[89] = "оливкового",
-				[90] = "светлого",
-				[91] = "тёмносинего",
-				[92] = "тёмносерого",
-				[93] = "голубоватого",
-				[94] = "синего",
-				[95] = "синего",
-				[96] = "светлого",
-				[97] = "асфальтового",
-				[98] = "голубоватого",
-				[99] = "коричневого",
-				[100] = "бриллиантового",
-				[101] = "кобальтового",
-				[102] = "коричневого",
-				[103] = "синего",
-				[104] = "коричневого",
-				[105] = "серого",
-				[106] = "синего",
-				[107] = "оливкового",
-				[108] = "бриллиантового",
-				[109] = "серого",
-				[110] = "оливкового",
-				[111] = "серого",
-				[112] = "серого",
-				[113] = "коричневого",
-				[114] = "зелёного",
-				[115] = "тёмнокрасного",
-				[116] = "синего",
-				[117] = "бордового",
-				[118] = "голубого",
-				[119] = "коричневого",
-				[120] = "оливкового",
-				[121] = "бордового",
-				[122] = "тёмносерого",
-				[123] = "коричневого",
-				[124] = "тёмнокрасного",
-				[125] = "синего",
-				[126] = "розового",
-				[127] = "чёрного",
-				[128] = "зелёного",
-				[129] = "бордового",
-				[130] = "синего",
-				[131] = "коричневого",
-				[132] = "тёмнокрасного",
-				[133] = "чёрного",
-				[134] = "фиолетового",
-				[135] = "яркосинего",
-				[136] = "аметистового",
-				[137] = "зелёного",
-				[138] = "серого",
-				[139] = "пурпурного",
-				[140] = "светлого",
-				[141] = "тёмносерого",
-				[142] = "оливкового",
-				[143] = "фиолетового",
-				[144] = "фиолетового",
-				[145] = "зелёного",
-				[146] = "пурпурного",
-				[147] = "фиолетового",
-				[148] = "оливкового",
-				[149] = "тёмного",
-				[150] = "тёмнозелёного",
-				[151] = "зеленого",
-				[152] = "синего",
-				[153] = "зелёного",
-				[154] = "салатового",
-				[155] = "бирюзового",
-				[156] = "коричневого",
-				[157] = "светлого",
-				[158] = "оранжевого",
-				[159] = "коричневого",
-				[160] = "тёмнозелёного",
-				[161] = "винного",
-				[162] = "синего",
-				[163] = "графитового",
-				[164] = "чёрного",
-				[165] = "бирюзового",
-				[166] = "бирюзового",
-				[167] = "фиолетового",
-				[168] = "бордового",
-				[169] = "фиолетового",
-				[170] = "фиолетового",
-				[171] = "фиолетового",
-				[172] = "хвойного",
-				[173] = "коричневого",
-				[174] = "коричневого",
-				[175] = "коричневого",
-				[176] = "пурпурного",
-				[177] = "пурпурного",
-				[178] = "пурпурного",
-				[179] = "фиолетового",
-				[180] = "коричневого",
-				[181] = "красного",
-				[182] = "оранжевого",
-				[183] = "оливкового",
-				[184] = "голубого",
-				[185] = "чёрного",
-				[186] = "чёрного",
-				[187] = "зелёного",
-				[188] = "зелёного",
-				[189] = "зелёного",
-				[190] = "пурпурного",
-				[191] = "салатового",
-				[192] = "светлого",
-				[193] = "светлого",
-				[194] = "оливкового",
-				[195] = "оливкового",
-				[196] = "серого",
-				[197] = "оливкового",
-				[198] = "синего",
-				[199] = "оливкового",
-				[200] = "странного",
-				[201] = "синего",
-				[202] = "зелёного",
-				[203] = "синего",
-				[204] = "голубого",
-				[205] = "синего",
-				[206] = "тёмносинего",
-				[207] = "голубого",
-				[208] = "синего",
-				[209] = "синего",
-				[210] = "синего",
-				[211] = "фиолетового",
-				[212] = "оранжевого",
-				[213] = "светлого",
-				[214] = "оливкового",
-				[215] = "чёрного",
-				[216] = "оранжевого",
-				[217] = "бирюзового",
-				[218] = "бледно-розового",
-				[219] = "оранжевого",
-				[220] = "розового",
-				[221] = "оливкового",
-				[222] = "оранжевого",
-				[223] = "синего",
-				[224] = "бордового",
-				[225] = "хвойного",
-				[226] = "салатового",
-				[227] = "зелёного",
-				[228] = "бледного",
-				[229] = "салатового",
-				[230] = "бордового",
-				[231] = "коричневого",
-				[232] = "розового",
-				[233] = "пурпурного",
-				[234] = "тёмнозелёного",
-				[235] = "оливкового",
-				[236] = "хвойного",
-				[237] = "пурпурного",
-				[238] = "оранжевого",
-				[239] = "коричневого",
-				[240] = "голубого",
-				[241] = "зеленого",
-				[242] = "фиолетового",
-				[243] = "зелёного",
-				[244] = "коричневого",
-				[245] = "хвойного",
-				[246] = "голубого",
-				[247] = "синего",
-				[248] = "бордового",
-				[249] = "бордового",
-				[250] = "серого",
-				[251] = "серого",
-				[252] = "чёрного",
-				[253] = "серого",
-				[254] = "коричневого",
-				[255] = "синего"
-			}
-			local clr1, clr2 = getCarColours(closest_car)
-			local CarColorName = " " .. colorNames[clr1] .. " цвета"
-			local function getVehPlateNumberByCarHandle(car)
-				for i, plate in pairs(modules.arz_veh.cache) do
-					result, veh = sampGetCarHandleBySampVehicleId(plate.carID)
-					if result and veh == car then
-						return ' c номерами ' .. plate.number
-					end
-				end
-				return ''
-			end
-			return (getNameOfARZVehicleModel(getCarModel(closest_car)) .. CarColorName .. getVehPlateNumberByCarHandle(closest_car))
-		else
-			--sampAddChatMessage("[Arizona Helper] {ffffff}Не удалось получить модель ближайшего т/c с водителем!", 0x009EFF)
-			return 'транспортного средства'
-		end
-	end,
-	get_nearest_car = function()
-		local closest_car = nil
-		local closest_distance = 50
-		local my_pos = {getCharCoordinates(PLAYER_PED)}
-		local my_car
-		if isCharInAnyCar(PLAYER_PED) then
-			my_car = storeCarCharIsInNoSave(PLAYER_PED)
-		end
-		for _, vehicle in ipairs(getAllVehicles()) do
-			if vehicle ~= my_car then
-				local vehicle_pos = {getCarCoordinates(vehicle)}
-				local distance = getDistanceBetweenCoords3d(my_pos[1], my_pos[2], my_pos[3], vehicle_pos[1], vehicle_pos[2], vehicle_pos[3])
-				if distance < closest_distance then
-					closest_distance = distance
-					closest_car = vehicle
-				end
-			end
-		end
-		if closest_car then
-			local colorNames = {
-				[0] = "чёрного",
-				[1] = "белого",
-				[2] = "бирюзового",
-				[3] = "бордового",
-				[4] = "хвойного",
-				[5] = "пурпурного",
-				[6] = "жёлтого",
-				[7] = "голубого",
-				[8] = "серого",
-				[9] = "оливкового",
-				[10] = "синего",
-				[11] = "серого",
-				[12] = "голубого",
-				[13] = "графитового",
-				[14] = "светлого",
-				[15] = "светлого",
-				[16] = "хвойного",
-				[17] = "бордового",
-				[18] = "бордового",
-				[19] = "серого",
-				[20] = "синего",
-				[21] = "бордового",
-				[22] = "бордового",
-				[23] = "серого",
-				[24] = "графитового",
-				[25] = "серого",
-				[26] = "светлого",
-				[27] = "тусклого",
-				[28] = "синего",
-				[29] = "светлого",
-				[30] = "бордового",
-				[31] = "бордового",
-				[32] = "голубоватого",
-				[33] = "серого",
-				[34] = "тусклого",
-				[35] = "коричневого",
-				[36] = "синего",
-				[37] = "хвойного",
-				[38] = "серого",
-				[39] = "синего",
-				[40] = "тёмного",
-				[41] = "коричневого",
-				[42] = "коричневого",
-				[43] = "бордового",
-				[44] = "хвойного",
-				[45] = "бордового",
-				[46] = "бежевого",
-				[47] = "оливкового",
-				[48] = "оливкового",
-				[49] = "серого",
-				[50] = "серебристого",
-				[51] = "хвойного",
-				[52] = "синего",
-				[53] = "синего",
-				[54] = "синего",
-				[55] = "коричневого",
-				[56] = "голубого",
-				[57] = "оливкового",
-				[58] = "тёмнокрасного",
-				[59] = "синего",
-				[60] = "светлого",
-				[61] = "оранжевого",
-				[62] = "тёмнокрасного",
-				[63] = "серебристого",
-				[64] = "светлого",
-				[65] = "оливкового",
-				[66] = "коричневого",
-				[67] = "асфальтового",
-				[68] = "оливкового",
-				[69] = "кварцевого",
-				[70] = "тёмнокрасного",
-				[71] = "светлого",
-				[72] = "тёмносерого",
-				[73] = "оливкового",
-				[74] = "бордового",
-				[75] = "синего",
-				[76] = "оливкового",
-				[77] = "оранжевого",
-				[78] = "бордового",
-				[79] = "синего",
-				[80] = "розового",
-				[81] = "оливкового",
-				[82] = "тёмнокрасного",
-				[83] = "бирюзового",
-				[84] = "коричневого",
-				[85] = "розового",
-				[86] = "хвойного",
-				[87] = "синего",
-				[88] = "винного",
-				[89] = "оливкового",
-				[90] = "светлого",
-				[91] = "тёмносинего",
-				[92] = "тёмносерого",
-				[93] = "голубоватого",
-				[94] = "синего",
-				[95] = "синего",
-				[96] = "светлого",
-				[97] = "асфальтового",
-				[98] = "голубоватого",
-				[99] = "коричневого",
-				[100] = "бриллиантового",
-				[101] = "кобальтового",
-				[102] = "коричневого",
-				[103] = "синего",
-				[104] = "коричневого",
-				[105] = "серого",
-				[106] = "синего",
-				[107] = "оливкового",
-				[108] = "бриллиантового",
-				[109] = "серого",
-				[110] = "оливкового",
-				[111] = "серого",
-				[112] = "серого",
-				[113] = "коричневого",
-				[114] = "зелёного",
-				[115] = "тёмнокрасного",
-				[116] = "синего",
-				[117] = "бордового",
-				[118] = "голубого",
-				[119] = "коричневого",
-				[120] = "оливкового",
-				[121] = "бордового",
-				[122] = "тёмносерого",
-				[123] = "коричневого",
-				[124] = "тёмнокрасного",
-				[125] = "синего",
-				[126] = "розового",
-				[127] = "чёрного",
-				[128] = "зелёного",
-				[129] = "бордового",
-				[130] = "синего",
-				[131] = "коричневого",
-				[132] = "тёмнокрасного",
-				[133] = "чёрного",
-				[134] = "фиолетового",
-				[135] = "яркосинего",
-				[136] = "аметистового",
-				[137] = "зелёного",
-				[138] = "серого",
-				[139] = "пурпурного",
-				[140] = "светлого",
-				[141] = "тёмносерого",
-				[142] = "оливкового",
-				[143] = "фиолетового",
-				[144] = "фиолетового",
-				[145] = "зелёного",
-				[146] = "пурпурного",
-				[147] = "фиолетового",
-				[148] = "оливкового",
-				[149] = "тёмного",
-				[150] = "тёмнозелёного",
-				[151] = "зеленого",
-				[152] = "синего",
-				[153] = "зелёного",
-				[154] = "салатового",
-				[155] = "бирюзового",
-				[156] = "коричневого",
-				[157] = "светлого",
-				[158] = "оранжевого",
-				[159] = "коричневого",
-				[160] = "тёмнозелёного",
-				[161] = "винного",
-				[162] = "синего",
-				[163] = "графитового",
-				[164] = "чёрного",
-				[165] = "бирюзового",
-				[166] = "бирюзового",
-				[167] = "фиолетового",
-				[168] = "бордового",
-				[169] = "фиолетового",
-				[170] = "фиолетового",
-				[171] = "фиолетового",
-				[172] = "хвойного",
-				[173] = "коричневого",
-				[174] = "коричневого",
-				[175] = "коричневого",
-				[176] = "пурпурного",
-				[177] = "пурпурного",
-				[178] = "пурпурного",
-				[179] = "фиолетового",
-				[180] = "коричневого",
-				[181] = "красного",
-				[182] = "оранжевого",
-				[183] = "оливкового",
-				[184] = "голубого",
-				[185] = "чёрного",
-				[186] = "чёрного",
-				[187] = "зелёного",
-				[188] = "зелёного",
-				[189] = "зелёного",
-				[190] = "пурпурного",
-				[191] = "салатового",
-				[192] = "светлого",
-				[193] = "светлого",
-				[194] = "оливкового",
-				[195] = "оливкового",
-				[196] = "серого",
-				[197] = "оливкового",
-				[198] = "синего",
-				[199] = "оливкового",
-				[200] = "странного",
-				[201] = "синего",
-				[202] = "зелёного",
-				[203] = "синего",
-				[204] = "голубого",
-				[205] = "синего",
-				[206] = "тёмносинего",
-				[207] = "голубого",
-				[208] = "синего",
-				[209] = "синего",
-				[210] = "синего",
-				[211] = "фиолетового",
-				[212] = "оранжевого",
-				[213] = "светлого",
-				[214] = "оливкового",
-				[215] = "чёрного",
-				[216] = "оранжевого",
-				[217] = "бирюзового",
-				[218] = "бледно-розового",
-				[219] = "оранжевого",
-				[220] = "розового",
-				[221] = "оливкового",
-				[222] = "оранжевого",
-				[223] = "синего",
-				[224] = "бордового",
-				[225] = "хвойного",
-				[226] = "салатового",
-				[227] = "зелёного",
-				[228] = "бледного",
-				[229] = "салатового",
-				[230] = "бордового",
-				[231] = "коричневого",
-				[232] = "розового",
-				[233] = "пурпурного",
-				[234] = "тёмнозелёного",
-				[235] = "оливкового",
-				[236] = "хвойного",
-				[237] = "пурпурного",
-				[238] = "оранжевого",
-				[239] = "коричневого",
-				[240] = "голубого",
-				[241] = "зеленого",
-				[242] = "фиолетового",
-				[243] = "зелёного",
-				[244] = "коричневого",
-				[245] = "хвойного",
-				[246] = "голубого",
-				[247] = "синего",
-				[248] = "бордового",
-				[249] = "бордового",
-				[250] = "серого",
-				[251] = "серого",
-				[252] = "чёрного",
-				[253] = "серого",
-				[254] = "коричневого",
-				[255] = "синего"
-			}
-			local clr1, clr2 = getCarColours(closest_car)
-			local CarColorName = " " .. colorNames[clr1] .. " цвета"
-			local function getVehPlateNumberByCarHandle(car)
-				for i, plate in pairs(modules.arz_veh.cache) do
-					result, veh = sampGetCarHandleBySampVehicleId(plate.carID)
-					if result and veh == car then
-						return ' c номерами ' .. plate.number
-					end
-				end
-				return ''
-			end
-			return (getNameOfARZVehicleModel(getCarModel(closest_car)) .. CarColorName .. getVehPlateNumberByCarHandle(closest_car))
-		else
-			return 'транспортного средства'
-		end
-	end,
-	get_form_su = function()
-		return MODULE.SumMenu.form_su
-	end,
-	get_patrool_format_time = function()
-		local hours = math.floor(MODULE.Patrool.time / 3600)
-		local minutes = math.floor((MODULE.Patrool.time % 3600) / 60)
-		local secs = MODULE.Patrool.time % 60
-		if hours > 0 then
-			return string.format("%d часов %d минут %d секунд", hours, minutes, secs)
-		elseif minutes > 0 then
-			return string.format("%d минут %d секунд", minutes, secs)
-		else
-			return string.format("%d секунд(-ы)", secs)
-		end
-	end,
-	get_patrool_time = function()
-		local hours = math.floor(MODULE.Patrool.time / 3600)
-		local minutes = math.floor(( MODULE.Patrool.time % 3600) / 60)
-		local secs = MODULE.Patrool.time % 60
-		if hours > 0 then
-			return string.format("%02d:%02d:%02d", hours, minutes, secs)
-		else
-			return string.format("%02d:%02d", minutes, secs)
-		end
-	end,
-	get_patrool_code = function()
-		return MODULE.Patrool.code
-	end,
-	get_patrool_mark = function()
-		return MODULE.Patrool.mark .. '-' .. select(2, sampGetPlayerIdByCharHandle(PLAYER_PED))
-	end,
-	get_post_format_time = function()
-		local hours = math.floor(MODULE.Post.time / 3600)
-		local minutes = math.floor((MODULE.Post.time % 3600) / 60)
-		local secs = MODULE.Post.time % 60
-		if hours > 0 then
-			return string.format("%d часов %d минут %d секунд", hours, minutes, secs)
-		elseif minutes > 0 then
-			return string.format("%d минут %d секунд", minutes, secs)
-		else
-			return string.format("%d секунд(-ы)", secs)
-		end
-	end,
-	get_post_time = function()
-		local hours = math.floor(MODULE.Post.time / 3600)
-		local minutes = math.floor(( MODULE.Post.time % 3600) / 60)
-		local secs = MODULE.Post.time % 60
-		if hours > 0 then
-			return string.format("%02d:%02d:%02d", hours, minutes, secs)
-		else
-			return string.format("%02d:%02d", minutes, secs)
-		end
-	end,
-	get_post_code = function()
-		return MODULE.Post.code
-	end,
-	get_post_name = function()
-		return MODULE.Post.name
-	end,
-	get_car_units = function()
-		if isCharInAnyCar(PLAYER_PED) then
-			local car = storeCarCharIsInNoSave(PLAYER_PED)
-			local success, passengers = getNumberOfPassengers(car)
-			if IS_MOBILE and success and passengers == nil then
-				passengers = success
-			end
-			if success and passengers and tonumber(passengers) > 0 then
-				local my_passengers = {}
-				for k, v in ipairs(getAllChars()) do
-					local res, id = sampGetPlayerIdByCharHandle(v)
-					if res and id ~= select(2, sampGetPlayerIdByCharHandle(PLAYER_PED)) then
-						if isCharInAnyCar(v) then
-							if car == storeCarCharIsInNoSave(v) then
-								table.insert(my_passengers, id)
+				if success and passengers and tonumber(passengers) > 0 then
+					local my_passengers = {}
+					for k, v in ipairs(getAllChars()) do
+						local res, id = sampGetPlayerIdByCharHandle(v)
+						if res and id ~= select(2, sampGetPlayerIdByCharHandle(PLAYER_PED)) then
+							if isCharInAnyCar(v) then
+								if car == storeCarCharIsInNoSave(v) then
+									table.insert(my_passengers, id)
+								end
 							end
 						end
 					end
-				end
-				if #my_passengers ~= 0 then
-					local units = ''
-					for k, idd in ipairs(my_passengers) do
-						local nickname = sampGetPlayerNickname(idd)
-						local first_letter = nickname:sub(1, 1)
-						local last_name = nickname:match(".*_(.*)")
-						if last_name then
-							units = units .. first_letter .. "." .. last_name .. ' '
-						else
-							units = units .. nickname .. ' '
+					if #my_passengers ~= 0 then
+						local units = ''
+						for _, idd in ipairs(my_passengers) do
+							local nickname = sampGetPlayerNickname(idd)
+							local first_letter = nickname:sub(1, 1)
+							local last_name = nickname:match(".*_(.*)")
+							if last_name then
+								units = units .. first_letter .. "." .. last_name .. ' '
+							else
+								units = units .. nickname .. ' '
+							end
 						end
+						return units
+					else
+						return 'Нету'
 					end
-					return units
 				else
-					--sampAddChatMessage('[Arizona Helper] В вашем авто нету ваших напарников!', -1)
 					return 'Нету'
 				end
 			else
 				return 'Нету'
 			end
-		else
-			--sampAddChatMessage('[Arizona Helper] Вы не находитесь в авто, невозможно получить ваших напарников!', -1)
-			return 'Нету'
 		end
-	end,
-	switchCarSiren = function()
-		if isCharInAnyCar(PLAYER_PED) then
-			local car = storeCarCharIsInNoSave(PLAYER_PED)
-			if getDriverOfCar(car) == PLAYER_PED then
-				switchCarSiren(car, not isCarSirenOn(car))
-				return '/me ' .. (isCarSirenOn(car) and 'включает' or 'выключает') .. ' мигалки в своём транспортном средстве'
+	},
+	{
+		key = "switchCarSiren",
+		description = "Переключить мигалки",
+		category = "Транспорт",
+		mode = "all",
+		func = function()
+			if isCharInAnyCar(PLAYER_PED) then
+				local car = storeCarCharIsInNoSave(PLAYER_PED)
+				if getDriverOfCar(car) == PLAYER_PED then
+					switchCarSiren(car, not isCarSirenOn(car))
+					return '/me ' .. (isCarSirenOn(car) and 'включает' or 'выключает') .. ' мигалки'
+				else
+					return (isCarSirenOn(car) and 'Выключи' or 'Врубай') .. ' мигалки!'
+				end
 			else
-				--sampAddChatMessage('[Arizona Helper] {ffffff}Вы не за рулём!', 0x009EFF)
-				return (isCarSirenOn(car) and 'Выключи' or 'Врубай') .. ' мигалки!'
+				return "Кхм"
 			end
-		else
-			--sampAddChatMessage('[Arizona Helper] {ffffff}Вы не в автомобиле!', 0x009EFF)
-			return "Кхм"
 		end
-	end,
-	-- LC
-	get_price_avto1 = function() return settings.lc.price.avto1 end,
-	get_price_avto2 = function() return settings.lc.price.avto2 end,
-	get_price_avto3 = function() return settings.lc.price.avto3 end,
-	get_price_moto1 = function() return settings.lc.price.moto1 end,
-	get_price_moto2 = function() return settings.lc.price.moto2 end,
-	get_price_moto3 = function() return settings.lc.price.moto3 end,
-	get_price_fish1 = function() return settings.lc.price.fish1 end,
-	get_price_fish2 = function() return settings.lc.price.fish2 end,
-	get_price_fish3 = function() return settings.lc.price.fish3 end,
-	get_price_swim1 = function() return settings.lc.price.swim1 end,
-	get_price_swim2 = function() return settings.lc.price.swim2 end,
-	get_price_swim3 = function() return settings.lc.price.swim3 end,
-	get_price_gun1 = function() return settings.lc.price.gun1 end,
-	get_price_gun2 = function() return settings.lc.price.gun2 end,
-	get_price_gun3 = function() return settings.lc.price.gun3 end,
-	get_price_hunt1 = function() return settings.lc.price.hunt1 end,
-	get_price_hunt2 = function() return settings.lc.price.hunt2 end,
-	get_price_hunt3 = function() return settings.lc.price.hunt3 end,
-	get_price_klad1 = function() return settings.lc.price.klad1 end,
-	get_price_klad2 = function() return settings.lc.price.klad2 end,
-	get_price_klad3 = function() return settings.lc.price.klad3 end,
-	get_price_taxi1 = function() return settings.lc.price.taxi1 end,
-	get_price_taxi2 = function() return settings.lc.price.taxi2 end,
-	get_price_taxi3 = function() return settings.lc.price.taxi3 end,
-	get_price_mexa1 = function() return settings.lc.price.mexa1 end,
-	get_price_mexa2 = function() return settings.lc.price.mexa2 end,
-	get_price_mexa3 = function() return settings.lc.price.mexa3 end,
-	get_price_fly1 = function() return settings.lc.price.fly1 end,
-	get_price_fly2 = function() return settings.lc.price.fly2 end,
-	get_price_fly3 = function() return settings.lc.price.fly3 end,
-	-- MH
-	get_price_heal = function()
-		if sampGetCurrentServerName():find("Vice City") then
-			return settings.mh.price.heal_vc
-		else
-			return settings.mh.price.heal
+	},
+	-- Пост
+	{
+		key = "get_post_name",
+		description = "Название вашего поста",
+		category = "Пост",
+		mode = "all",
+		func = function() return MODULE.Post.name end
+	},
+	{
+		key = "get_post_code",
+		description = "Ваш текущий тен-код",
+		category = "Пост",
+		mode = "all",
+		func = function() return MODULE.Post.code end
+	},
+	{
+		key = "get_post_time",
+		description = "Время на посту",
+		category = "Пост",
+		mode = "all",
+		func = function()
+			local hours = math.floor(MODULE.Post.time / 3600)
+			local minutes = math.floor(( MODULE.Post.time % 3600) / 60)
+			local secs = MODULE.Post.time % 60
+			if hours > 0 then
+				return string.format("%02d:%02d:%02d", hours, minutes, secs)
+			else
+				return string.format("%02d:%02d", minutes, secs)
+			end
 		end
-	end,
-	get_price_actorheal = function()
-		if u8(sampGetCurrentServerName()):find("Vice City") then
-			return settings.mh.price.healactor_vc
-		else
-			return settings.mh.price.healactor
+	},
+	{
+		key = "get_post_format_time",
+		description = "Время на посту словами",
+		category = "Пост",
+		mode = "all",
+		func = function()
+			local hours = math.floor(MODULE.Post.time / 3600)
+			local minutes = math.floor((MODULE.Post.time % 3600) / 60)
+			local secs = MODULE.Post.time % 60
+			if hours > 0 then
+				return string.format("%d часов %d минут %d секунд", hours, minutes, secs)
+			elseif minutes > 0 then
+				return string.format("%d минут %d секунд", minutes, secs)
+			else
+				return string.format("%d секунд(-ы)", secs)
+			end
 		end
-	end,
-	get_price_medosm = function() return settings.mh.price.medosm end,
-	get_price_mticket = function() return settings.mh.price.mticket end,
-	get_price_healbad = function() return settings.mh.price.healbad end,
-	get_price_ant = function() return settings.mh.price.ant end,
-	get_price_recept = function() return settings.mh.price.recept end,
-	get_price_med7 = function() return settings.mh.price.med7 end,
-	get_price_med14 = function() return settings.mh.price.med14 end,
-	get_price_med30 = function() return settings.mh.price.med30 end,
-	get_price_med60 = function() return settings.mh.price.med60 end,
-	get_medcard_days = function() 
-		return MODULE.MedCard.days[0]
-	end,
-	get_medcard_status = function() 
-		return MODULE.MedCard.status[0]
-	end,
-	get_recepts = function()
-		return MODULE.Recept.recepts[0]
-	end,
-	get_ants = function()
-		return MODULE.Antibiotik.ants[0]
-	end,
-	get_medcard_price = function()
-		if MODULE.MedCard.days[0] == 0 then
+	},
+	-- Полиция
+	{
+		key = "get_form_su",
+		description = "Запрос на выдачу розыска",
+		category = "Полиция",
+		mode = "police",
+		func = function() return MODULE.SumMenu.form_su end
+	},
+	{
+		key = "get_patrool_mark",
+		description = "Макрировка патруля",
+		category = "Полиция",
+		mode = "police",
+		func = function()
+			if IS_MOBILE then
+				return MODULE.Patrool.mark .. '-' .. MODULE.MOBILE_PLAYER_ID
+			else
+				return MODULE.Patrool.mark .. '-' .. select(2, sampGetPlayerIdByCharHandle(PLAYER_PED))
+			end
+		end
+	},
+	{
+		key = "get_patrool_code",
+		description = "Ваш текущий тен-код",
+		category = "Полиция",
+		mode = "police",
+		func = function() return MODULE.Patrool.code end
+	},
+	{
+		key = "get_patrool_time",
+		description = "Время патруля",
+		category = "Полиция",
+		mode = "police",
+		func = function()
+			local hours = math.floor(MODULE.Patrool.time / 3600)
+			local minutes = math.floor((MODULE.Patrool.time % 3600) / 60)
+			local secs = MODULE.Patrool.time % 60
+			if hours > 0 then
+				return string.format("%02d:%02d:%02d", hours, minutes, secs)
+			else
+				return string.format("%02d:%02d", minutes, secs)
+			end
+		end
+	},
+	{
+		key = "get_patrool_format_time",
+		description = "Время патруля словами",
+		category = "Полиция",
+		mode = "police",
+		func = function()
+			local hours = math.floor(MODULE.Patrool.time / 3600)
+			local minutes = math.floor((MODULE.Patrool.time % 3600) / 60)
+			local secs = MODULE.Patrool.time % 60
+			if hours > 0 then
+				return string.format("%d часов %d минут %d секунд", hours, minutes, secs)
+			elseif minutes > 0 then
+				return string.format("%d минут %d секунд", minutes, secs)
+			else
+				return string.format("%d секунд(-ы)", secs)
+			end
+		end
+	},
+	-- БОЛЬНИЦА
+	{
+		key = "get_price_heal",
+		description = "Цена лечения игрока",
+		category = "Больница",
+		mode = "hospital",
+		func = function()
+			if sampGetCurrentServerName():find("Vice City") then
+				return settings.mh.price.heal_vc
+			else
+				return settings.mh.price.heal
+			end
+		end
+	},
+	{
+		key = "get_price_actorheal",
+		description = "Цена лечения охранника",
+		category = "Больница",
+		mode = "hospital",
+		func = function()
+			if u8(sampGetCurrentServerName()):find("Vice City") then
+				return settings.mh.price.healactor_vc
+			else
+				return settings.mh.price.healactor
+			end
+		end
+	},
+	{
+		key = "get_price_medosm",
+		description = "Цена медосмотра",
+		category = "Больница",
+		mode = "hospital",
+		func = function()
+			return settings.mh.price.medosm
+		end
+	},
+	{
+		key = "get_price_mticket",
+		description = "Цена военного билета",
+		category = "Больница",
+		mode = "hospital",
+		func = function()
+			return settings.mh.price.mticket
+		end
+	},
+	{
+		key = "get_price_healbad",
+		description = "Цена лечения от ломки",
+		category = "Больница",
+		mode = "hospital",
+		func = function()
+			return settings.mh.price.healbad
+		end
+	},
+	{
+		key = "get_price_ant",
+		description = "Цена антибиотиков",
+		category = "Больница",
+		mode = "hospital",
+		func = function()
+			return settings.mh.price.ant
+		end
+	},
+	{
+		key = "get_price_recept",
+		description = "Цена рецепта",
+		category = "Больница",
+		mode = "hospital",
+		func = function()
+			return settings.mh.price.recept
+		end
+	},
+	{
+		key = "get_price_med7",
+		description = "Цена медкарты (7 дней)",
+		category = "Больница",
+		mode = "hospital",
+		func = function()
 			return settings.mh.price.med7
-		elseif MODULE.MedCard.days[0] == 1 then
-			return settings.mh.price.med14
-		elseif MODULE.MedCard.days[0] == 2 then
-			return settings.mh.price.med30
-		elseif MODULE.MedCard.days[0] == 3 then
-			return settings.mh.price.med60
-		else
-			return 1000
 		end
-	end,
+	},
+	{
+		key = "get_price_med14",
+		description = "Цена медкарты (14 дней)",
+		category = "Больница",
+		mode = "hospital",
+		func = function()
+			return settings.mh.price.med14
+		end
+	},
+	{
+		key = "get_price_med30",
+		description = "Цена медкарты (30 дней)",
+		category = "Больница",
+		mode = "hospital",
+		func = function()
+			return settings.mh.price.med30
+		end
+	},
+	{
+		key = "get_price_med60",
+		description = "Цена медкарты (60 дней)",
+		category = "Больница",
+		mode = "hospital",
+		func = function()
+			return settings.mh.price.med60
+		end
+	},
+	{
+		key = "get_medcard_days",
+		description = "Выбранный срок медкарты",
+		category = "Больница",
+		mode = "hospital",
+		func = function()
+			return MODULE.MedCard.days[0]
+		end
+	},
+	{
+		key = "get_medcard_status",
+		description = "Статус медкарты",
+		category = "Больница",
+		mode = "hospital",
+		func = function()
+			return MODULE.MedCard.status[0]
+		end
+	},
+	{
+		key = "get_medcard_price",
+		description = "Цена выбранной медкарты",
+		category = "Больница",
+		mode = "hospital",
+		func = function()
+			if MODULE.MedCard.days[0] == 0 then
+				return settings.mh.price.med7
+			elseif MODULE.MedCard.days[0] == 1 then
+				return settings.mh.price.med14
+			elseif MODULE.MedCard.days[0] == 2 then
+				return settings.mh.price.med30
+			elseif MODULE.MedCard.days[0] == 3 then
+				return settings.mh.price.med60
+			else
+				return 1000
+			end
+		end
+	},
+	{
+		key = "get_recepts",
+		description = "Количество рецептов",
+		category = "Больница",
+		mode = "hospital",
+		func = function()
+			return MODULE.Recept.recepts[0]
+		end
+	},
+	{
+		key = "get_ants",
+		description = "Количество антибиотиков",
+		category = "Больница",
+		mode = "hospital",
+		func = function()
+			return MODULE.Antibiotik.ants[0]
+		end
+	},
+	-- Лицензии
+	{
+		key = "get_price_avto1",
+		description = "Цена лицензии авто (1)",
+		category = "Лицензии",
+		mode = "lc",
+		func = function() return settings.lc.price.avto1 end
+	},
+	{
+		key = "get_price_avto2",
+		description = "Цена лицензии авто (2)",
+		category = "Лицензии",
+		mode = "lc",
+		func = function() return settings.lc.price.avto2 end
+	},
+	{
+		key = "get_price_avto3",
+		description = "Цена лицензии авто (3)",
+		category = "Лицензии",
+		mode = "lc",
+		func = function() return settings.lc.price.avto3 end
+	},
+	{
+		key = "get_price_moto1",
+		description = "Цена лицензии мото (1)",
+		category = "Лицензии",
+		mode = "lc",
+		func = function() return settings.lc.price.moto1 end
+	},
+	{
+		key = "get_price_moto2",
+		description = "Цена лицензии мото (2)",
+		category = "Лицензии",
+		mode = "lc",
+		func = function() return settings.lc.price.moto2 end
+	},
+	{
+		key = "get_price_moto3",
+		description = "Цена лицензии мото (3)",
+		category = "Лицензии",
+		mode = "lc",
+		func = function() return settings.lc.price.moto3 end
+	},
+	{
+		key = "get_price_fish1",
+		description = "Цена лицензии рыбалки (1)",
+		category = "Лицензии",
+		mode = "lc",
+		func = function() return settings.lc.price.fish1 end
+	},
+	{
+		key = "get_price_fish2",
+		description = "Цена лицензии рыбалки (2)",
+		category = "Лицензии",
+		mode = "lc",
+		func = function() return settings.lc.price.fish2 end
+	},
+	{
+		key = "get_price_fish3",
+		description = "Цена лицензии рыбалки (3)",
+		category = "Лицензии",
+		mode = "lc",
+		func = function() return settings.lc.price.fish3 end
+	},
+	{
+		key = "get_price_swim1",
+		description = "Цена лицензии плавания (1)",
+		category = "Лицензии",
+		mode = "lc",
+		func = function() return settings.lc.price.swim1 end
+	},
+	{
+		key = "get_price_swim2",
+		description = "Цена лицензии плавания (2)",
+		category = "Лицензии",
+		mode = "lc",
+		func = function() return settings.lc.price.swim2 end
+	},
+	{
+		key = "get_price_swim3",
+		description = "Цена лицензии плавания (3)",
+		category = "Лицензии",
+		mode = "lc",
+		func = function() return settings.lc.price.swim3 end
+	},
+	{
+		key = "get_price_gun1",
+		description = "Цена лицензии оружия (1)",
+		category = "Лицензии",
+		mode = "lc",
+		func = function() return settings.lc.price.gun1 end
+	},
+	{
+		key = "get_price_gun2",
+		description = "Цена лицензии оружия (2)",
+		category = "Лицензии",
+		mode = "lc",
+		func = function() return settings.lc.price.gun2 end
+	},
+	{
+		key = "get_price_gun3",
+		description = "Цена лицензии оружия (3)",
+		category = "Лицензии",
+		mode = "lc",
+		func = function() return settings.lc.price.gun3 end
+	},
+	{
+		key = "get_price_hunt1",
+		description = "Цена лицензии охоты (1)",
+		category = "Лицензии",
+		mode = "lc",
+		func = function() return settings.lc.price.hunt1 end
+	},
+	{
+		key = "get_price_hunt2",
+		description = "Цена лицензии охоты (2)",
+		category = "Лицензии",
+		mode = "lc",
+		func = function() return settings.lc.price.hunt2 end
+	},
+	{
+		key = "get_price_hunt3",
+		description = "Цена лицензии охоты (3)",
+		category = "Лицензии",
+		mode = "lc",
+		func = function() return settings.lc.price.hunt3 end
+	},
+	{
+		key = "get_price_klad1",
+		description = "Цена лицензии на клады (1)",
+		category = "Лицензии",
+		mode = "lc",
+		func = function() return settings.lc.price.klad1 end
+	},
+	{
+		key = "get_price_klad2",
+		description = "Цена лицензии на клады (2)",
+		category = "Лицензии",
+		mode = "lc",
+		func = function() return settings.lc.price.klad2 end
+	},
+	{
+		key = "get_price_klad3",
+		description = "Цена лицензии на клады (3)",
+		category = "Лицензии",
+		mode = "lc",
+		func = function() return settings.lc.price.klad3 end
+	},
+	{
+		key = "get_price_taxi1",
+		description = "Цена лицензии такси (1)",
+		category = "Лицензии",
+		mode = "lc",
+		func = function() return settings.lc.price.taxi1 end
+	},
+	{
+		key = "get_price_taxi2",
+		description = "Цена лицензии такси (2)",
+		category = "Лицензии",
+		mode = "lc",
+		func = function() return settings.lc.price.taxi2 end
+	},
+	{
+		key = "get_price_taxi3",
+		description = "Цена лицензии такси (3)",
+		category = "Лицензии",
+		mode = "lc",
+		func = function() return settings.lc.price.taxi3 end
+	},
+	{
+		key = "get_price_mexa1",
+		description = "Цена лицензии механика (1)",
+		category = "Лицензии",
+		mode = "lc",
+		func = function() return settings.lc.price.mexa1 end
+	},
+	{
+		key = "get_price_mexa2",
+		description = "Цена лицензии механика (2)",
+		category = "Лицензии",
+		mode = "lc",
+		func = function() return settings.lc.price.mexa2 end
+	},
+	{
+		key = "get_price_mexa3",
+		description = "Цена лицензии механика (3)",
+		category = "Лицензии",
+		mode = "lc",
+		func = function() return settings.lc.price.mexa3 end
+	},
+	{
+		key = "get_price_fly1",
+		description = "Цена лицензии пилота (1)",
+		category = "Лицензии",
+		mode = "lc",
+		func = function() return settings.lc.price.fly1 end
+	},
+	{
+		key = "get_price_fly2",
+		description = "Цена лицензии пилота (2)",
+		category = "Лицензии",
+		mode = "lc",
+		func = function() return settings.lc.price.fly2 end
+	},
+	{
+		key = "get_price_fly3",
+		description = "Цена лицензии пилота (3)",
+		category = "Лицензии",
+		mode = "lc",
+		func = function() return settings.lc.price.fly3 end
+	},
+	{
+		key = "get_price_train1",
+		description = "Цена лицензии машиниста",
+		category = "Лицензии",
+		mode = "lc",
+		func = function() return settings.lc.price.train1 end
+	},
 }
--- временно, позже вообще систему тегов поменяю
-local binder_tags_text = [[
-{my_id} - Ваш ID
-{my_nick} - Ваш Никнейм 
-{my_rp_nick} - Ваш Никнейм без _
-{my_ru_nick} - Ваше Имя и Фамилия
-{my_doklad_nick} - Первая буква вашего имени и фамилия
-
-{fraction} - Ваша фракция
-{fraction_rank} - Ваша фракционная должность
-{fraction_tag} - Тег вашей фракции
-
-{sex} - Добавляет букву "а" если в хелпере указан женский пол
-
-{get_time} - Получить текущее время
-{get_city} - Получить текущий город
-{get_square} - Получить текущий квадрат
-{get_area} - Получить текущий район
-{get_nearest_car} - Получить модель ближайшего к вам авто
-{get_drived_car} - Получить модель ближайшего к вам авто с водителем
-
-{get_nick({arg_id})} - получить Никнейм из аргумента ID игрока
-{get_rp_nick({arg_id})} - получить Никнейм без символа _ из аргумента ID игрока
-{get_ru_nick({arg_id})} - получить Никнейм на кирилице из аргумента ID игрока 
-
-{get_price_heal} - Цена лечения пациентов
-{get_price_healbad} - Цена лечения от наркозависимости
-{get_price_actorheal} - Цена лечения охранников
-{get_price_medosm} - Цена мед.осмотра для пилота
-{get_price_mticket} - Цена обследования военного билета
-{get_price_ant} - Цена антибиотика   
-{get_price_recept} - Цена рецепта
-{get_price_med7} - Цена медккарты на 7 дней   
-{get_price_med14} - Цена медккарты на 14 дней
-{get_price_med30} - Цена медккарты на 30 дней   
-{get_price_med60} - Цена медккарты на 60 дней
-
-{show_medcard_menu} - Открыть меню мед.карты
-{get_medcard_days} - Получить номер выбранного кол-ва дней
-{get_medcard_status} - Получить номер выбранного статуса
-{get_medcard_price} - Получить цену мед.карты исходя из дней
-{show_recept_menu} - Открыть меню выдачи рецептов
-{get_recepts} - Получить кол-во выбранных рецептов
-{show_ant_menu} - Открыть меню выдачи антибиотиков 
-{get_ants} - Получить кол-во выбранных антибиотиков
-{lmenu_vc_vize} - Авто-выдача визы Vice City
-{give_platoon} - Назначить взвод игроку
-{show_rank_menu} - Открыть меню выдачи рангов
-{get_rank} - Получить выбранный ранг
-
-{pause} - Поставить отыгровку команды на паузу и ожидать действия
-]]
+for _, tag in ipairs(MODULE.Binder.tags) do MODULE.Binder.tag[tag.key] = tag.func end
 ----------------------------------------- MoonMonet & Colors -------------------------------------
 function rgbToHex(rgb)
 	return string.format("%02X%02X%02X", bit.band(bit.rshift(rgb, 16), 0xFF), bit.band(bit.rshift(rgb, 8), 0xFF), bit.band(rgb, 0xFF))
@@ -2785,7 +2628,7 @@ if hotkey_no_errors and not isMode('') then
 			end
 		end)
 		LeaderFastMenuHotKey = hotkey.RegisterHotKey('Open LeaderFastMenu', false, decodeJson(settings.general.bind_leader_fastmenu), function() 
-			if settings.player_info.fraction_rank_number >= 9 then 
+			if modules.player.data.fraction_rank_number >= 9 then 
 				local valid, ped = getCharPlayerIsTargeting(PLAYER_HANDLE)
 				if valid and doesCharExist(ped) then
 					local result, id = sampGetPlayerIdByCharHandle(ped)
@@ -2799,14 +2642,18 @@ if hotkey_no_errors and not isMode('') then
 			if MODULE.Binder.state.isPause and MODULE.CommandPause.Window[0] then
 				MODULE.Binder.state.isPause = false
 				MODULE.CommandPause.Window[0] = false
-			elseif ((settings.player_info.fraction_rank_number >= 9) and (MODULE.GiveRank.Window[0])) then
-				give_rank()
-			elseif ((isMode('hospital')) and (MODULE.HealChat.bool)) then
-				if (MODULE.HealChat.player_id ~= nil and not sampIsDialogActive() and not sampIsChatInputActive() and not isPauseMenuActive() and not isSampfuncsConsoleActive()) then
-					find_and_use_command("/heal {arg_id}", MODULE.HealChat.player_id)
-					MODULE.HealChat.bool = false
-					MODULE.HealChat.player_id = nil
-				end
+			elseif modules.player.data.fraction_rank_number >= 9 and MODULE.GiveRank.Window[0] then
+				MODULE.GiveRank.Window[0] = false
+			elseif MODULE.MedCard.Window[0] then
+				MODULE.MedCard.Window[0] = false
+			elseif MODULE.Recept.Window[0] then
+				MODULE.Recept.Window[0] = false
+			elseif MODULE.Antibiotik.Window[0] then
+				MODULE.Antibiotik.Window[0] = false
+			elseif MODULE.HealChat.bool and MODULE.HealChat.player_id and not sampIsCursorActive() then
+				find_and_use_command("/heal {id}", MODULE.HealChat.player_id)
+				MODULE.HealChat.bool = false
+				MODULE.HealChat.player_id = nil
 			end
 		end)
 		for _, command in ipairs(modules.commands.data.commands.my) do
@@ -2823,9 +2670,7 @@ if hotkey_no_errors and not isMode('') then
 		end
 		if command.arg == "" and command.bind ~= nil and command.bind ~= '{}' and command.bind ~= '[]' then
 			hotkeys[hotkeyName] = hotkey.RegisterHotKey(hotkeyName, false, decodeJson(command.bind), function()
-				if (not (sampIsChatInputActive() or sampIsDialogActive() or isSampfuncsConsoleActive())) then
-					sampProcessChatInput('/' .. command.cmd)
-				end
+				if not sampIsCursorActive() then sampProcessChatInput('/' .. command.cmd) end
 			end)
 			print('Создан хоткей для команды /' .. command.cmd .. ' на клавишу ' .. getNameKeysFrom(command.bind))
 			sampAddChatMessage('[Arizona Helper] {ffffff}Создан хоткей для команды ' .. message_color_hex .. '/' .. command.cmd .. ' {ffffff}на клавишу '  .. message_color_hex .. getNameKeysFrom(command.bind), message_color)
@@ -2836,9 +2681,9 @@ if hotkey_no_errors and not isMode('') then
 		if msg == 0x0005 then hotkey.ActiveKeys = {} end
 	end)
 end
--------------------------------------------- RP GUNS INIT ----------------------------------------
+---------------------------------------------- RP GUNS  ------------------------------------------
 function initialize_guns()
-	local isFemale = (settings.player_info.sex == "Женщина")
+	local isFemale = (modules.player.data.sex == "Женщина")
 	local data = modules.rpgun.data
 	data.byId = {}
     data.gunActions = {on = {}, off = {}, partOn = {}, partOff = {}}
@@ -2881,6 +2726,8 @@ function handleNewWeapon(weaponId)
     initialize_guns()
 end
 function processWeaponChange(oldGun, nowGun)
+	if not isExistsWeapon(oldGun) then handleNewWeapon(oldGun) end
+	if not isExistsWeapon(nowGun) then handleNewWeapon(nowGun) end
     if not modules.rpgun.data.gunActions.off[oldGun] or not modules.rpgun.data.gunActions.on[nowGun] then
         sampAddChatMessage('[Arizona Helper | Ассистент] {ffffff}Инициализация оружия...', message_color)
 		initialize_guns()
@@ -2894,47 +2741,28 @@ function processWeaponChange(oldGun, nowGun)
     elseif nowGun == 0 and not isEnableWeapon(oldGun) then
         return
     elseif not isEnableWeapon(oldGun) and isEnableWeapon(nowGun) then
-        sampSendChat(string.format("/me %s %s %s",
-            actions.on[nowGun],
-            get_name_weapon(nowGun),
-            actions.partOn[nowGun]
-        ))
+        sampSendChat(string.format("/me %s %s %s", actions.on[nowGun], get_name_weapon(nowGun), actions.partOn[nowGun]))
     elseif isEnableWeapon(oldGun) and not isEnableWeapon(nowGun) then
-        sampSendChat(string.format("/me %s %s %s",
-            actions.off[oldGun],
-           	get_name_weapon(oldGun),
-            actions.partOff[oldGun]
-        ))
+        sampSendChat(string.format("/me %s %s %s", actions.off[oldGun], get_name_weapon(oldGun), actions.partOff[oldGun]))
     elseif oldGun == 0 then
-        sampSendChat(string.format("/me %s %s %s",
-            actions.on[nowGun],
-            get_name_weapon(nowGun),
-            actions.partOn[nowGun]
-        ))
+        sampSendChat(string.format("/me %s %s %s", actions.on[nowGun], get_name_weapon(nowGun), actions.partOn[nowGun]))
     elseif nowGun == 0 then
-        sampSendChat(string.format("/me %s %s %s",
-            actions.off[oldGun],
-            get_name_weapon(oldGun),
-            actions.partOff[oldGun]
-        ))
-    else
-		if isEnableWeapon(oldGun) and isEnableWeapon(nowGun) then
-			sampSendChat(string.format("/me %s %s %s, после чего %s %s %s",
-				actions.off[oldGun],
-				get_name_weapon(oldGun),
-				actions.partOff[oldGun],
-				actions.on[nowGun],
-				get_name_weapon(nowGun),
-				actions.partOn[nowGun]
-			))
-		end
-        
+        sampSendChat(string.format("/me %s %s %s", actions.off[oldGun], get_name_weapon(oldGun), actions.partOff[oldGun]))
+    elseif isEnableWeapon(oldGun) and isEnableWeapon(nowGun) then
+		sampSendChat(string.format("/me %s %s %s, после чего %s %s %s",
+			actions.off[oldGun],
+			get_name_weapon(oldGun),
+			actions.partOff[oldGun],
+			actions.on[nowGun],
+			get_name_weapon(nowGun),
+			actions.partOn[nowGun]
+		))
     end
 end
--------------------------------------------- Variables ------------------------------------------
+------------------------------------------------ Variables --------------------------------------- 
 local PlayerID = nil
 local player_id = nil
-------------------------------------------- Functions --------------------------------------------
+------------------------------------------------ Functions ---------------------------------------
 function main()
 
 	if not isSampLoaded() or not isSampfuncsLoaded() then return end
@@ -2942,7 +2770,7 @@ function main()
 
 	check_resourses()
 
-	deleteOldHelpers()
+	delete_old_helpers()
 
 	if settings.general.fraction_mode == '' then
 		repeat wait(0) until sampIsLocalPlayerSpawned()
@@ -2956,11 +2784,25 @@ function main()
 	
 	initialize_commands()
 
-	if ((not IS_MOBILE) and hotkey_no_errors) then loadHotkeys() end
+	if hotkey_no_errors then loadHotkeys() else render_buttons() end
 
 	welcome_message()
 	
 	check_update()
+
+	-- небольшое отслежвание для статистики, ничего личного (версия, сервер, мобайл/пк)
+	lua_thread.create(function()
+        pcall(
+			require('requests').request,
+			"POST",
+            "https://mtgmods.duckdns.org/api/v1/launch",
+            {
+				headers = {["Content-Type"] = "application/json"},
+                data = encode_table({server_id = getServerNumber(), device_type = IS_MOBILE and 1 or 0, version = thisScript().version}),
+                timeout = 3
+            }
+        )
+    end)
 
 	while true do
 		wait(0)
@@ -2977,32 +2819,27 @@ function main()
 			MODULE.Post.time = os.difftime(os.time(), MODULE.Post.start_time)
 		end
 
-		if (isMode('police') or isMode('fbi')) then
+		if isMode('police') or isMode('fbi') then
 			if MODULE.Patrool.active then
 				MODULE.Patrool.time = os.difftime(os.time(), MODULE.Patrool.start_time)
-			end
-			if MODULE.Patrool.active and isCharInAnyCar(PLAYER_PED) and settings.mj.auto_change_code_siren then
-				local currentSirenState = isCarSirenOn(storeCarCharIsInNoSave(PLAYER_PED))
-				if firstCheck then
-					lastSirenState = currentSirenState
-					firstCheck = false
-				end
-				if currentSirenState ~= lastSirenState then
-					lastSirenState = currentSirenState
-					if currentSirenState then
-						sampAddChatMessage("[Arizona Helper | Ассистент] {ffffff}В вашем т/с была включена сирена, изменяю ситуационный код на CODE 3!", message_color)
-						MODULE.Patrool.ComboCode[0] = 4
-						MODULE.Patrool.code = 'CODE 3'
-					else
-						sampAddChatMessage("[Arizona Helper | Ассистент] {ffffff}В вашем т/с была отключена сирена, изменяю ситуационный код на CODE 4.", message_color)
-						MODULE.Patrool.ComboCode[0] = 5
-						MODULE.Patrool.code = 'CODE 4'
+				if settings.mj.auto_change_code_siren and isCharInAnyCar(PLAYER_PED) then
+					local currentSirenState = isCarSirenOn(storeCarCharIsInNoSave(PLAYER_PED))
+					if firstCheck then
+						lastSirenState = currentSirenState
+						firstCheck = false
+					end
+					if currentSirenState ~= lastSirenState then
+						lastSirenState = currentSirenState
+						local newCode = currentSirenState and {'CODE 3', 4} or {'CODE 4', 5}
+						sampAddChatMessage("[Arizona Helper | Ассистент] {ffffff}Сирена " .. (currentSirenState and "включена, установлен тен-код CODE 3!" or "выключена, установлен тен-код CODE 4."), message_color)
+						MODULE.Patrool.ComboCode[0] = newCode[2]
+						MODULE.Patrool.code = newCode[1]
 					end
 				end
-			end
+			end	
 		end
 
-		if (isMode('fd')) then
+		if isMode('fd') then
 			if MODULE.Fires.isDialog and MODULE.Fires.dialogId ~= -1 then
 				local result, button, list, input = sampHasDialogRespond(999)
 				if result and button ~= -1 and list ~= -1 then
@@ -3014,15 +2851,13 @@ function main()
 			end
 		end
 
-		if (settings.general.rp_guns) and (modules.rpgun.data.nowGun ~= getCurrentCharWeapon(PLAYER_PED)) then
-            modules.rpgun.data.oldGun = modules.rpgun.data.nowGun
-            modules.rpgun.data.nowGun = getCurrentCharWeapon(PLAYER_PED)
-            if not isExistsWeapon(modules.rpgun.data.oldGun) then
-                handleNewWeapon(modules.rpgun.data.oldGun)
-            elseif not isExistsWeapon(modules.rpgun.data.nowGun) then
-                handleNewWeapon(modules.rpgun.data.nowGun)
-            end
-            processWeaponChange(modules.rpgun.data.oldGun, modules.rpgun.data.nowGun)
+		if settings.general.rp_guns then
+			local current = getCurrentCharWeapon(PLAYER_PED)
+			if modules.rpgun.data.nowGun ~= current then
+				modules.rpgun.data.oldGun = modules.rpgun.data.nowGun
+				modules.rpgun.data.nowGun = current
+				processWeaponChange(modules.rpgun.data.oldGun, current)
+			end
         end
 		
 		if (settings.general.cruise_control) then
@@ -3032,14 +2867,14 @@ function main()
 					MODULE.CruiseControl.point = {x = x, y = y, z = z}
 					MODULE.CruiseControl.wait_point = false
 					sampAddChatMessage('[Arizona Helper] {ffffff}Координаты места назначения успешно получены!', message_color)
-					while (isGamePaused() or isPauseMenuActive()) do wait(0) end
+					while isGamePaused() or isPauseMenuActive() do wait(0) end
 					lua_thread.create(function()
 						sampSendChat('/me включает в своём тс адаптивный CRUISE CONTROL и настраивает GPS навигатор')
 						wait(1500)
 						sampSendChat('/do На экране загорается надпись "GPS маршрут успешно проложен, можно ехать".')
 						MODULE.CruiseControl.active = true 
 						wait(2000)
-						sampSendChat('/do ' .. MODULE.Binder.tags.my_ru_nick() .. ' держит руки на руле, CRUISE CONTROL поддерживает скорость тс.')
+						sampSendChat('/do ' .. MODULE.Binder.tag.my_ru_nick() .. ' держит руки на руле, CRUISE CONTROL поддерживает скорость тс.')
 					end)
 				end
 			end
@@ -3071,12 +2906,14 @@ function main()
 
 end
 function load_modules()
+	load_module('player')
 	load_module('commands')
+	load_module('buttons')
 	load_module('departament')
 	load_module('notes')
 	load_module('rpgun')
 	load_module('arz_veh')
-	cacheVehicleMosels()
+	cache_vehicles()
 	if settings.general.piemenu then
 		if pie_no_errors then 
 			load_module('piemenu')
@@ -3090,122 +2927,99 @@ function load_modules()
 	if isMode('police') or isMode('fbi') then
 		load_module('smart_uk')
 		load_module('smart_pdd')
-		if (IS_MOBILE) then
-			if (settings.mj.mobile_taser_button) then
-				MODULE.Taser.Window[0] = true
-			end
-		end
-	elseif isMode('prison') then
+	end
+	if isMode('prison') then
 		load_module('smart_rptp')
-		if ((IS_MOBILE) and (settings.md.mobile_taser_button)) then
-			MODULE.Taser.Window[0] = true
-		end	
-	elseif (isMode('smi')) then
+	end
+	if isMode('smi') then
 		load_module('ads_history')
 	end
 end
 function welcome_message()
 	if not sampIsLocalPlayerSpawned() then 
-		sampAddChatMessage('[Arizona Helper] {ffffff}Инициализация хелпера прошла успешно!', message_color)
 		sampAddChatMessage('[Arizona Helper] {ffffff}Для полной загрузки хелпера сначало заспавнитесь (войдите на сервер)', message_color)
 		repeat wait(0) until sampIsLocalPlayerSpawned()
 	end
 	sampAddChatMessage('[Arizona Helper] {ffffff}Загрузка хелпера прошла успешно!', message_color)
-	show_arz_notify('info', 'Arizona Helper', "Загрузка хелпера прошла успешно!", 3000)
+	show_notify('info', 'Arizona Helper', "Загрузка хелпера прошла успешно!", 3000)
 	print('Полная загрузка хелпера прошла успешно!')
 	if hotkey_no_errors and settings.general.bind_mainmenu then	
 		sampAddChatMessage('[Arizona Helper] {ffffff}Чтоб открыть меню хелпера нажмите ' .. message_color_hex .. getNameKeysFrom(settings.general.bind_mainmenu) .. ' {ffffff}или введите команду ' .. message_color_hex .. '/helper', message_color)
 	else
 		sampAddChatMessage('[Arizona Helper] {ffffff}Чтоб открыть меню хелпера введите команду ' .. message_color_hex .. '/helper', message_color)
 	end
+
+	if IS_MOBILE and modules.player.data.nick ~= '' then 
+		CHECK_ID = true -- фикс получения ID игрока на мобайле
+		sampSendChat('/id ' .. modules.player.data.nick)
+	end
 end
 function register_command(chat_cmd, cmd_arg, cmd_text, cmd_waiting)
-	sampRegisterChatCommand(chat_cmd, function(arg)
+	sampRegisterChatCommand(chat_cmd, function(args)
 		if not MODULE.Binder.state.isActive then
 			if MODULE.Binder.state.isStop then
 				MODULE.Binder.state.isStop = false
 			end
 			local arg_check = false
+			local id, number, arg
 			local modifiedText = cmd_text
+			local function apply_nick_formats(id)
+				modifiedText = modifiedText:gsub('%{get_nick%(%{id%}%)%}', sampGetPlayerNickname(id) or "")
+				modifiedText = modifiedText:gsub('%{get_rp_nick%(%{id%}%)%}', sampGetPlayerNickname(id):gsub('_',' ') or "")
+				modifiedText = modifiedText:gsub('%{get_ru_nick%(%{id%}%)%}', translate(sampGetPlayerNickname(id)) or "")
+			end
 			if cmd_arg == '{arg}' then
-				if arg and arg ~= '' then
-					modifiedText = modifiedText:gsub('{arg}', arg or "")
+				if args and args ~= '' then
+					modifiedText = modifiedText:gsub('{arg}', args or "")
 					arg_check = true
 				else
-					sampAddChatMessage('[Arizona Helper] {ffffff}Используйте ' .. message_color_hex .. '/' .. chat_cmd .. ' [аргумент]', message_color)
-					playNotifySound()
+					sampAddChatMessage('[Arizona Helper] {ffffff}Используйте ' .. message_color_hex .. '/' .. chat_cmd .. ' [любое значение]', message_color)
+					play_sound()
 				end
-			elseif cmd_arg == '{arg_id}' then
-				if isParamSampID(arg) then
-					arg = tonumber(arg)
-					modifiedText = modifiedText:gsub('%{get_nick%(%{arg_id%}%)%}', sampGetPlayerNickname(arg) or "")
-					modifiedText = modifiedText:gsub('%{get_rp_nick%(%{arg_id%}%)%}', sampGetPlayerNickname(arg):gsub('_',' ') or "")
-					modifiedText = modifiedText:gsub('%{get_ru_nick%(%{arg_id%}%)%}', TranslateNick(sampGetPlayerNickname(arg)) or "")
-					modifiedText = modifiedText:gsub('%{arg_id%}', arg or "")
+			elseif cmd_arg == '{id}' then
+				if isParamSampID(args) then
+					id = tonumber(args)
+					apply_nick_formats(id)
+					modifiedText = modifiedText:gsub('%{id%}', id or "")
 					arg_check = true
 				else
 					sampAddChatMessage('[Arizona Helper] {ffffff}Используйте ' .. message_color_hex .. '/' .. chat_cmd .. ' [ID игрока]', message_color)
-					playNotifySound()
+					play_sound()
 				end
-			elseif cmd_arg == '{arg_id} {arg2}' then
-				if arg and arg ~= '' then
-					local arg_id, arg2 = arg:match('(%d+) (.+)')
-					if isParamSampID(arg_id) and arg2 then
-						arg_id = tonumber(arg_id)
-						modifiedText = modifiedText:gsub('%{get_nick%(%{arg_id%}%)%}', sampGetPlayerNickname(arg_id) or "")
-						modifiedText = modifiedText:gsub('%{get_rp_nick%(%{arg_id%}%)%}', sampGetPlayerNickname(arg_id):gsub('_',' ') or "")
-						modifiedText = modifiedText:gsub('%{get_ru_nick%(%{arg_id%}%)%}', TranslateNick(sampGetPlayerNickname(arg_id)) or "")
-						modifiedText = modifiedText:gsub('%{arg_id%}', arg_id or "")
-						modifiedText = modifiedText:gsub('%{arg2%}', arg2 or "")
+			elseif cmd_arg == '{id} {arg}' then
+				if args and args ~= '' then
+					id, arg = args:match('(%d+) (.+)')
+					if isParamSampID(id) and arg then
+						id = tonumber(id)
+						apply_nick_formats(id)
+						modifiedText = modifiedText:gsub('%{id%}', id or "")
+						modifiedText = modifiedText:gsub('%{arg%}', arg or "")
 						arg_check = true
 					else
-						sampAddChatMessage('[Arizona Helper] {ffffff}Используйте ' .. message_color_hex .. '/' .. chat_cmd .. ' [ID игрока] [аргумент]', message_color)
-						playNotifySound()
+						sampAddChatMessage('[Arizona Helper] {ffffff}Используйте ' .. message_color_hex .. '/' .. chat_cmd .. ' [ID игрока] [любое значение]', message_color)
+						play_sound()
 					end
 				else
-					sampAddChatMessage('[Arizona Helper] {ffffff}Используйте ' .. message_color_hex .. '/' .. chat_cmd .. ' [ID игрока] [аргумент]', message_color)
-					playNotifySound()
+					sampAddChatMessage('[Arizona Helper] {ffffff}Используйте ' .. message_color_hex .. '/' .. chat_cmd .. ' [ID игрока] [любое значение]', message_color)
+					play_sound()
 				end
-            elseif cmd_arg == '{arg_id} {arg2} {arg3}' then
-				if arg and arg ~= '' then
-					local arg_id, arg2, arg3 = arg:match('(%d+) (%d) (.+)')
-					if isParamSampID(arg_id) and arg2 and arg3 then
-						arg_id = tonumber(arg_id)
-						modifiedText = modifiedText:gsub('%{get_nick%(%{arg_id%}%)%}', sampGetPlayerNickname(arg_id) or "")
-						modifiedText = modifiedText:gsub('%{get_rp_nick%(%{arg_id%}%)%}', sampGetPlayerNickname(arg_id):gsub('_',' ') or "")
-						modifiedText = modifiedText:gsub('%{get_ru_nick%(%{arg_id%}%)%}', TranslateNick(sampGetPlayerNickname(arg_id)) or "")
-						modifiedText = modifiedText:gsub('%{arg_id%}', arg_id or "")
-						modifiedText = modifiedText:gsub('%{arg2%}', arg2 or "")
-                        modifiedText = modifiedText:gsub('%{arg3%}', arg3 or "")
+            elseif cmd_arg == '{id} {number} {arg}' then
+				if args and args ~= '' then
+					id, number, arg = args:match('(%d+) (%d+) (.+)')
+					if isParamSampID(id) and number and arg then
+						id = tonumber(id)
+						apply_nick_formats(id)
+						modifiedText = modifiedText:gsub('%{id%}', id or "")
+						modifiedText = modifiedText:gsub('%{number%}', number or "")
+                        modifiedText = modifiedText:gsub('%{arg%}', arg or "")
 						arg_check = true
 					else
-						sampAddChatMessage('[Arizona Helper] {ffffff}Используйте ' .. message_color_hex .. '/' .. chat_cmd .. ' [ID игрока] [число] [аргумент]', message_color)
-						playNotifySound()
+						sampAddChatMessage('[Arizona Helper] {ffffff}Используйте ' .. message_color_hex .. '/' .. chat_cmd .. ' [ID игрока] [любое число] [любое значение]', message_color)
+						play_sound()
 					end
 				else
-					sampAddChatMessage('[Arizona Helper] {ffffff}Используйте ' .. message_color_hex .. '/' .. chat_cmd .. ' [ID игрока] [число] [аргумент]', message_color)
-					playNotifySound()
-				end
-			elseif cmd_arg == '{arg_id} {arg2} {arg3} {arg4}' then
-				if arg and arg ~= '' then
-					local arg_id, arg2, arg3, arg4 = arg:match('(%d+) (%d) (.+) (.+)')
-					if isParamSampID(arg_id) and arg2 and arg3 and arg4 then
-						arg_id = tonumber(arg_id)
-						modifiedText = modifiedText:gsub('%{get_nick%(%{arg_id%}%)%}', sampGetPlayerNickname(arg_id) or "")
-						modifiedText = modifiedText:gsub('%{get_rp_nick%(%{arg_id%}%)%}', sampGetPlayerNickname(arg_id):gsub('_',' ') or "")
-						modifiedText = modifiedText:gsub('%{get_ru_nick%(%{arg_id%}%)%}', TranslateNick(sampGetPlayerNickname(arg_id)) or "")
-						modifiedText = modifiedText:gsub('%{arg_id%}', arg_id or "")
-						modifiedText = modifiedText:gsub('%{arg2%}', arg2 or "")
-                        modifiedText = modifiedText:gsub('%{arg3%}', arg3 or "")
-						modifiedText = modifiedText:gsub('%{arg4%}', arg4 or "")
-						arg_check = true
-					else
-						sampAddChatMessage('[Arizona Helper] {ffffff}Используйте ' .. message_color_hex .. '/' .. chat_cmd .. ' [ID игрока] [число] [аргумент] [аргумент]', message_color)
-						playNotifySound()
-					end
-				else
-					sampAddChatMessage('[Arizona Helper] {ffffff}Используйте ' .. message_color_hex .. '/' .. chat_cmd .. ' [ID игрока] [число] [аргумент] [аргумент]', message_color)
-					playNotifySound()
+					sampAddChatMessage('[Arizona Helper] {ffffff}Используйте ' .. message_color_hex .. '/' .. chat_cmd .. ' [ID игрока] [любое число] [любое значение]', message_color)
+					play_sound()
 				end
 			elseif cmd_arg == '' then
 				arg_check = true
@@ -3221,6 +3035,7 @@ function register_command(chat_cmd, cmd_arg, cmd_text, cmd_waiting)
 					for line in string.gmatch(modifiedText, "[^&]+") do
 						table.insert(lines, line)
 					end
+					local ui_action = false
 					for line_index, line in ipairs(lines) do
 						if MODULE.Binder.state.isStop then 
 							MODULE.Binder.state.isStop = false 
@@ -3230,122 +3045,81 @@ function register_command(chat_cmd, cmd_arg, cmd_text, cmd_waiting)
 							end
 							sampAddChatMessage('[Arizona Helper] {ffffff}Отыгровка команды /' .. chat_cmd .. " успешно остановлена!", message_color) 
 							break
-						else
-							if line == '{show_medcard_menu}' then
-								if cmd_arg == '{arg_id}' then
-									player_id = arg
-								elseif cmd_arg == '{arg_id} {arg2}' then
-									local arg_id, arg2 = arg:match('(%d+) (.+)')
-									if arg_id and arg2 and isParamSampID(arg_id) then
-										player_id = tonumber(arg_id)
-									end
-								end
-								MODULE.MedCard.Window[0] = true
-								break
-							elseif line == '{show_recept_menu}' then
-								if cmd_arg == '{arg_id}' then
-									player_id = arg
-								elseif cmd_arg == '{arg_id} {arg2}' then
-									local arg_id, arg2 = arg:match('(%d+) (.+)')
-									if arg_id and arg2 and isParamSampID(arg_id) then
-										player_id = tonumber(arg_id)
-									end
-								end
-								MODULE.Recept.Window[0] = true
-								break
-							elseif line == '{show_ant_menu}' then
-								if cmd_arg == '{arg_id}' then
-									player_id = arg
-								elseif cmd_arg == '{arg_id} {arg2}' then
-									local arg_id, arg2 = arg:match('(%d+) (.+)')
-									if arg_id and arg2 and isParamSampID(arg_id) then
-										player_id = tonumber(arg_id)
-									end
-								end
-								MODULE.Antibiotik.Window[0] = true
-								break
-							elseif line == '{lmenu_vc_vize}' then
-								if cmd_arg == '{arg_id}' then
-									MODULE.LeadTools.vc_vize.player_id = arg
-								elseif cmd_arg == '{arg_id} {arg2}' then
-									local arg_id, arg2 = arg:match('(%d+) (.+)')
-									if arg_id and arg2 and isParamSampID(arg_id) then
-										MODULE.LeadTools.vc_vize.player_id = tonumber(arg_id)
-									end
-								end
-								MODULE.LeadTools.vc_vize.bool = true
-								sampSendChat("/lmenu")
-								break
-							elseif line == '{give_platoon}' then
-								if cmd_arg == '{arg_id}' then
-									MODULE.LeadTools.platoon.player_id = arg
-								elseif cmd_arg == '{arg_id} {arg2}' then
-									local arg_id, arg2 = arg:match('(%d+) (.+)')
-									if arg_id and arg2 and isParamSampID(arg_id) then
-										MODULE.LeadTools.platoon.player_id = arg_id
-									end
-								end
-								MODULE.LeadTools.platoon.check = true
-								sampSendChat("/platoon")
-								break
-							elseif line == '{show_rank_menu}' then
-								if cmd_arg == '{arg_id}' then
-									player_id = arg
-								elseif cmd_arg == '{arg_id} {arg2}' then
-									local arg_id, arg2 = arg:match('(%d+) (.+)')
-									if arg_id and arg2 and isParamSampID(arg_id) then
-										player_id = arg_id
-									end
-								end
-								MODULE.GiveRank.Window[0] = true
-								break
-							elseif line == "{pause}" then
-								sampAddChatMessage('[Arizona Helper] {ffffff}Команда /' .. chat_cmd .. ' поставлена на паузу!', message_color)
-								if not IS_MOBILE then
-									if hotkey_no_errors and settings.general.bind_action then
-										sampAddChatMessage('[Arizona Helper] {ffffff}Для продолжения нажмите ' .. message_color_hex .. getNameKeysFrom(settings.general.bind_action) .. ' {ffffff}или вызовите курсор открыв чат (T/F6)', message_color)
-									else
-										sampAddChatMessage('[Arizona Helper] {ffffff}Для продолжения вызовите курсор открыв чат (T/F6)', message_color)
-									end
-								end
-								MODULE.Binder.state.isPause = true
-								MODULE.CommandPause.Window[0] = true
-								while MODULE.Binder.state.isPause do
-									wait(0)
-								end
-								if not MODULE.Binder.state.isStop then
-									sampAddChatMessage('[Arizona Helper] {ffffff}Продолжаю отыгровку команды /' .. chat_cmd, message_color)	
-								end			
-							elseif line:find('%{sellrank%((%d+)%)%}') then
-								MODULE.LeadTools.sell_rank.player_id = tonumber(string.match(line, '(%d+)'))
-								MODULE.LeadTools.sell_rank.checker = true
-								sampSendChat('/lmenu')
-							elseif line:find('{wait%((%d+)%)}') then
-								wait(tonumber(string.match(line, '{wait%((%d+)%)}')))
-							else
-								if not MODULE.Binder.state.isStop then
-									if line_index ~= 1 then wait(cmd_waiting * 1000) end
-									if not MODULE.Binder.state.isStop then 
-										for tag, replacement in pairs(MODULE.Binder.tags) do
-											if line:find("{" .. tag .. "}") then
-												local success, result = pcall(string.gsub, line, "{" .. tag .. "}", function() return replacement() end)
-												if success then
-													line = result
-												end
-											end
-										end
-										sampSendChat(line)
-										if MODULE.DEBUG then sampAddChatMessage('[DEBUG] SEND: ' .. line, message_color) end	
-									end
+						elseif line == "{pause}" then
+							sampAddChatMessage('[Arizona Helper] {ffffff}Команда /' .. chat_cmd .. ' поставлена на паузу!', message_color)
+							if not IS_MOBILE then
+								if hotkey_no_errors and settings.general.bind_action then
+									sampAddChatMessage('[Arizona Helper] {ffffff}Для продолжения нажмите ' .. message_color_hex .. getNameKeysFrom(settings.general.bind_action) .. ' {ffffff}или вызовите курсор открыв чат (T/F6)', message_color)
 								else
-									MODULE.Binder.state.isStop = false 
-									MODULE.Binder.state.isActive = false
-									if IS_MOBILE and settings.general.mobile_stop_button then
-										MODULE.CommandStop.Window[0] = false
-									end
-									sampAddChatMessage('[Arizona Helper] {ffffff}Отыгровка команды /' .. chat_cmd .. " успешно остановлена!", message_color) 	
-									break
+									sampAddChatMessage('[Arizona Helper] {ffffff}Для продолжения вызовите курсор открыв чат (T/F6)', message_color)
 								end
+							end
+							MODULE.Binder.state.isPause = true
+							MODULE.CommandPause.Window[0] = true
+							while MODULE.Binder.state.isPause do wait(0) end
+							if not MODULE.Binder.state.isStop then
+								sampAddChatMessage('[Arizona Helper] {ffffff}Продолжаю отыгровку команды /' .. chat_cmd, message_color)	
+							end	
+						elseif line:find('{wait%((%d+)%)}') then
+							wait(tonumber(string.match(line, '{wait%((%d+)%)}')))
+						elseif line == '{show_medcard_menu}' then
+							player_id = tonumber(id)
+							ui_action = true
+							MODULE.MedCard.Window[0] = true
+							while MODULE.MedCard.Window[0] do wait(0) end
+						elseif line == '{show_recept_menu}' then
+							player_id = tonumber(id)
+							ui_action = true
+							MODULE.Recept.Window[0] = true
+							while MODULE.Recept.Window[0] do wait(0) end
+						elseif line == '{show_ant_menu}' then
+							player_id = tonumber(id)
+							ui_action = true
+							MODULE.Antibiotik.Window[0] = true
+							while MODULE.Antibiotik.Window[0] do wait(0) end
+						elseif line == '{show_rank_menu}' then
+							player_id = tonumber(id)
+							ui_action = true
+							MODULE.GiveRank.Window[0] = true
+							while MODULE.GiveRank.Window[0] do wait(0) end
+						elseif line == '{lmenu_vc_vize}' then
+							MODULE.LeadTools.vc_vize.player_id = tonumber(id)
+							MODULE.LeadTools.vc_vize.bool = true
+							sampSendChat("/lmenu")
+						elseif line == '{give_platoon}' then
+							MODULE.LeadTools.platoon.player_id = tonumber(id)
+							MODULE.LeadTools.platoon.check = true
+							sampSendChat("/platoon")
+						elseif line:find('%{sellrank%((%d+)%)%}') then
+							MODULE.LeadTools.sell_rank.player_id = tonumber(string.match(line, '(%d+)'))
+							MODULE.LeadTools.sell_rank.checker = true
+							sampSendChat('/lmenu')
+						elseif not MODULE.Binder.state.isStop then
+							if line_index ~= 1 and not ui_action then
+								local total_wait = cmd_waiting * 1000
+								local waited = 0
+								while waited < total_wait do
+									if MODULE.Binder.state.isStop then break end
+									if MODULE.DEBUG then
+										local remaining = math.max(0, total_wait - waited) / 1000
+										printStringNow(string.format("%d/%d - %.1fs", line_index - 1, #lines, remaining), 105)
+									end
+									wait(100)
+									waited = waited + 100
+								end
+							end
+							if ui_action then ui_action = false end
+							if not MODULE.Binder.state.isStop then 
+								for tag, replacement in pairs(MODULE.Binder.tag) do
+									if line:find("{" .. tag .. "}") then
+										local success, result = pcall(string.gsub, line, "{" .. tag .. "}", function() return replacement() end)
+										if success then
+											line = result
+										end
+									end
+								end
+								if MODULE.DEBUG then sampAddChatMessage('[SendChat] {ffffff}' .. line, message_color) end
+								sampSendChat(line)
 							end
 						end
 					end
@@ -3357,7 +3131,7 @@ function register_command(chat_cmd, cmd_arg, cmd_text, cmd_waiting)
 			end
 		else
 			sampAddChatMessage('[Arizona Helper] {ffffff}Дождитесь завершения отыгровки предыдущей команды!', message_color)
-			playNotifySound()
+			play_sound()
 		end
 	end)
 end
@@ -3385,7 +3159,7 @@ function find_and_use_command(cmd, cmd_arg)
 		end
 	end
 	sampAddChatMessage('[Arizona Helper] {ffffff}Не могу найти бинд этой команды! Попробуйте сбросить настройки', message_color)
-	playNotifySound()
+	play_sound()
 end
 function initialize_commands()
 	sampRegisterChatCommand("helper", function() 
@@ -3415,7 +3189,7 @@ function initialize_commands()
 		if settings.general.rp_guns then
 			MODULE.RPWeapon.Window[0] = not MODULE.RPWeapon.Window[0] 
 		else
-			sampAddChatMessage('[Arizona Helper] {ffffff}Включите функцию "RP отыгровка оружия" в /helper -> Функции ' .. settings.player_info.fraction_tag, message_color)
+			sampAddChatMessage('[Arizona Helper] {ffffff}Включите функцию "RP отыгровка оружия" в /helper -> Функции ' .. modules.player.data.fraction_tag, message_color)
 		end
 	end)
 	sampRegisterChatCommand("pnv", function()
@@ -3431,7 +3205,7 @@ function initialize_commands()
 			end	
 		else
 			sampAddChatMessage('[Arizona Helper] {ffffff}Дождитесь завершения отыгровки предыдущей команды!', message_color)
-			playNotifySound()
+			play_sound()
 		end
 	end)
 	sampRegisterChatCommand("irv", function()
@@ -3447,7 +3221,7 @@ function initialize_commands()
 			end
 		else
 			sampAddChatMessage('[Arizona Helper] {ffffff}Дождитесь завершения отыгровки предыдущей команды!', message_color)
-			playNotifySound()
+			play_sound()
 		end
 	end)
 	sampRegisterChatCommand("cruise", function()
@@ -3458,7 +3232,7 @@ function initialize_commands()
 					if isCharInAnyCar(PLAYER_PED) then
 						taskWarpCharIntoCarAsDriver(PLAYER_PED, storeCarCharIsInNoSave(PLAYER_PED))
 					end
-					sampAddChatMessage('[Arizona Helper] {ffffff} Режим "CRUISE CONTROL" отключен!', message_color)
+					sampAddChatMessage('[Arizona Helper] {ffffff}Режим "CRUISE CONTROL" отключен!', message_color)
 				else
 					if not isCharInAnyCar(PLAYER_PED) then
 						sampAddChatMessage('[Arizona Helper] {ffffff}Вы должны находиться в транспортном средстве!', message_color)
@@ -3484,11 +3258,12 @@ function initialize_commands()
 					sampAddChatMessage('[Arizona Helper] {ffffff}Выберите пункт назнанения (поставьте метку на карте)', message_color)
 				end
 			else
-				sampAddChatMessage('[Arizona Helper] {ffffff} Данная функция отключена в настройках хелпера!', message_color)
+				sampAddChatMessage('[Arizona Helper] {ffffff}Включите работу круиз контроля транспорта в /helper - Функции ' .. MODULE.Binder.tag.fraction_tag(), message_color)
+				play_sound()
 			end
 		else
 			sampAddChatMessage('[Arizona Helper] {ffffff}Дождитесь завершения отыгровки предыдущей команды!', message_color)
-			playNotifySound()
+			play_sound()
 		end
 	end)
 	sampRegisterChatCommand("activate", function() 
@@ -3518,7 +3293,7 @@ function initialize_commands()
 				end
 			else
 				sampAddChatMessage('[Arizona Helper] {ffffff}Дождитесь завершения отыгровки предыдущей команды!', message_color)
-				playNotifySound()
+				play_sound()
 			end
 		end)
 		sampRegisterChatCommand("dep", function(arg)
@@ -3526,7 +3301,7 @@ function initialize_commands()
 				MODULE.Departament.Window[0] = not MODULE.Departament.Window[0]
 			else
 				sampAddChatMessage('[Arizona Helper] {ffffff}Дождитесь завершения отыгровки предыдущей команды!', message_color)
-				playNotifySound()
+				play_sound()
 			end
 		end)
 		sampRegisterChatCommand("sob", function(arg)
@@ -3536,11 +3311,11 @@ function initialize_commands()
 					MODULE.Sobes.Window[0] = not MODULE.Sobes.Window[0]
 				else
 					sampAddChatMessage('[Arizona Helper] {ffffff}Используйте ' .. message_color_hex .. '/sob [ID игрока]', message_color)
-					playNotifySound()
+					play_sound()
 				end	
 			else
 				sampAddChatMessage('[Arizona Helper] {ffffff}Дождитесь завершения отыгровки предыдущей команды!', message_color)
-				playNotifySound()
+				play_sound()
 			end
 		end)
 	end
@@ -3552,16 +3327,16 @@ function initialize_commands()
 						player_id = tonumber(arg)
 						MODULE.SumMenu.Window[0] = true 
 					else
-						sampAddChatMessage('[Arizona Helper] {ffffff}Сначало загрузите/заполните систему умного розыска в /helper - Функции ' .. settings.player_info.fraction_tag, message_color)
-						playNotifySound()
+						sampAddChatMessage('[Arizona Helper] {ffffff}Сначало загрузите/заполните систему умного розыска в /helper - Функции ' .. modules.player.data.fraction_tag, message_color)
+						play_sound()
 					end
 				else
 					sampAddChatMessage('[Arizona Helper] {ffffff}Используйте ' .. message_color_hex .. '/sum [ID игрока]', message_color)
-					playNotifySound()
+					play_sound()
 				end	
 			else
 				sampAddChatMessage('[Arizona Helper] {ffffff}Дождитесь завершения отыгровки предыдущей команды!', message_color)
-				playNotifySound()
+				play_sound()
 			end
 		end)
 		sampRegisterChatCommand("tsm", function(arg) 
@@ -3571,16 +3346,16 @@ function initialize_commands()
 						player_id = tonumber(arg)
 						MODULE.TsmMenu.Window[0] = true
 					else
-						sampAddChatMessage('[Arizona Helper] {ffffff}Сначало загрузите/заполните систему умных штрафов в /helper - Функции ' .. settings.player_info.fraction_tag, message_color)
-						playNotifySound()
+						sampAddChatMessage('[Arizona Helper] {ffffff}Сначало загрузите/заполните систему умных штрафов в /helper - Функции ' .. modules.player.data.fraction_tag, message_color)
+						play_sound()
 					end
 				else
 					sampAddChatMessage('[Arizona Helper] {ffffff}Используйте ' .. message_color_hex .. '/tsm [ID игрока]', message_color)
-					playNotifySound()
+					play_sound()
 				end	
 			else
 				sampAddChatMessage('[Arizona Helper] {ffffff}Дождитесь завершения отыгровки предыдущей команды!', message_color)
-				playNotifySound()
+				play_sound()
 			end
 		end)
 		sampRegisterChatCommand("afind", function(arg)
@@ -3601,7 +3376,7 @@ function initialize_commands()
 				lua_thread.create(function()
 					local max_lvl = isMode('fbi') and 7 or 6
 					sampAddChatMessage('[Arizona Helper] {ffffff}Сканирование /wanted, ожидайте ' .. message_color_hex .. max_lvl .. ' {ffffff}секунд...', message_color)
-					show_arz_notify('info', 'Arizona Helper', "Сканирование /wanted...", 2500)
+					show_notify('info', 'Arizona Helper', "Сканирование /wanted...", 2500)
 					MODULE.Wanted.new = {}
 					MODULE.Wanted.checker = true
 					for i = max_lvl, 1, -1 do
@@ -3624,7 +3399,7 @@ function initialize_commands()
 				end)
 			else
 				sampAddChatMessage('[Arizona Helper] {ffffff}Дождитесь завершения сканирования!', message_color)
-				playNotifySound()
+				play_sound()
 			end
 		end)
 		sampRegisterChatCommand("patrool", function(arg)
@@ -3637,7 +3412,7 @@ function initialize_commands()
 				MODULE.Post.Window[0] = not MODULE.Post.Window[0]
 			else
 				sampAddChatMessage('[Arizona Helper] {ffffff}Дождитесь завершения отыгровки предыдущей команды!', message_color)
-				playNotifySound()
+				play_sound()
 			end
 		end)
 	end
@@ -3649,16 +3424,16 @@ function initialize_commands()
 						player_id = tonumber(arg)
 						MODULE.PumMenu.Window[0] = true 
 					else
-						sampAddChatMessage('[Arizona Helper] {ffffff}Сначало загрузите/заполните систему умного срока в /helper - Функции ' .. settings.player_info.fraction_tag, message_color)
-						playNotifySound()
+						sampAddChatMessage('[Arizona Helper] {ffffff}Сначало загрузите/заполните систему умного срока в /helper - Функции ' .. modules.player.data.fraction_tag, message_color)
+						play_sound()
 					end
 				else
 					sampAddChatMessage('[Arizona Helper] {ffffff}Используйте ' .. message_color_hex .. '/pum [ID игрока]', message_color)
-					playNotifySound()
+					play_sound()
 				end	
 			else
 				sampAddChatMessage('[Arizona Helper] {ffffff}Дождитесь завершения отыгровки предыдущей команды!', message_color)
-				playNotifySound()
+				play_sound()
 			end
 		end)
 	end
@@ -3673,13 +3448,13 @@ function initialize_commands()
 					sampAddChatMessage('[Arizona Helper] {ffffff}Меню списка заключённых закрыто!', message_color)
 				elseif not MODULE.Zeks.checker then
 					sampAddChatMessage('[Arizona Helper] {ffffff}Сканирование /zeks...', message_color)
-					show_arz_notify('info', 'Arizona Helper', "Сканирование /zeks...", 2500)
+					show_notify('info', 'Arizona Helper', "Сканирование /zeks...", 2500)
 					MODULE.Zeks.new = {}
 					MODULE.Zeks.checker = true
 					sampSendChat('/zeks')
 				else
 					sampAddChatMessage('[Arizona Helper] {ffffff}Дождитесь завершения сканирования!', message_color)
-					playNotifySound()
+					play_sound()
 				end
 			else
 				sampAddChatMessage('[Arizona Helper] {ffffff}Вы можете включить кастомное меню /zeks с авто-обновлением в /helper - Функции Право', message_color)
@@ -3692,7 +3467,7 @@ function initialize_commands()
 			register_command(command.cmd, command.arg, command.text, tonumber(command.waiting))
 		end
 	end
-	if settings.player_info.fraction_rank_number >= 9 then
+	if modules.player.data.fraction_rank_number >= 9 then
 		sampRegisterChatCommand("lm", show_leader_fast_menu)
 		sampRegisterChatCommand("spcar", function()
 			if not MODULE.Binder.state.isActive then
@@ -3711,7 +3486,7 @@ function initialize_commands()
 						return
 					end
 					sampSendChat("/rb Займите транспорт, иначе он будет заспавнен.")
-					wait(13500)	
+					wait(13500)
 					if MODULE.Binder.state.isStop then 
 						MODULE.Binder.state.isStop = false 
 						MODULE.Binder.state.isActive = false
@@ -3797,11 +3572,11 @@ function string.rupper(s)
     end
     return output
 end
-function TranslateNick(name)
+function translate(name)
 	if name:match('%a+') then
 		local translit_table = {
        		['ph'] = 'ф',['Ph'] = 'Ф',['Ch'] = 'Ч',['ch'] = 'ч',['Th'] = 'Т', ['liy'] = 'лий', 
-			['th'] = 'т',['Sh'] = 'Ш',['sh'] = 'ш' ,['Ae'] = 'Э',['ae'] = 'э', ['ame'] = 'ейм',
+			['th'] = 'т',['Sh'] = 'Ш',['sh'] = 'ш',['Ae'] = 'Э',['ae'] = 'э', ['ame'] = 'ейм',
 			['size'] = 'сайз', ['Jj'] = 'Джейджей',['Whi'] = 'Вай',['lack'] = 'лэк', ['ane'] = 'ейн',
 			['whi'] = 'вай',['Ck'] = 'К',['ck'] = 'к',['Kh'] = 'Х',['kh'] = 'х', ['Alex'] = 'Алекс',
 			['hn'] = 'н',['Hen'] = 'Ген',['Zh'] = 'Ж',['zh'] = 'ж',['Yu'] = 'Ю', ['Jason'] = 'Джейсон',
@@ -3823,57 +3598,19 @@ function TranslateNick(name)
 			['j'] = 'ж',['k'] = 'к',['l'] = 'л',['m'] = 'м',['n'] = 'н',['o'] = 'о',['p'] = 'п',['r'] = 'р',
 			['s'] = 'с',['t'] = 'т',['u'] = 'у',['f'] = 'ф',['x'] = 'x',['c'] = 'к',['``'] = 'ъ',['`'] = 'ь',['_'] = ' '
 		}
-        for k, v in pairs(char_table) do    
+        for k, v in pairs(char_table) do
 			name = name:gsub(k, v) 
         end
         return name
     end
 	return name
 end
-function ReverseTranslateNick(name)
-    local translit_table = {
-        ['ф'] = 'f', ['Ф'] = 'F', ['ч'] = 'ch', ['Ч'] = 'Ch',
-        ['т'] = 't', ['Т'] = 'T', ['ш'] = 'sh', ['Ш'] = 'Sh',
-        ['и'] = 'i', ['Э'] = 'E', ['э'] = 'e', ['с'] = 's',
-        ['ж'] = 'zh', ['Ж'] = 'Zh', ['ю'] = 'yu', ['Ю'] = 'Yu',
-        ['ё'] = 'yo', ['Ё'] = 'Yo', ['ц'] = 'ts', ['Ц'] = 'Ts',
-        ['я'] = 'ya', ['Я'] = 'Ya', ['ав'] = 'ov', ['эй'] = 'ey',
-        ['у'] = 'u', ['У'] = 'U', ['И'] = 'I', ['ан'] = 'an',
-        ['ци'] = 'tsi', ['уз'] = 'uz', ['кейт'] = 'kate', ['яу'] = 'yau',
-        ['раун'] = 'rown', ['уев'] = 'uev', ['Бэйби'] = 'Baby',
-		['лий'] = 'liy', ['ейн'] = 'ein', ['ейм'] = 'ame',
-        ['Джек'] = 'Jack', ['Джейсон'] = 'Jason', ['Алексей'] = 'Alexei', ['Алекс'] = 'Alex'
-    } 
-    for k, v in pairs(translit_table) do
-        name = name:gsub(k, v)
-    end 
-    local char_table = {
-        ['А'] = 'A', ['Б'] = 'B', ['В'] = 'V', ['Г'] = 'G', ['Д'] = 'D',
-        ['Е'] = 'E', ['Ё'] = 'Yo', ['Ж'] = 'Zh', ['З'] = 'Z', ['И'] = 'I',
-        ['Й'] = 'Y', ['К'] = 'K', ['Л'] = 'L', ['М'] = 'M', ['Н'] = 'N',
-        ['О'] = 'O', ['П'] = 'P', ['Р'] = 'R', ['С'] = 'S', ['Т'] = 'T',
-        ['У'] = 'U', ['Ф'] = 'F', ['Х'] = 'H', ['Ц'] = 'Ts', ['Ч'] = 'Ch',
-        ['Ш'] = 'Sh', ['Щ'] = 'Sch', ['Ъ'] = '', ['Ы'] = 'Y', ['Ь'] = '',
-        ['Э'] = 'E', ['Ю'] = 'Yu', ['Я'] = 'Ya',
-        ['а'] = 'a', ['б'] = 'b', ['в'] = 'v', ['г'] = 'g', ['д'] = 'd',
-        ['е'] = 'e', ['ё'] = 'yo', ['ж'] = 'zh', ['з'] = 'z', ['и'] = 'i',
-        ['й'] = 'y', ['к'] = 'k', ['л'] = 'l', ['м'] = 'm', ['н'] = 'n',
-        ['о'] = 'o', ['п'] = 'p', ['р'] = 'r', ['с'] = 's', ['т'] = 't',
-        ['у'] = 'u', ['ф'] = 'f', ['х'] = 'h', ['ц'] = 'ts', ['ч'] = 'ch',
-        ['ш'] = 'sh', ['щ'] = 'sch', ['ъ'] = '', ['ы'] = 'y', ['ь'] = '',
-        ['э'] = 'e', ['ю'] = 'yu', ['я'] = 'ya', [' '] = '_'
-    }
-    for k, v in pairs(char_table) do
-        name = name:gsub(k, v)
-    end
-    return name
-end
 function isParamSampID(id)
 	id = tonumber(id) or nil
 	if not id or id < 0 or id > 999 then return false end
-	return id == MODULE.Binder.tags.my_id() or sampIsPlayerConnected(id)
+	return id == MODULE.Binder.tag.my_id() or sampIsPlayerConnected(id)
 end
-function playNotifySound()
+function play_sound()
 	local path_audio = config_dir .. "/Resourse/notify.mp3"
 	if doesFileExist(path_audio) then
 		local notify_sound = loadAudioStream(path_audio)
@@ -3890,7 +3627,7 @@ function show_fast_menu(id)
 		else
 			sampAddChatMessage('[Arizona Helper] {ffffff}Используйте ' .. message_color_hex .. '/hm [ID]', message_color)
 		end 
-		playNotifySound()
+		play_sound()
 	end 
 end
 function show_leader_fast_menu(id)
@@ -3903,16 +3640,16 @@ function show_leader_fast_menu(id)
 		else
 			sampAddChatMessage('[Arizona Helper] {ffffff}Используйте ' .. message_color_hex .. '/lm [ID]', message_color)
 		end 
-		playNotifySound()
+		play_sound()
 	end
 end
 function get_players()
-	local myId = MODULE.Binder.tags.my_id()
+	local myId = MODULE.Binder.tag.my_id()
 	local mx, my, mz = getCharCoordinates(PLAYER_PED)
 	local playersInRange = {}
 	for i, ped in pairs(getAllChars()) do
 		local result, id = sampGetPlayerIdByCharHandle(ped)
-		if result and id ~= myId and id ~= -1 and not sampGetPlayerNickname(id):find('^Player_') and not sampGetPlayerNickname(id):find('^' .. settings.player_info.nick) then
+		if result and id and id ~= myId and id ~= -1 and not sampGetPlayerNickname(id):find('^Player_') and not sampGetPlayerNickname(id):find('^' .. modules.player.data.nick) then
 			local x, y, z = getCharCoordinates(ped)
 			if getDistanceBetweenCoords3d(mx, my, mz, x, y, z) <= 8 then
 				table.insert(playersInRange, id)
@@ -3980,6 +3717,7 @@ local servers = {
 	{name = 'Федеральный округ', number = '307'},
 	-- Rodina Mobile
 	{name = 'Москва', number = '401'},
+	{name = 'Санкт Петербург', number = '402'},
 }
 function getServerNumber()
 	local name = sampGetCurrentServerName():gsub('%-', ' ')
@@ -4000,38 +3738,109 @@ function getServerName(number)
 end
 function sampGetPlayerIdByNickname(nick)
 	if not nick then return -1 end
-	local id = -1
-	if not IS_MOBILE then
-		local myid = select(2, sampGetPlayerIdByCharHandle(PLAYER_PED))
-		if sampGetPlayerNickname(myid) == (nick) then return myid end
+	local myid = MODULE.Binder.tag.my_id()
+	if IS_MOBILE then
+		if nick == modules.player.data.nick then return myid end
+	else
+		if sampGetPlayerNickname(myid):find(nick, 1, true) then return myid end
 	end
 	for i = 0, 999 do
-	    if sampIsPlayerConnected(i) and sampGetPlayerNickname(i):find(nick) then
-		   id = i
-		   break
+	    if sampIsPlayerConnected(i) and sampGetPlayerNickname(i):find(nick, 1, true) then
+		   return i
 	    end
 	end
-	return id
+	return -1
 end
-function getNameOfARZVehicleModel(id)
+local car_colors = {
+	[0] = "чёрного", [1] = "белого", [2] = "бирюзового", [3] = "бордового", [4] = "хвойного", [5] = "пурпурного", [6] = "жёлтого", [7] = "голубого", [8] = "серого", 
+	[9] = "оливкового", [10] = "синего", [11] = "серого", [12] = "голубого", [13] = "графитового", [14] = "светлого", [15] = "светлого", [16] = "хвойного", [17] = "бордового", 
+	[18] = "бордового", [19] = "серого", [20] = "синего", [21] = "бордового", [22] = "бордового", [23] = "серого", [24] = "графитового", [25] = "серого", [26] = "светлого", 
+	[27] = "тусклого", [28] = "синего", [29] = "светлого", [30] = "бордового", [31] = "бордового", [32] = "голубоватого", [33] = "серого", [34] = "тусклого", 
+	[35] = "коричневого", [36] = "синего", [37] = "хвойного", [38] = "серого", [39] = "синего", [40] = "тёмного", [41] = "коричневого", [42] = "коричневого",
+	[43] = "бордового", [44] = "хвойного", [45] = "бордового", [46] = "бежевого", [47] = "оливкового", [48] = "оливкового", [49] = "серого", [50] = "серебристого", 
+	[51] = "хвойного", [52] = "синего", [53] = "синего", [54] = "синего", [55] = "коричневого", [56] = "голубого", [57] = "оливкового", [58] = "тёмнокрасного", 
+	[59] = "синего", [60] = "светлого", [61] = "оранжевого", [62] = "тёмнокрасного", [63] = "серебристого", [64] = "светлого", [65] = "оливкового", [66] = "коричневого", 
+	[67] = "асфальтового", [68] = "оливкового", [69] = "кварцевого", [70] = "тёмнокрасного", [71] = "светлого", [72] = "тёмносерого", [73] = "оливкового", [74] = "бордового", 
+	[75] = "синего", [76] = "оливкового", [77] = "оранжевого", [78] = "бордового", [79] = "синего", [80] = "розового", [81] = "оливкового", [82] = "тёмнокрасного", 
+	[83] = "бирюзового", [84] = "коричневого", [85] = "розового", [86] = "хвойного", [87] = "синего", [88] = "винного", [89] = "оливкового", [90] = "светлого", 
+	[91] = "тёмносинего", [92] = "тёмносерого", [93] = "голубоватого", [94] = "синего", [95] = "синего", [96] = "светлого", [97] = "асфальтового", [98] = "голубоватого", 
+	[99] = "коричневого", [100] = "бриллиантового", [101] = "кобальтового", [102] = "коричневого", [103] = "синего", [104] = "коричневого", [105] = "серого", [106] = "синего", 
+	[107] = "оливкового", [108] = "бриллиантового", [109] = "серого", [110] = "оливкового", [111] = "серого", [112] = "серого", [113] = "коричневого", [114] = "зелёного", 
+	[115] = "тёмнокрасного", [116] = "синего", [117] = "бордового", [118] = "голубого", [119] = "коричневого", [120] = "оливкового", [121] = "бордового", [122] = "тёмносерого", 
+	[123] = "коричневого", [124] = "тёмнокрасного", [125] = "синего", [126] = "розового", [127] = "чёрного", [128] = "зелёного", [129] = "бордового", [130] = "синего",
+	[131] = "коричневого", [132] = "тёмнокрасного", [133] = "чёрного", [134] = "фиолетового", [135] = "яркосинего", [136] = "аметистового", [137] = "зелёного", [138] = "серого",
+	[139] = "пурпурного", [140] = "светлого", [141] = "тёмносерого", [142] = "оливкового", [143] = "фиолетового", [144] = "фиолетового", [145] = "зелёного", [146] = "пурпурного", 
+	[147] = "фиолетового", [148] = "оливкового", [149] = "тёмного", [150] = "тёмнозелёного", [151] = "зеленого", [152] = "синего", [153] = "зелёного", [154] = "салатового", 
+	[155] = "бирюзового", [156] = "коричневого", [157] = "светлого", [158] = "оранжевого", [159] = "коричневого", [160] = "тёмнозелёного", [161] = "винного", [162] = "синего",
+	[163] = "графитового", [164] = "чёрного", [165] = "бирюзового", [166] = "бирюзового", [167] = "фиолетового", [168] = "бордового", [169] = "фиолетового", [170] = "фиолетового", 
+	[171] = "фиолетового", [172] = "хвойного", [173] = "коричневого", [174] = "коричневого", [175] = "коричневого", [176] = "пурпурного", [177] = "пурпурного", [178] = "пурпурного", 
+	[179] = "фиолетового", [180] = "коричневого", [181] = "красного", [182] = "оранжевого", [183] = "оливкового", [184] = "голубого", [185] = "чёрного", [186] = "чёрного", 
+	[187] = "зелёного", [188] = "зелёного", [189] = "зелёного", [190] = "пурпурного", [191] = "салатового", [192] = "светлого", [193] = "светлого", [194] = "оливкового", 
+	[195] = "оливкового", [196] = "серого", [197] = "оливкового", [198] = "синего", [199] = "оливкового", [200] = "странного", [201] = "синего", [202] = "зелёного", [203] = "синего",
+	[204] = "голубого", [205] = "синего", [206] = "тёмносинего", [207] = "голубого", [208] = "синего", [209] = "синего", [210] = "синего", [211] = "фиолетового", 
+	[212] = "оранжевого", [213] = "светлого", [214] = "оливкового", [215] = "чёрного", [216] = "оранжевого", [217] = "бирюзового", [218] = "бледно-розового", [219] = "оранжевого", 
+	[220] = "розового", [221] = "оливкового", [222] = "оранжевого", [223] = "синего", [224] = "бордового", [225] = "хвойного", [226] = "салатового", [227] = "зелёного", 
+	[228] = "бледного", [229] = "салатового", [230] = "бордового", [231] = "коричневого", [232] = "розового", [233] = "пурпурного", [234] = "тёмнозелёного", [235] = "оливкового",
+	[236] = "хвойного", [237] = "пурпурного", [238] = "оранжевого", [239] = "коричневого", [240] = "голубого", [241] = "зеленого", [242] = "фиолетового", [243] = "зелёного", 
+	[244] = "коричневого", [245] = "хвойного", [246] = "голубого", [247] = "синего", [248] = "бордового", [249] = "бордового", [250] = "серого", [251] = "серого", [252] = "чёрного", 
+	[253] = "серого", [254] = "коричневого", [255] = "синего"
+}
+function get_vehicle_name(id)
 	local map = modules.arz_veh.byId
 	if map and map[id] then
 		return map[id]
 	end
-	sampAddChatMessage('[Arizona Helper] {ffffff}Не удалось получить модель т/c ' .. id .. " ID, пробую обновить конфиг...", message_color)
+	sampAddChatMessage('[Arizona Helper] {ffffff}Не удалось получить модель т/c ' .. id .. " ID, обновляю конфиг транспорта...", message_color)
 	download_file = 'arz_veh'
 	downloadFileFromUrlToPath('https://mtgmods.github.io/arizona-helper/SmartVEH/Vehicles' .. 
 	((tonumber(getServerNumber()) > 300) and 'Rodina.json' or '.json'), modules.arz_veh.path)
 	return 'транспортного средства'
 end
-function cacheVehicleMosels()
+function get_near_car(only_with_driver)
+	local closest_car = nil
+	local closest_distance = 50
+	local my_pos = {getCharCoordinates(PLAYER_PED)}
+	local my_car = nil
+
+	if isCharInAnyCar(PLAYER_PED) then my_car = storeCarCharIsInNoSave(PLAYER_PED) end
+
+	for _, vehicle in ipairs(getAllVehicles()) do
+		if vehicle ~= my_car then
+			if (not only_with_driver) or doesCharExist(getDriverOfCar(vehicle)) then
+				local vehicle_pos = {getCarCoordinates(vehicle)}
+				local distance = getDistanceBetweenCoords3d(my_pos[1], my_pos[2], my_pos[3], vehicle_pos[1], vehicle_pos[2], vehicle_pos[3])
+				if distance < closest_distance then
+					closest_distance = distance
+					closest_car = vehicle
+				end
+			end
+		end
+	end
+
+	if not closest_car then return 'транспортного средства' end
+
+	local clr1 = getCarColours(closest_car)
+	local CarColorName = clr1 and (' ' .. car_colors[clr1] .. ' цвета') or ''
+	
+	local plateText = ''
+	for _, plate in pairs(modules.arz_veh.cache) do
+		local result, veh = sampGetCarHandleBySampVehicleId(plate.carID)
+		if result and veh == closest_car then
+			plateText = ' c номерами ' .. plate.number
+			break
+		end
+	end
+
+	return (get_vehicle_name(getCarModel(closest_car)) .. CarColorName .. plateText)
+end
+function cache_vehicles()
 	for _, v in ipairs(modules.arz_veh.data) do
 		if v.model_id then
 			modules.arz_veh.byId[v.model_id] = v.name
 		end
 	end
 end
-function getAreaRu(x, y, z)
+function get_area(x, y, z)
 	local streets = {
 		{"Гольф-клуб Ависпа", -2667.810, -302.135, -28.831, -2646.400, -262.320, 71.169},
 		{"Аэропорт СФ", -1315.420, -405.388, 15.406, -1264.400, -209.543, 25.406},
@@ -4420,7 +4229,7 @@ function getAreaRu(x, y, z)
 end
 function send_no_vip_msg()
 	for i = 1, 10, 1 do
-		sampAddChatMessage('[Arizona Helper] {ffffff}Вы попытались использовать функционал, который недоступен в FREE версии! Купите подписку MTGVIP!', message_color)
+		sampAddChatMessage('[Arizona Helper] {ffffff}Вы попытались использовать функционал, который ограничен/недоступен в FREE версии!', message_color)
 	end
 end
 function split_text_into_lines(text, max_length)
@@ -4486,21 +4295,19 @@ function downloadFileFromUrlToPath(url, path)
 				local uVer = isVip and updateInfo.vip_current_version or updateInfo.current_version
 				local uText = isVip and updateInfo.vip_update_info or updateInfo.update_info
 				local uUrl = isVip and '' or updateInfo.update_url
-				
 				print('Текущая установленная версия:', thisScript().version)
 				print('Текущая версия в облаке:', uVer)
 				if uVer and thisScript().version ~= uVer then
 					print('Доступно обновление!')
-					sampAddChatMessage('[Arizona Helper] {ffffff}Доступно обновление!', message_color)
+					sampAddChatMessage('[Arizona Helper] {ffffff}Доступна новая версия хелпера!', message_color)
 					MODULE.Update.is_need_update = true
 					MODULE.Update.url = uUrl
 					MODULE.Update.version = uVer
 					MODULE.Update.info = uText
 					MODULE.Update.Window[0] = true
-					playNotifySound()
+					play_sound()
 				else
 					print('Обновление не нужно!')
-					sampAddChatMessage('[Arizona Helper] {ffffff}Обновление не нужно, у вас актуальная версия!', message_color)
 				end
 			end
 		elseif download_file == 'helper' then
@@ -4508,30 +4315,30 @@ function downloadFileFromUrlToPath(url, path)
 			-- удаление файла хелпера от дискорда с _ в названии, имя файла только с пробелом
 			os.remove(worked_dir .. "Arizona_Helper.lua")
 			reload_script = true
-			thisScript():unload()
+			thisScript():reload()
 		elseif download_file == 'smart_uk' then
 			sampAddChatMessage('[Arizona Helper] {ffffff}Загрузка системы умной выдачи розыска для сервера ' .. message_color_hex .. getServerName(getServerNumber()) .. ' [' .. getServerNumber() ..  '] {ffffff}завершена успешно!',  message_color)
 			sampAddChatMessage('[Arizona Helper] {ffffff}Теперь вы можете использовать команду ' .. message_color_hex .. '/sum [ID игрока]', message_color)
 			MODULE.Main.Window[0] = false
-			playNotifySound()
+			play_sound()
 			load_module('smart_uk')
 		elseif download_file == 'smart_pdd' then
 			sampAddChatMessage('[Arizona Helper] {ffffff}Загрузка системы умной выдачи штрафов для сервера ' .. message_color_hex .. getServerName(getServerNumber()) .. ' [' .. getServerNumber() ..  '] {ffffff}завершена успешно!',  message_color)
 			sampAddChatMessage('[Arizona Helper] {ffffff}Теперь вы можете использовать команду ' .. message_color_hex .. '/tsm [ID игрока]', message_color)
 			MODULE.Main.Window[0] = false
-			playNotifySound()
+			play_sound()
 			load_module('smart_pdd')
 		elseif download_file == 'smart_rptp' then
 			sampAddChatMessage('[Arizona Helper] {ffffff}Загрузка системы умного срока для сервера ' .. message_color_hex .. getServerName(getServerNumber()) .. ' [' .. getServerNumber() ..  '] {ffffff}завершена успешно!',  message_color)
 			sampAddChatMessage('[Arizona Helper] {ffffff}Теперь вы можете использовать команду ' .. message_color_hex .. '/pum [ID игрока]', message_color)
 			MODULE.Main.Window[0] = false
-			playNotifySound()
+			play_sound()
 			load_module('smart_rptp')
 		elseif download_file == 'arz_veh' then
 			sampAddChatMessage('[Arizona Helper] {ffffff}Загрузка всех кастомных т/с успешно заверешена!',  message_color)
-			playNotifySound()
+			play_sound()
 			load_module('arz_veh')
-			cacheVehicleMosels()
+			cache_vehicles()
 		elseif download_file == 'notify' then
 			if doesFileExist(config_dir .. "/Resourse/notify.mp3") then
 				print('Звук оповещений успешно загружен!')
@@ -4581,12 +4388,12 @@ function downloadFileFromUrlToPath(url, path)
 end
 function check_update()
 	print('Проверка на наличие обновлений...')
-	sampAddChatMessage('[Arizona Helper] {ffffff}Проверка на наличие обновлений...', message_color)
 	download_file = 'update'
 	downloadFileFromUrlToPath('https://mtgmods.github.io/arizona-helper/Update.json', config_dir .. "/Update.json")
 end
 function check_resourses()
 	if not doesDirectoryExist(config_dir .. '/Resourse') then
+		print('Создаю папку для ресурсов хелпера...')
 		createDirectory(config_dir .. '/Resourse')
 	end
 	if not doesFileExist(config_dir .. '/Resourse/logo.png') then
@@ -4594,11 +4401,11 @@ function check_resourses()
 		downloadFileFromUrlToPath('https://mtgmods.github.io/arizona-helper/Resourse/logo.png', config_dir .. '/Resourse/logo.png')
 	end
 	if not doesFileExist(config_dir .. "/Resourse/notify.mp3") then
-		print('Подгружаю звук для оповещений хелпера...')
+		print('Подгружаю звук оповещений хелпера...')
 		downloadFileFromUrlToPath('https://mtgmods.github.io/arizona-helper/Resourse/notify.mp3', config_dir .. "/Resourse/notify.mp3")
 	end
 	if not doesFileExist(modules.arz_veh.path) then
-		print('Подгружаю список всех кастомных т/с для определенения моделей...')
+		print('Подгружаю список кастомных т/с для определенения моделей...')
 		download_file = 'arz_veh'
 		downloadFileFromUrlToPath('https://mtgmods.github.io/arizona-helper/SmartVEH/Vehicles' .. 
 		((tonumber(getServerNumber()) > 300) and 'Rodina.json' or '.json'), modules.arz_veh.path)
@@ -4609,17 +4416,88 @@ function import_fraction_data(mode)
 	add_unique_cmd(modules.commands.data.commands_manage.my, get_fraction_cmds(mode, true))
 	add_default_notes(mode)
 	import_data_from_old_helpers()
-	save_module('notes')
 	save_module('commands')
+	save_module('notes')
+	modules.piemenu.data = get_fraction_pie(mode)
+	save_module('piemenu')
+end
+function get_fraction_pie(mode)
+	local default = {
+		{
+			name = 'Время',
+			icon = 'CLOCK',
+			action = '/time'
+		},
+		{
+			name = 'Анимка',
+			icon = 'TOILET',
+			action = '/piss'
+		},
+		{
+			name = 'Т/С',
+			icon = 'CAR',
+			next = {
+				{
+					name = 'Ремка',
+					icon = '',
+					action = '/repcar'
+				},
+				{
+					name = 'Канистра',
+					icon = '',
+					action = '/fillcar'
+				}
+			}
+		},
+		{
+			name = 'Оружие',
+			icon = 'GUN',
+			action = '/gun'
+		}
+	}
+	local police = {
+		{
+			name = 'Кричалка',
+			icon = 'VOLUME_HIGH',
+			action = '/ss'
+		},
+		{
+			name = 'Миранда',
+			icon = '',
+			action = '/mr'
+		},
+		{
+			name = 'Траффик стоп',
+			icon = 'BULLHORN',
+			next = {
+				{
+					name = '10-55',
+					icon = '',
+					action = '/55'
+				},
+				{
+					name = '10-66',
+					icon = '',
+					action = '/66'
+				}
+			}
+		},
+		{
+			name = 'Тайзер',
+			icon = 'GUN',
+		}
+	}
+	return (mode == 'police' or mode == 'fbi') and police or default
 end
 function get_fraction_cmds(selected, is_manage)
-    local cmds = {}
+    local cmds = {
+		{cmd = 'time', description = 'Посмотреть время',  text = '/me взглянул{sex} на свои часы с гравировкой Arizona Helper by MTG MODS&/time&/do На часах видно время {get_time}.', arg = '', enable = true, waiting = '2', bind = "{}"},
+		{cmd = 'cure', description = 'Поднять игрока из стадии',  text = '/me наклоняется над человеком, и прощупывает его пульс на сонной артерии&/cure {id}&/do Пульс отсутствует.&/me начинает делать человеку непрямой массаж сердца, время от времени проверяя пульс&/do Спустя несколько минут сердце человека начало биться.&/do Человек пришел в сознание.&/todo Отлично*улыбаясь', arg = '{id}', enable = true, waiting = '2', bind = "{}"}
+	}
     local function append_commands(from_table)
-        if from_table then
-            for _, cmd in ipairs(from_table) do
-                table.insert(cmds, cmd)
-            end
-        end
+        for _, cmd in ipairs(from_table) do
+			table.insert(cmds, cmd)
+		end
     end
 	if is_manage then
 		if selected == 'mafia' then
@@ -4651,6 +4529,14 @@ function get_fraction_cmds(selected, is_manage)
 			end
 		elseif selected == 'hospital' then
 			append_commands(modules.commands.data.commands.hospital)
+			if tonumber(getServerNumber()) > 300 then -- удаление ненужных команды для родины рп
+				for index, value in ipairs(cmds) do
+					if value.cmd == 'hla' or value.cmd == 'hlb' or value.cmd == 'ant' or value.cmd == 'pilot' or value.cmd == 'medin' or value.cmd == 'mt' then
+						table.remove(cmds, index)
+						break
+					end
+				end
+			end
 		elseif selected == 'smi' then
 			append_commands(modules.commands.data.commands.smi)
 		elseif selected == 'army' then
@@ -4702,9 +4588,22 @@ function add_unique_note(tbl, note)
 	table.insert(tbl, note)
 end
 function add_default_notes(module)
-	if module == 'police' or module == 'fbi' or module == 'prison' then
-		local situate_codes = {note_name = 'Ситуационные коды', note_text = 'CODE 0 - Офицер ранен.&CODE 1 - Офицер в бедственном положении, нужна помощь всех юнитов.&CODE 2 - Обычный вызов [без сирен/стробоскопов/соблюдение ПДД].&CODE 2 HIGHT - Приоритетный вызов [без сирен/стробоскопов/соблюдение ПДД].&CODE 3 - Срочный вызов [сирены, стробоскопы, игнорирования ПДД].&CODE 4 - Стабильно, помощь не требуется.&Code 4 ADAM - Помощь не требуется, но офицеры поблизости должны быть готовы оказать помощь.&CODE 5 - Офицерам держаться подальше от опасного места.&CODE 6 - Задерживаюсь на месте [включая локацию и причину,например, 911].&CODE 7 - Перерыв на обед.&CODE 30 - Срабатывание "тихой" сигнализации на месте происшествия.&CODE 30 RINGER - Срабатывание "громкой сигнализации на месте происшествия.&CODE 37 - Обнаружение угнанного т/c.&Сode TOM - Офицеру требуется Тайзер.' }
-		local teen_codes = { note_name = 'Тен-коды', note_text = '10-1 - Сбор всех офицеров на дежурстве.&10-2 - Вышел в патруль.&10-2R - Закончил патруль.&10-3 - Радиомолчание.&10-4 - Принято.&10-5 - Повторите.&10-6 - Не принято/неверно/нет.&10-7 - Ожидайте.&10-8 - Не доступен/занят.&10-14 - Запрос транспортировки.&10-15 - Подозреваемые арестованы.&10-18 - Требуется поддержка дополнительных юнитов.&10-20 - Локация.&10-21 - Статус и местонахождение.&10-22 - Выдвигайтесь к локации.&10-27 - Меняю маркировку патруля.&10-30 - Дорожно-транспортное происшествие.&10-40 - Большое скопление людей (более 4).&10-41 - Нелегальная активность.&10-46 - Провожу обыск.&10-55 - Траффик стоп.&10-57 VICTOR - Погоня за автомобилем.&10-57 FOXTROT - Пешая погоня.&10-66 - Траффик стоп повышенного риска.&10-70 - Запрос поддержки.&10-71 - Запрос медицинской поддержки.&10-88 - Теракт/ЧС.&10-99 - Ситуация урегулирована.&10-100 Временно недоступен для вызовов.' }
+	if not module == 'none' then
+		local money = {
+			note_name = 'Зарплата в фракции',
+			note_text = 'Почему ваша зарплата может быть меньше, чем указано:&-20 процентов если нету жилья (дом/отель/трейлер)&-20/-40 процентов если у вас есть выговоры&-10 процентов из-за фикса экономики от разрабов&&Способы повысить свою зарплату во фракции:&+10 процентов если арендовать номер в отеле&+7 процентов если вступить в семью с фам.флагом&+15 процентов если есть \"Военный билет\"&+11 процентов если есть \"Грамота Ветерана\"&+3 процента если есть акс \"Оранжевая магическая шляпа\"&+10/+15/+20/+25/+26/+30/+35 процентов если купить охранника&- Повышайтесь на ранг повыше :)'
+		}
+		add_unique_note(modules.notes.data, money)
+	end
+	if module == 'police' or module == 'fbi' or module == 'prison' or module == 'army' then
+		local situate_codes = {
+			note_name = 'Ситуационные коды',
+			note_text = 'CODE 0 - Офицер ранен.&CODE 1 - Офицер в бедственном положении, нужна помощь всех юнитов.&CODE 2 - Обычный вызов [без сирен/стробоскопов/соблюдение ПДД].&CODE 2 HIGHT - Приоритетный вызов [без сирен/стробоскопов/соблюдение ПДД].&CODE 3 - Срочный вызов [сирены, стробоскопы, игнорирования ПДД].&CODE 4 - Стабильно, помощь не требуется.&Code 4 ADAM - Помощь не требуется, но офицеры поблизости должны быть готовы оказать помощь.&CODE 5 - Офицерам держаться подальше от опасного места.&CODE 6 - Задерживаюсь на месте [включая локацию и причину,например, 911].&CODE 7 - Перерыв на обед.&CODE 30 - Срабатывание "тихой" сигнализации на месте происшествия.&CODE 30 RINGER - Срабатывание "громкой сигнализации на месте происшествия.&CODE 37 - Обнаружение угнанного т/c.&Сode TOM - Офицеру требуется Тайзер.'
+		}
+		local teen_codes = {
+			note_name = 'Тен-коды',
+			note_text = '10-1 - Сбор всех офицеров на дежурстве.&10-2 - Вышел в патруль.&10-2R - Закончил патруль.&10-3 - Радиомолчание.&10-4 - Принято.&10-5 - Повторите.&10-6 - Не принято/неверно/нет.&10-7 - Ожидайте.&10-8 - Не доступен/занят.&10-14 - Запрос транспортировки.&10-15 - Подозреваемые арестованы.&10-18 - Требуется поддержка дополнительных юнитов.&10-20 - Локация.&10-21 - Статус и местонахождение.&10-22 - Выдвигайтесь к локации.&10-27 - Меняю маркировку патруля.&10-30 - Дорожно-транспортное происшествие.&10-40 - Большое скопление людей (более 4).&10-41 - Нелегальная активность.&10-46 - Провожу обыск.&10-55 - Траффик стоп.&10-57 VICTOR - Погоня за автомобилем.&10-57 FOXTROT - Пешая погоня.&10-66 - Траффик стоп повышенного риска.&10-70 - Запрос поддержки.&10-71 - Запрос медицинской поддержки.&10-88 - Теракт/ЧС.&10-99 - Ситуация урегулирована.&10-100 Временно недоступен для вызовов.'
+		}
 		add_unique_note(modules.notes.data, situate_codes)
 		add_unique_note(modules.notes.data, teen_codes)
 	end
@@ -4724,10 +4623,25 @@ function import_data_from_old_helpers()
 		f:close()
 		return ok and data or nil
 	end
+	local function migrate_command_args(c)
+		local hasArgId = c.arg:find("{arg_id}", 1, true)
+		local hasArg2 = c.arg:find("{arg2}", 1, true)
+		local hasArg3 = c.arg:find("{arg3}", 1, true)
+		if hasArg2 and hasArg3 then
+			c.arg = c.arg:gsub("{arg_id}", "{id}"):gsub("{arg2}", "{number}"):gsub("{arg3}", "{arg}")
+			c.text = c.text:gsub("{arg_id}", "{id}"):gsub("{arg2}", "{number}"):gsub("{arg3}", "{arg}")
+		elseif hasArg2 and not hasArg3 then
+			c.arg = c.arg:gsub("{arg_id}", "{id}"):gsub("{arg2}", "{arg}")
+			c.text = c.text:gsub("{arg_id}", "{id}"):gsub("{arg2}", "{arg}")
+		elseif hasArgId then
+			c.arg = c.arg:gsub("{arg_id}", "{id}")
+			c.text = c.text:gsub("{arg_id}", "{id}")
+		end
+		return c
+	end
 	local function import_settings(folder)
 		local settingsPath = base .. "/" .. folder .. "/Settings.json"
 		if not doesFileExist(settingsPath) then return end
-
 		local data = readJsonSafe(settingsPath)
 		if not data then return end
 		if data.note then
@@ -4738,14 +4652,15 @@ function import_data_from_old_helpers()
 		if data.commands then
 			for _, c in ipairs(data.commands) do
 				if not c.deleted then
-					add_unique_cmd(modules.commands.data.commands.my, { c })
+					add_unique_cmd(modules.commands.data.commands.my, {migrate_command_args(c)})
 				end
 			end
 		end
 		if data.commands_manage then
 			for _, c in ipairs(data.commands_manage) do
 				if not c.deleted then
-					add_unique_cmd(modules.commands.data.commands_manage.my, { c })
+					migrate_command_args(c)
+					add_unique_cmd(modules.commands.data.commands_manage.my, {migrate_command_args(c)})
 				end
 			end
 		end
@@ -4774,14 +4689,14 @@ function import_data_from_old_helpers()
 				if c.commands then
 					for _, cmd in ipairs(c.commands) do
 						if not cmd.deleted then
-							add_unique_cmd(modules.commands.data.commands.my, { cmd })
+							add_unique_cmd(modules.commands.data.commands.my, {migrate_command_args(cmd)})
 						end
 					end
 				end
 				if c.commands_manage then
 					for _, cmd in ipairs(c.commands_manage) do
 						if not cmd.deleted then
-							add_unique_cmd(modules.commands.data.commands_manage.my, { cmd })
+							add_unique_cmd(modules.commands.data.commands_manage.my, {migrate_command_args(cmd)})
 						end
 					end
 				end
@@ -4805,7 +4720,7 @@ function import_data_from_old_helpers()
 	safeMove("Justice Helper", "SmartPDD.json", modules.smart_pdd.path)
 	safeMove("Prison Helper", "SmartRPTP.json", modules.smart_rptp.path)
 end
-function deleteOldHelpers()
+function delete_old_helpers()
 	local path = worked_dir
 	local helpers = {"Justice", "Hospital", "SMI", "AS", "FD", "GOV", "Government", "Mafia", "Prison"}
 	for index, name in ipairs(helpers) do
@@ -4816,9 +4731,11 @@ function deleteOldHelpers()
 		end
 	end
 end
-function deleteHelperData(checker)
+function delete_helpers_data(checker)
 	os.remove(config_dir .. "/Settings.json")
+	os.remove(config_dir .. "/Player.json")
 	os.remove(config_dir .. "/Commands.json")
+	os.remove(config_dir .. "/Buttons.json")
 	os.remove(config_dir .. "/Departament.json")
 	os.remove(config_dir .. "/PieMenu.json")
 	os.remove(config_dir .. "/Notes.json")
@@ -4845,9 +4762,14 @@ end
 if isMode('police') or isMode('fbi') then
 	function form_su(name, playerID, message)
 		local lvl, id, reason = message:match('Прошу обьявить в розыск (%d) степени дело N(%d+)%. Причина%: (.+)')
-		MODULE.SumMenu.form_su = id .. ' ' .. lvl .. ' ' .. reason
-		sampAddChatMessage('[Arizona Helper] {ffffff}Используйте ' .. message_color_hex .. '/givefsu ' .. playerID .. '{ffffff} чтобы выдать розыск по запросу офицера ' .. message_color_hex .. name, message_color)
-		playNotifySound()
+		local rank = (isMode('fbi') and 4 or 5)
+		if (modules.player.data.fraction_rank_number >= rank) then
+			MODULE.SumMenu.form_su = id .. ' ' .. lvl .. ' ' .. reason
+			sampAddChatMessage('[Arizona Helper | Ассистент] {ffffff}Используйте ' .. message_color_hex .. '/givefsu ' .. playerID .. '{ffffff} чтобы выдать розыск по запросу офицера ' .. message_color_hex .. name, message_color)
+			play_sound()
+		else
+			sampAddChatMessage('[Arizona Helper | Ассистент] {ffffff}Для выдачи розыска по запросу нужно иметь ' .. rank .. '-й ранг, но вы только ' .. modules.player.data.fraction_rank_number .. '-й ранг :(', message_color)
+		end
 	end
 end
 if isMode('hospital') then
@@ -4873,7 +4795,7 @@ if isMode('hospital') then
 						check_end_time()
 					elseif hotkey_no_errors then
 						sampAddChatMessage('[Arizona Helper] {ffffff}Чтобы вылечить игрока ' .. sampGetPlayerNickname(id) .. ' нажмите ' .. message_color_hex .. getNameKeysFrom(settings.general.bind_action) .. ' {ffffff}в течении 5-ти секунд!', message_color)
-						show_arz_notify('info', 'Arizona Helper', 'Нажмите ' .. getNameKeysFrom(settings.general.bind_action) .. ' чтобы быстро вылечить игрока', 5000)
+						show_notify('info', 'Arizona Helper', 'Нажмите ' .. getNameKeysFrom(settings.general.bind_action) .. ' чтобы быстро вылечить игрока', 5000)
 						MODULE.HealChat.player_id = id
 						MODULE.HealChat.bool = true
 						check_end_time()
@@ -4884,20 +4806,23 @@ if isMode('hospital') then
 		end
 	end
 end
-if (isMode('smi')) then
+if isMode('smi') then
 	function send_ad()
 		local text = u8:decode(ffi.string(MODULE.SmiEdit.input_edit_text))
 		if text ~= '' then
-			local exists = false
-			for _, ad in ipairs(modules.ads_history.data) do
-				if ad and ad.text and ad.text == MODULE.SmiEdit.ad_message then
-					exists = true
-					break
+
+			if settings.smi.ads_history then
+				local exists = false
+				for _, ad in ipairs(modules.ads_history.data) do
+					if ad and ad.text and ad.text == MODULE.SmiEdit.ad_message then
+						exists = true
+						break
+					end
 				end
-			end
-			if not exists then
-				table.insert(modules.ads_history.data, 1, {text = MODULE.SmiEdit.ad_message, my_text = u8:decode(ffi.string(MODULE.SmiEdit.input_edit_text))})
-				save_module('ads_history')
+				if not exists then
+					table.insert(modules.ads_history.data, 1, {text = MODULE.SmiEdit.ad_message, my_text = u8:decode(ffi.string(MODULE.SmiEdit.input_edit_text))})
+					save_module('ads_history')
+				end
 			end
 
 			if text == MODULE.SmiEdit.last_ad_text then
@@ -4910,12 +4835,14 @@ if (isMode('smi')) then
 				sampAddChatMessage('[Arizona Helper] {ffffff}Не удалось отправить обьяву, у вас слишком много спец.символов (цифры/точки/кавычки)!', message_color)
 				MODULE.SmiEdit.last_ad_text = ''
 				MODULE.SmiEdit.ad_repeat_count = 0
-				for index, ad in ipairs(modules.ads_history.data) do
-					if ad and ad.text and ad.text == MODULE.SmiEdit.ad_message then
-						sampAddChatMessage('[Arizona Helper] {ffffff}Строка редактирования обьявления очищена, но ваше обьявление сохранено в истории обьявлений.', message_color)
-						ad.text = ad.my_text
-						save_module('ads_history')
-						break
+				if settings.smi.ads_history then
+					for index, ad in ipairs(modules.ads_history.data) do
+						if ad and ad.text and ad.text == MODULE.SmiEdit.ad_message then
+							sampAddChatMessage('[Arizona Helper] {ffffff}Строка редактирования обьявления очищена, но ваше обьявление сохранено в истории обьявлений.', message_color)
+							ad.text = ad.my_text
+							save_module('ads_history')
+							break
+						end
 					end
 				end
 				return
@@ -4929,7 +4856,7 @@ if (isMode('smi')) then
 		end
 	end
 end
-if (isMode('fd')) then
+if isMode('fd') then
 	function getFireLocation(id)
 		count = 0
 		for line in MODULE.Fires.locations:gmatch('.-\n') do
@@ -4946,7 +4873,7 @@ if (isMode('fd')) then
 					end
 				end
 				if settings.fd.doklads.togo then
-					sampSendChat('/r Докладывает ' .. MODULE.Binder.tags.my_doklad_nick() .. ', выехал' .. MODULE.Binder.tags.sex() .. ' на ' .. MODULE.Fires.location .. ' ' .. MODULE.Fires.lvl .. ' степени опасности')
+					sampSendChat('/r Докладывает ' .. MODULE.Binder.tag.my_doklad_nick() .. ', выехал' .. MODULE.Binder.tag.sex() .. ' на ' .. MODULE.Fires.location .. ' ' .. MODULE.Fires.lvl .. ' степени опасности')
 				end
 				return
 			else
@@ -4955,79 +4882,7 @@ if (isMode('fd')) then
 		end
 	end
 end
-if (settings.player_info.fraction_rank_number >= 9) then
-	function give_rank()
-		local command_find = false
-		for _, command in ipairs(modules.commands.data.commands_manage.my) do
-			if command.enable and command.text:find('/giverank {arg_id}') then
-				command_find = true
-				local modifiedText = command.text
-				local wait_tag = false
-				local arg_id = player_id
-				modifiedText = modifiedText:gsub('%{get_nick%(%{arg_id%}%)%}', sampGetPlayerNickname(arg_id) or "")
-				modifiedText = modifiedText:gsub('%{get_rp_nick%(%{arg_id%}%)%}', sampGetPlayerNickname(arg_id):gsub('_',' ') or "")
-				modifiedText = modifiedText:gsub('%{get_ru_nick%(%{arg_id%}%)%}', TranslateNick(sampGetPlayerNickname(arg_id)) or "")
-				modifiedText = modifiedText:gsub('%{arg_id%}', arg_id or "")
-				lua_thread.create(function()
-					MODULE.Binder.state.isActive = true
-					info_stop_command()
-					local lines = {}
-					for line in string.gmatch(modifiedText, "[^&]+") do
-						table.insert(lines, line)
-					end
-					for _, line in ipairs(lines) do 
-						if MODULE.Binder.state.isStop then 
-							MODULE.Binder.state.isStop = false 
-							MODULE.Binder.state.isActive = false
-							if IS_MOBILE and settings.general.mobile_stop_button then
-								MODULE.CommandStop.Window[0] = false
-							end
-							sampAddChatMessage('[Arizona Helper] {ffffff}Отыгровка команды /' .. command.cmd .. " успешно остановлена!", message_color) 
-							return 
-						end
-						if wait_tag then
-							for tag, replacement in pairs(MODULE.Binder.tags) do
-								if line:find("{" .. tag .. "}") then
-									local success, result = pcall(string.gsub, line, "{" .. tag .. "}", replacement())
-									if success then
-										line = result
-									end
-								end
-							end
-							sampSendChat(line)
-							wait(1500)	
-						end
-						if not wait_tag then
-							if line == '{show_rank_menu}' then
-								wait_tag = true
-							end
-						end
-					end
-					MODULE.Binder.state.isActive = false
-					if IS_MOBILE and settings.general.mobile_stop_button then
-						MODULE.CommandStop.Window[0] = false
-					end
-				end)
-			end
-		end
-		if not command_find then
-			sampAddChatMessage('[Arizona Helper] {ffffff}Бинд для изменения ранга отсутствует либо отключён!', message_color)
-			sampAddChatMessage('[Arizona Helper] {ffffff}Попробуйте сбросить настройки хелпера!', message_color)
-			sampSendChat('/giverank ' .. player_id .. " " .. MODULE.GiveRank.number[0])
-		end
-	end
-	function kick_players()
-		lua_thread.create(function()
-			for index, value in ipairs(MODULE.LeadTools.cleaner.players_to_kick) do
-				MODULE.LeadTools.cleaner.reason_day = value.day
-				sampSendChat('/uninviteoff ' .. value.nickname)
-				printStringNow(index .. '/' .. #MODULE.LeadTools.cleaner.players_to_kick, 2000)
-				wait(2000)
-			end
-			MODULE.LeadTools.cleaner.uninvite = false
-		end)
-	end
-end
+--------------------------------------------- Events ---------------------------------------------
 function emulationCEF(str)
 	-- by wojciech?
 	local bs = raknetNewBitStream()
@@ -5054,7 +4909,7 @@ function visualCEF(str, is_encoded)
 	raknetEmulPacketReceiveBitStream(220, bs)
 	raknetDeleteBitStream(bs)
 end
-function show_arz_notify(type, title, text, time)
+function show_notify(type, title, text, time)
 	if IS_MOBILE then
 		--[[
 		if type == 'info' then
@@ -5099,7 +4954,6 @@ function show_arz_notify(type, title, text, time)
 		visualCEF(str, true)
 	end
 end
---------------------------------------------- Events ---------------------------------------------
 function sampev.onShowTextDraw(id, data)
 	if MODULE.DEBUG then
 		sampAddChatMessage('[ShowTextDraw] {ffffff}ID ' .. id .. " | Text " .. data.text .. ' | ModelID ' .. data.modelId .. " |", message_color)
@@ -5146,12 +5000,16 @@ function sampev.onSendTakeDamage(playerId,damage,weapon)
 						MODULE.Post.ComboCode[0] = 1
 						MODULE.Post.code = 'CODE 0'
 					end
-					if (settings.mj.auto_doklad_damage or settings.md.auto_doklad_damage) then
-						lua_thread.create(function()
-							sampSendChat('/r ' .. MODULE.Binder.tags.my_doklad_nick() .. ' на CONTROL. ' .. (weapon ~= 0 and 'Нахожусь под огнём' or 'На меня напали') .. ' в районе ' .. MODULE.Binder.tags.get_area() .. ' (' .. MODULE.Binder.tags.get_square() .. '), состояние CODE 0!')
-							wait(1500)
-							sampSendChat('/rb Нападающий: ' .. sampGetPlayerNickname(playerId) .. '[' .. playerId .. '], он(-а) использует ' .. weapon_name .. '!')
-						end)
+					if ((isMode('police') or isMode('fbi')) and settings.mj.auto_doklad_damage) or (((isMode('army') or isMode('prison')) and settings.md.auto_doklad_damage)) then
+						if not MODULE.Binder.state.isActive then
+							lua_thread.create(function()
+								MODULE.Binder.state.isActive = true
+								sampSendChat('/r ' .. MODULE.Binder.tag.my_doklad_nick() .. ' на CONTROL. ' .. (weapon ~= 0 and 'Нахожусь под огнём' or 'На меня напали') .. ' в районе ' .. MODULE.Binder.tag.get_area() .. ' (' .. MODULE.Binder.tag.get_square() .. '), состояние CODE 0!')
+								wait(2000)
+								sampSendChat('/rb Нападающий: ' .. sampGetPlayerNickname(playerId) .. '[' .. playerId .. '], он(-а) использует ' .. weapon_name .. '!')
+								MODULE.Binder.state.isActive = false
+							end)
+						end
 					end
 				end
 			end
@@ -5167,8 +5025,7 @@ function sampev.onSendGiveDamage(playerId, damage, weapon, bodypart)
 		if (sampGetPlayerNickname(playerId) == 'Bogdan_Martelli' and getServerNumber() == '20') or sampGetPlayerNickname(playerId):find('%[20%]Bogdan_Martelli') then
 			sampAddChatMessage('[Arizona Helper] {ffffff}Bogdan_Martelli - это разработчик Arizona Helper!', message_color)
 			sampAddChatMessage('[Arizona Helper] {ffffff}Не нужно наносить урон разработчику хелпера, АСТАНАВИТЕСЬ :sob: :sob: :sob:', message_color)
-			playNotifySound()
-			return false
+			play_sound()
 		end
 	end
 end
@@ -5178,66 +5035,101 @@ function sampev.onServerMessage(color, text)
 		print('[ServerMessage] Color ' .. color .. " | Text " .. text)
 	end
 
-	if settings.general.ping and text:find('@' .. MODULE.Binder.tags.my_nick(), 1, true) then
-		sampAddChatMessage('[Arizona Helper] {ffffff}Кто-то упомянул вас в чате!', message_color)
-		playNotifySound()
+	if IS_MOBILE then -- фикс получения ID игрока на мобайле
+		if text:find('{DFCFCF}[Подсказка] {DC4747}Вы можете задать вопрос в нашу техническую поддержку /report', 1, true) and modules.player.data.nick ~= '' then
+			CHECK_ID = true
+			sampSendChat('/id ' .. modules.player.data.nick)
+		end
+		if CHECK_ID and text:find('^%[(%d+)%]') then 
+			MODULE.MOBILE_PLAYER_ID = text:match('^%[(%d+)%]')
+			CHECK_ID = false
+		end
 	end
 
-	if ((settings.general.auto_uninvite) and (settings.player_info.fraction_rank_number >= 9)) then
-		local function auto_uninvite_handler(tag, name, playerID, message)
-			if not message:find(" отправьте (.+) +++ чтобы уволится ПСЖ!") and not message:find("Сотрудник (.+) был уволен по причине(.+)") and message:rupper():find("ПСЖ") or message:rupper():find("УВОЛЬТЕ") or message:rupper():find("УВАЛ") then
-				MODULE.LeadTools.msg3 = MODULE.LeadTools.msg2
-				MODULE.LeadTools.msg2 = MODULE.LeadTools.msg1
-				MODULE.LeadTools.msg1 = text
-				PlayerID = playerID
-				if MODULE.LeadTools.msg3 == text then
+	if settings.general.ping and MODULE.Binder.tag.my_nick() ~= '' and text:find('@' .. MODULE.Binder.tag.my_nick(), 1, true) then
+		sampAddChatMessage('[Arizona Helper] {ffffff}Кто-то упомянул вас в чате!', message_color)
+		play_sound()
+	end
+
+	if modules.player.data.fraction_rank_number >= 9 then
+		if settings.general.auto_uninvite then
+			local function auto_uninvite_handler(tag, name, playerID, message)
+				if not message:find("отправьте (.+) +++ чтобы уволится ПСЖ!") and not message:find("Сотрудник (.+) был уволен по причине") and message:rupper():find("ПСЖ") or message:rupper():find("УВОЛЬТЕ") or message:rupper():find("УВАЛ") then
+					MODULE.LeadTools.msg3 = MODULE.LeadTools.msg2
+					MODULE.LeadTools.msg2 = MODULE.LeadTools.msg1
+					MODULE.LeadTools.msg1 = text
+					PlayerID = playerID
+					if MODULE.LeadTools.msg3 == text then
+						MODULE.LeadTools.checker = true
+						sampSendChat('/fmute ' .. playerID .. ' 1 ПСЖ')
+					elseif tag == "R" then
+						sampSendChat("/rb "..name.."["..playerID.."], отправьте /rb +++ чтобы уволится ПСЖ!")
+					elseif tag == "F" then
+						sampSendChat("/fb "..name.."["..playerID.."], отправьте /fb +++ чтобы уволится ПСЖ!")
+					end
+				elseif ((message == "(( +++ ))" or  message == "(( +++. ))") and (PlayerID == playerID)) then
 					MODULE.LeadTools.checker = true
 					sampSendChat('/fmute ' .. playerID .. ' 1 ПСЖ')
-				elseif tag == "R" then
-					sampSendChat("/rb "..name.."["..playerID.."], отправьте /rb +++ чтобы уволится ПСЖ!")
-				elseif tag == "F" then
-					sampSendChat("/fb "..name.."["..playerID.."], отправьте /fb +++ чтобы уволится ПСЖ!")
 				end
-			elseif ((message == "(( +++ ))" or  message == "(( +++. ))") and (PlayerID == playerID)) then
-				MODULE.LeadTools.checker = true
-				sampSendChat('/fmute ' .. playerID .. ' 1 ПСЖ')
 			end
-		end
-		if text:find("^%[(.-)%] (.-) (.-)%[(.-)%]: (.+)") and color == 766526463 then -- /f /fb /r /rb без тега 
-			local tag, rank, name, playerID, message = string.match(text, "%[(.-)%] (.+) (.-)%[(.-)%]: (.+)")
-			auto_uninvite_handler(tag, name, playerID, message)
-		elseif text:find("^%[(.-)%] %[(.-)%] (.+) (.-)%[(.-)%]: (.+)") and color == 766526463 then -- /r /f с тегом
-			local tag, tag2, rank, name, playerID, message = string.match(text, "%[(.-)%] %[(.-)%] (.+) (.-)%[(.-)%]: (.+)")
-			auto_uninvite_handler(tag, name, playerID, message)
-		elseif text:find("(.+) заглушил%(а%) игрока (.+) на 1 минут. Причина: ПСЖ") and MODULE.LeadTools.checker then
-			local text2 = text:gsub('{......}', '')
-			local DATA = text2:match("(.+) заглушил")
-			local Name = DATA:match(" ([A-Za-z0-9_]+)%[")
-			local MyName = sampGetPlayerNickname(select(2, sampGetPlayerIdByCharHandle(PLAYER_PED)))
-			if Name == MyName then
-				sampAddChatMessage('[Arizona Helper] {ffffff}Увольняю игрока ' .. sampGetPlayerNickname(PlayerID) .. '!', message_color)
-				MODULE.LeadTools.checker = false
-				find_and_use_command("/uninvite {arg_id} {arg2}", (PlayerID .. ' ПСЖ'))
-			else
-				sampAddChatMessage('[Arizona Helper] {ffffff}Другой заместитель/лидер уже увольняет игрока ' .. sampGetPlayerNickname(PlayerID) .. '!', message_color)
-				MODULE.LeadTools.checker = false
+			if text:find("^%[(.-)%] (.-) (.-)%[(.-)%]: (.+)") and color == 766526463 then -- /f /fb /r /rb без тега 
+				local tag, rank, name, playerID, message = string.match(text, "%[(.-)%] (.+) (.-)%[(.-)%]: (.+)")
+				auto_uninvite_handler(tag, name, playerID, message)
+			elseif text:find("^%[(.-)%] %[(.-)%] (.+) (.-)%[(.-)%]: (.+)") and color == 766526463 then -- /r /f с тегом
+				local tag, tag2, rank, name, playerID, message = string.match(text, "%[(.-)%] %[(.-)%] (.+) (.-)%[(.-)%]: (.+)")
+				auto_uninvite_handler(tag, name, playerID, message)
+			elseif text:find("(.+) заглушил%(а%) игрока (.+) на 1 минут. Причина: ПСЖ") and MODULE.LeadTools.checker then
+				local text2 = text:gsub('{......}', '')
+				local DATA = text2:match("(.+) заглушил")
+				local Name = DATA:match(" ([A-Za-z0-9_]+)%[")
+				local MyName = sampGetPlayerNickname(select(2, sampGetPlayerIdByCharHandle(PLAYER_PED)))
+				if Name == MyName then
+					sampAddChatMessage('[Arizona Helper | Ассистент] {ffffff}Увольняю игрока ' .. sampGetPlayerNickname(PlayerID) .. '!', message_color)
+					MODULE.LeadTools.checker = false
+					find_and_use_command("/uninvite {id} {arg}", (PlayerID .. ' ПСЖ'))
+				else
+					sampAddChatMessage('[Arizona Helper | Ассистент] {ffffff}Другой заместитель/лидер уже увольняет игрока ' .. sampGetPlayerNickname(PlayerID) .. '!', message_color)
+					MODULE.LeadTools.checker = false
+				end
 			end
 		end
 	end
 
-	if ((settings.general.auto_accept_docs) and (text:find('^%[Новое предложение%].+Вам поступило предложение от игрока (.+)%/offer'))) then
+	if settings.general.auto_accept_docs and text:find('^%[Новое предложение%].+offer') then
+		sampAddChatMessage('[Arizona Helper | Ассистент] {ffffff}Открываю список предложений от игрока...', message_color)
 		sampSendChat('/offer')
 	end
 
+	if isMode('smi') then
+		if (text:find('^На обработку объявлений пришло ')) then
+			local nick = text:match('от: ([^{%(]+)') or ''
+			sampAddChatMessage('[Arizona Helper]{ffffff} Поступило новое обьявление от игрока ' .. message_color_hex .. nick, message_color)
+			return false
+		end
+		if (text:find('^{C17C2D}На обработку объявлений пришло сообщение от руководства страховой компании%: (.+)')) then
+			local nick = text:match('компании: (.+)') or ''
+			sampAddChatMessage('[Arizona Helper]{ffffff} Поступило новое обьявление от игрока ' .. message_color_hex .. nick, message_color)
+			return false
+		end
+		if (text:find('^VIP объявление:') or text:find('^Стандартное объявление:')) then -- rodina
+			local nick = text:match('%, от%: (.+)%[')
+			sampAddChatMessage('[Arizona Helper]{ffffff} Поступило новое обьявление от игрока ' .. message_color_hex .. nick, message_color)
+			return false
+		end
+		if (text:find('^%[Ошибка%] %{ffffff%}Это объявление уже редактирует (.+).')) then
+			local nick = text:match('редактирует (.+).')
+			sampAddChatMessage('[Arizona Helper] {ffffff}Это обьявление уже редактирует игрок ' .. message_color_hex  .. nick, message_color)
+			return false
+		end
+	end
+
 	if (isMode('police') or isMode('fbi')) then
-		if (settings.player_info.fraction_rank_number >= (isMode('fbi') and 4 or 5)) then
-			if text:find("^%[(.-)%] (.-) (.-)%[(.-)%]: Прошу обьявить в розыск (%d) степени дело N(%d+)%. Причина%: (.+)") then
-				local tag, rank, name, playerID, message = string.match(text, "%[(.-)%] (.+) (.-)%[(.-)%]: (.+)")
-				form_su(name, playerID, message)
-			elseif text:find("^%[(.-)%] %[(.-)%] (.+) (.-)%[(.-)%]: Прошу обьявить в розыск (%d) степени дело N(%d+)%. Причина%: (.+)") then
-				local tag, tag2, rank, name, playerID, message = string.match(text, "%[(.-)%] %[(.-)%] (.+) (.-)%[(.-)%]: (.+)")
-				form_su(name, playerID, message)
-			end
+		if text:find("^%[(.-)%] (.-) (.-)%[(.-)%]: Прошу обьявить в розыск (%d) степени дело N(%d+)%. Причина%: (.+)") then
+			local tag, rank, name, playerID, message = string.match(text, "%[(.-)%] (.+) (.-)%[(.-)%]: (.+)")
+			form_su(name, playerID, message)
+		elseif text:find("^%[(.-)%] %[(.-)%] (.+) (.-)%[(.-)%]: Прошу обьявить в розыск (%d) степени дело N(%d+)%. Причина%: (.+)") then
+			local tag, tag2, rank, name, playerID, message = string.match(text, "%[(.-)%] %[(.-)%] (.+) (.-)%[(.-)%]: (.+)")
+			form_su(name, playerID, message)
 		end
 		if (text:find('^Местоположение (.+) отмечено на карте красным маркером')) then
 			printStringNow(MODULE.Wanted.afind and 'AUTO FIND' or 'FIND', 500)
@@ -5254,7 +5146,7 @@ function sampev.onServerMessage(color, text)
 			sampSendChat('/delvdesc')
 			lua_thread.create(function()
 				wait(5000)
-				sampSendChat('/vdesc ' .. MODULE.Binder.tags.get_patrool_mark())
+				sampSendChat('/vdesc ' .. MODULE.Binder.tag.get_patrool_mark())
 			end)		
 		end
 		if (text:find('^%[Информация%] {ffffff}Вы подобрали обломок, теперь вам нужно отнести его и {ff0000}положить в общую кучу')) then
@@ -5265,31 +5157,36 @@ function sampev.onServerMessage(color, text)
 			sampAddChatMessage('[Arizona Helper] {ffffff}Вы положили завал в общую кучу, теперь отправляйтесь к следующему завалу.', message_color)
 			return false
 		end
-		if (settings.mj.auto_time) then
-			if ((text:find("^ " .. MODULE.Binder.tags.my_nick() .. ' обыскивает (.+)')) or (text:find("^" .. MODULE.Binder.tags.my_nick() .. ' проверяет документы у (.+)')) or (text:find("^%[Розыск%] (.+) Обвинитель%: " .. MODULE.Binder.tags.my_nick()))) then
+		if text:find('^>> Вы посадили игрока (.+) в тюрьму на (%d+) минут') then
+			if (settings.mj.auto_time) then
 				lua_thread.create(function()
 					wait(500)
 					sampSendChat('/time')
 				end)
 			end
 		end
+		if settings.mj.auto_time then
+			if text:find("^ " .. MODULE.Binder.tag.my_nick() .. ' обыскивает (.+)') or text:find("^" .. MODULE.Binder.tag.my_nick() .. ' проверяет документы у (.+)') or text:find("^%[Розыск%] (.+) Обвинитель%: " .. MODULE.Binder.tag.my_nick()) then
+				lua_thread.create(function() wait(500) sampSendChat('/time') end)
+			end
+		end
 	end
  	
 	if isMode('hospital') then
-		if (text:find('^Очевидец сообщает о пострадавшем человеке в районе (.+) %((.+)%).')) then
+		if text:find('^Очевидец сообщает о пострадавшем человеке в районе (.+) %((.+)%).') then
 			MODULE.GoDeath.locate, MODULE.GoDeath.city = text:match('Очевидец сообщает о пострадавшем человеке в районе (.+) %((.+)%).')
 			return false
-		elseif (text:find('^Очевидец сообщает о пострадавшем человеке%, геолокация%: (.+)')) then -- rodina
+		elseif text:find('^Очевидец сообщает о пострадавшем человеке%, геолокация%: (.+)') then -- rodina
 			MODULE.GoDeath.locate, MODULE.GoDeath.city = "неизвестном", text:match('геолокация%: (.+)')
 			return false
 		end
-		if (text:find('^%(%( Чтобы принять вызов, введите /godeath (%d+). Оплата за вызов (.+) %)%)')) then
+		if text:find('^%(%( Чтобы принять вызов, введите /godeath (%d+). Оплата за вызов (.+) %)%)') then
 			local price_godeath = ''
 			MODULE.GoDeath.player_id, price_godeath = text:match('%(%( Чтобы принять вызов, введите /godeath (%d+). Оплата за вызов (.+) %)%)')
 			MODULE.GoDeath.player_id = tonumber(MODULE.GoDeath.player_id)
 			local cmd = '/godeath'
 			for _, command in ipairs(modules.commands.data.commands.my) do
-				if command.enable and command.text:find('/godeath {arg_id}') then
+				if command.enable and command.text:find('/godeath {id}') then
 					cmd =  '/' .. command.cmd
 				end
 			end
@@ -5301,15 +5198,15 @@ function sampev.onServerMessage(color, text)
 			sampAddChatMessage('[Arizona Helper] {ffffff}Вылечив его вы получите ' .. price_godeath .. '! Чтобы принять вызов, используйте команду ' .. message_color_hex .. cmd .. ' ' .. MODULE.GoDeath.player_id, message_color)
 			return false
 		end
-		if (text:find("^Пациент (.+) вызывает врачей .+холл.+этаж")) then
+		if text:find("^Пациент (.+) вызывает врачей .+холл.+этаж") then
 			sampAddChatMessage('[Arizona Helper] {ffffff}Пациент ' .. text:match("Пациент (.+) вызывает") .. ' вызывает врача в холл больницы!', message_color)
 			return false
 		end
-		if ((settings.mh.heal_in_chat.enable) and not MODULE.HealChat.bool and not MODULE.Binder.state.isActive) then	
-			if (text:find('^(.+)%[(%d+)%] говорит:{B7AFAF} (.+)')) then
+		if settings.mh.heal_in_chat.enable and not MODULE.HealChat.bool then	
+			if text:find('^(.+)%[(%d+)%] говорит:{B7AFAF} (.+)') then
 				local nick, id, message = text:match('^(.+)%[(%d+)%] говорит:{B7AFAF} (.+)')
 				heal_handler(nick, id, message)
-			elseif (text:find('^(.+)%[(%d+)%] кричит: (.+)')) then
+			elseif text:find('^(.+)%[(%d+)%] кричит: (.+)') then
 				local nick, id, message = text:match('^(.+)%[(%d+)%] кричит: (.+)')
 				heal_handler(nick, id, message)
 			end
@@ -5344,30 +5241,7 @@ function sampev.onServerMessage(color, text)
 		end
 	end	
 
-	if (isMode('smi')) then
-		if (text:find('^На обработку объявлений пришло ')) then
-			local nick = text:match('от: ([^{%(]+)') or ''
-			sampAddChatMessage('[Arizona Helper]{ffffff} Поступило новое обьявление от игрока ' .. message_color_hex .. nick, message_color)
-			return false
-		end
-		if (text:find('^{C17C2D}На обработку объявлений пришло сообщение от руководства страховой компании%: (.+)')) then
-			local nick = text:match('компании: (.+)') or ''
-			sampAddChatMessage('[Arizona Helper]{ffffff} Поступило новое обьявление от игрока ' .. message_color_hex .. nick, message_color)
-			return false
-		end
-		if (text:find('^VIP объявление:') or text:find('^Стандартное объявление:')) then -- rodina
-			local nick = text:match('%, от%: (.+)%[')
-			sampAddChatMessage('[Arizona Helper]{ffffff} Поступило новое обьявление от игрока ' .. message_color_hex .. nick, message_color)
-			return false
-		end
-		if (text:find('^%[Ошибка%] %{ffffff%}Это объявление уже редактирует (.+).')) then
-			local nick = text:match('редактирует (.+).')
-			sampAddChatMessage('[Arizona Helper] {ffffff}Это обьявление уже редактирует игрок ' .. message_color_hex  .. nick, message_color)
-			return false
-		end
-	end
-
-	if (isMode('fd')) then
+	if isMode('fd') then
 		if (text:find("Происшествие(.+)В штате произошел пожар! Ранг опасности (%d) звезды")) then
 			MODULE.Fires.lvl = text:match('Ранг опасности (%d) звезды')
 			sampAddChatMessage('[Arizona Helper] {ffffff}В штате новый пожар ' .. MODULE.Fires.lvl .. ' степени опасности!', message_color)
@@ -5381,7 +5255,7 @@ function sampev.onServerMessage(color, text)
 			MODULE.Fires.isZone = true
 			sampAddChatMessage('[Arizona Helper] {ffffff}Вы прибыли на место пожара.', message_color)
 			if (settings.fd.doklads.here) then 
-				sampSendChat('/r Докладывает ' .. MODULE.Binder.tags.my_doklad_nick() .. ', прибыл' .. MODULE.Binder.tags.sex() .. ' на место пожара ' .. MODULE.Fires.lvl .. ' степени опасности!')
+				sampSendChat('/r Докладывает ' .. MODULE.Binder.tag.my_doklad_nick() .. ', прибыл' .. MODULE.Binder.tag.sex() .. ' на место пожара ' .. MODULE.Fires.lvl .. ' степени опасности!')
 			end
 			return false
 		end
@@ -5393,21 +5267,21 @@ function sampev.onServerMessage(color, text)
 			if text:find("%[Информация%] {......}Происшествие №(%d+)%: Все очаги возгорания ликвидированы") then
 				sampAddChatMessage('[Arizona Helper] {ffffff}Все очаги возгорания ликвидированы!', message_color)
 				if settings.fd.doklads.fire then
-					sampSendChat('/r Докладывает ' .. MODULE.Binder.tags.my_doklad_nick() .. ', все очаги возгорания пожара ' .. MODULE.Fires.lvl .. ' степени опасности ликвидированы!')
+					sampSendChat('/r Докладывает ' .. MODULE.Binder.tag.my_doklad_nick() .. ', все очаги возгорания пожара ' .. MODULE.Fires.lvl .. ' степени опасности ликвидированы!')
 				end
 				return false
 			end
 			if text:find("%[Информация%] {ffffff}Отнесите пострадавшего в палатку.") then
 				sampAddChatMessage('[Arizona Helper] {ffffff}Отнесите пострадавшего в палатку.', message_color)
 				if settings.fd.doklads.stretcher then 
-					sampSendChat('/r Докладывает ' .. MODULE.Binder.tags.my_doklad_nick() .. ', погрузил' .. MODULE.Binder.tags.sex() .. ' пострадавшего на носилки, отношу в палатку.')
+					sampSendChat('/r Докладывает ' .. MODULE.Binder.tag.my_doklad_nick() .. ', погрузил' .. MODULE.Binder.tag.sex() .. ' пострадавшего на носилки, отношу в палатку.')
 				end
 				return false
 			end
 			if text:find("%[Информация%] {ffffff}Отлично! Вы спасли пострадавшего!") then
 				sampAddChatMessage('[Arizona Helper] {ffffff}Вы спасли пострадавшего!', message_color)
 				if settings.fd.doklads.npc_save then 
-					sampSendChat('/r Докладывает ' .. MODULE.Binder.tags.my_doklad_nick() .. ', пострадавшему успешно оказана помощь!')
+					sampSendChat('/r Докладывает ' .. MODULE.Binder.tag.my_doklad_nick() .. ', пострадавшему успешно оказана помощь!')
 				end
 				return false
 			end
@@ -5417,7 +5291,7 @@ function sampev.onServerMessage(color, text)
 				if settings.fd.doklads.file_end then
 					lua_thread.create(function()
 						wait(500)
-						sampSendChat('/r Докладывает ' .. MODULE.Binder.tags.my_doklad_nick() .. ', пожар ' .. MODULE.Fires.lvl .. ' степени опасности полностю устранён!')
+						sampSendChat('/r Докладывает ' .. MODULE.Binder.tag.my_doklad_nick() .. ', пожар ' .. MODULE.Fires.lvl .. ' степени опасности полностю устранён!')
 					end)
 				end
 				return false
@@ -5426,18 +5300,18 @@ function sampev.onServerMessage(color, text)
 		if (text:find("%[Информация%] {ffffff}Палатка возвращена Вам в инвентарь.")) then
 			sampAddChatMessage('[Arizona Helper] {ffffff}Палатка возвращена вам в инвентарь.', message_color)
 			if (settings.fd.doklads.tent) then 
-				sampSendChat('/r Докладывает ' .. MODULE.Binder.tags.my_doklad_nick() .. ', убрал' .. MODULE.Binder.tags.sex() .. ' палатку с места проишествия.')
+				sampSendChat('/r Докладывает ' .. MODULE.Binder.tag.my_doklad_nick() .. ', убрал' .. MODULE.Binder.tag.sex() .. ' палатку с места проишествия.')
 			end
 			return false
 		end
 	end
 
-	if (isMode('ins')) then
+	if isMode('ins') then
 		if (text:find('^(.+) подал заявление на страхование имущества.') and color == -1048826369) then
 			local nick = text:match('^(.+) подал')
 			sampAddChatMessage('[Arizona Helper] {ffffff}Игрок ' .. nick .. ' подал заявление на страхование имущества!', message_color)
 			if (settings.ins.notify_new_ticket) then
-				playNotifySound()
+				play_sound()
 			end
 			return false
 		end
@@ -5447,7 +5321,7 @@ function sampev.onServerMessage(color, text)
 		end
 	end
 
-	if (text:find('^%[Ошибка%] {ffffff}После прошедшего подтверждение не прошло 3 часа. {C0C0C0}%(Осталось: (.+)%)')) then
+	if text:find('^%[Ошибка%] {ffffff}После прошедшего подтверждение не прошло 3 часа. {C0C0C0}%(Осталось: (.+)%)') then
 		sampSendChat('/n У вас КД на /fractionrp! Осталось ' .. text:match('Осталось: (.+)%)'))
 	end 
 
@@ -5469,12 +5343,8 @@ function sampev.onServerMessage(color, text)
 
 	if (text:find('Bogdan_Martelli') and getServerNumber() == '20') or text:find('%[20%]Bogdan_Martelli') then
 		local lastColor = text:match("(.+){%x+}$")
-   		if not lastColor then
-			lastColor = "{" .. rgba_to_hex(color) .. "}"
-		end
-		if text:find('%[VIP ADV%]') or text:find('%[FOREVER%]') then
-			lastColor = "{FFFFFF}"
-		end
+		if text:find('%[VIP ADV%]') or text:find('%[FOREVER%]') then lastColor = "{FFFFFF}" end
+   		if not lastColor then lastColor = "{" .. rgba_to_hex(color) .. "}" end
 		if text:find('%[20%]Bogdan_Martelli%[%d+%]') then
 			local id = text:match('%[20%]Bogdan_Martelli%[(%d+)%]') or ''
 			text = string.gsub(text, '%[20%]Bogdan_Martelli%[%d+%]', message_color_hex .. '[20]MTGMODS[' .. id .. ']' .. lastColor)
@@ -5505,14 +5375,14 @@ function sampev.onSendChat(text)
 	if ignore[text] then
 		return {text}
 	end
-	if settings.player_info.rp_chat then
+	if settings.general.rp_chat then
 		text = text:sub(1, 1):rupper()..text:sub(2, #text) 
 		if not text:find('(.+)%.') and not text:find('(.+)%!') and not text:find('(.+)%?') then
 			text = text .. '.'
 		end
 	end
-	if settings.player_info.accent_enable then
-		text = settings.player_info.accent .. ' ' .. text 
+	if settings.general.accent_enable then
+		text = modules.player.data.accent .. ' ' .. text 
 	end
 	return {text}
 end
@@ -5521,7 +5391,7 @@ function sampev.onSendCommand(text)
 		sampAddChatMessage('[SendCommand] {ffffff}CMD ' .. text, message_color)
 		print('[SendCommand] CMD ' .. text)
 	end
-	if settings.player_info.rp_chat then
+	if settings.general.rp_chat then
 		local chats =  { '/vr', '/fam', '/al', '/s', '/b', '/n', '/r', '/rb', '/f', '/fb', '/j', '/jb', '/m', '/do'} 
 		for _, cmd in ipairs(chats) do
 			if text:find('^'.. cmd .. ' ') then
@@ -5535,8 +5405,8 @@ function sampev.onSendCommand(text)
 				end
 			end
 		end
+		return {text}
 	end
-	return {text}
 end
 function sampev.onShowDialog(dialogid, style, title, button1, button2, text)
 	if MODULE.DEBUG then
@@ -5545,18 +5415,17 @@ function sampev.onShowDialog(dialogid, style, title, button1, button2, text)
 	end
 
 	if check_stats and (title:find('Основная статистика') or title:find('Статистика игрока')) then
-		-- Arizona & Rodina Stats
 		if text:find("Имя") then
-			settings.player_info.nick = text:match("{FFFFFF}Имя: {B83434}%[(.-)]") or text:match("{ffffff}Имя %(en%.%):%s+{BE433D}([^\n\r]+)")
-			settings.player_info.name_surname = text:match("{ffffff}Имя %(рус%.%):%s+{BE433D}([^\n\r]+)") or TranslateNick(settings.player_info.nick)
-			sampAddChatMessage('[Arizona Helper] {ffffff}Ваше имя и фамилия обнаружены: ' .. settings.player_info.name_surname, message_color)
+			modules.player.data.nick = text:match("{FFFFFF}Имя: {B83434}%[(.-)]") or text:match("{ffffff}Имя %(en%.%):%s+{BE433D}([^\n\r]+)")
+			modules.player.data.name_surname = text:match("{ffffff}Имя %(рус%.%):%s+{BE433D}([^\n\r]+)") or translate(modules.player.data.nick)
+			sampAddChatMessage('[Arizona Helper] {ffffff}Ваше имя и фамилия обнаружены: ' .. modules.player.data.name_surname, message_color)
         end
 		if text:find("Пол:") then
-			settings.player_info.sex = text:match("{FFFFFF}Пол: {B83434}%[(.-)]") or text:match("{ffffff}Пол:%s+{BE433D}([^\n\r]+)")
-			sampAddChatMessage('[Arizona Helper] {ffffff}Ваш пол обнаружен: ' .. settings.player_info.sex, message_color)
+			modules.player.data.sex = text:match("{FFFFFF}Пол: {B83434}%[(.-)]") or text:match("{ffffff}Пол:%s+{BE433D}([^\n\r]+)")
+			sampAddChatMessage('[Arizona Helper] {ffffff}Ваш пол обнаружен: ' .. modules.player.data.sex, message_color)
 		end
 		if text:find("Организация:") then
-			settings.player_info.fraction = text:match("{FFFFFF}Организация: {B83434}%[(.-)]") or text:match("{ffffff}Организация:%s+{BE433D}([^\n\r]+)")
+			modules.player.data.fraction = text:match("{FFFFFF}Организация: {B83434}%[(.-)]") or text:match("{ffffff}Организация:%s+{BE433D}([^\n\r]+)")
 			local fraction_data = {
 				['Полиция ЛС'] = {'ЛСПД', 'police'}, ['Полиция LS'] = {'ЛСПД', 'police'},
 				['Полиция ЛВ'] = {'ЛВПД', 'police'}, ['Полиция LV'] = {'ЛВПД', 'police'},
@@ -5603,31 +5472,33 @@ function sampev.onShowDialog(dialogid, style, title, button1, button2, text)
 				['Центр Лицензирования'] = {'МРЭО', 'lc'},
 				['Правительство'] = {'Право', 'gov'},
 				['Новостное агенство'] = {'НА', 'smi'},
+				['Украинская мафия'] = {'УМ', 'mafia'},
+				['Кавказкая мафия'] = {'КМ', 'mafia'},
 			}
-			local data = fraction_data[settings.player_info.fraction]
+			local data = fraction_data[modules.player.data.fraction]
 			local old_fraction_mode = settings.general.fraction_mode
 			if data then
-				sampAddChatMessage('[Arizona Helper] {ffffff}Ваша организация обнаружена, это: '..settings.player_info.fraction, message_color)
-				settings.player_info.fraction_tag = data[1]
+				sampAddChatMessage('[Arizona Helper] {ffffff}Ваша организация обнаружена, это: '..modules.player.data.fraction, message_color)
+				modules.player.data.fraction_tag = data[1]
 				settings.general.fraction_mode = data[2]
-				sampAddChatMessage('[Arizona Helper] {ffffff}Вашей организации присвоен тег '..settings.player_info.fraction_tag .. ". Но вы можете изменить его.", message_color)
+				sampAddChatMessage('[Arizona Helper] {ffffff}Вашей организации присвоен тег '..modules.player.data.fraction_tag .. ". Но вы можете изменить его.", message_color)
 				if text:find("Должность:") then
 					local rank, rank_number = text:match("{FFFFFF}Должность: {B83434}(.+)%((%d+)%)(.+)Уровень розыска")
 					if not rank or not rank_number then
 						rank, rank_number = text:match("{ffffff}Должность:%s+{BE433D}([^(]+)%((%d+)%)")
 					end
-					settings.player_info.fraction_rank = rank
-					settings.player_info.fraction_rank_number = tonumber(rank_number)
-					sampAddChatMessage('[Arizona Helper] {ffffff}Ваша должность обнаружена, это: ' .. settings.player_info.fraction_rank .. " (" .. settings.player_info.fraction_rank_number .. ")", message_color)
-					if settings.player_info.fraction_rank_number >= 9 then
+					modules.player.data.fraction_rank = rank
+					modules.player.data.fraction_rank_number = tonumber(rank_number)
+					sampAddChatMessage('[Arizona Helper] {ffffff}Ваша должность обнаружена, это: ' .. modules.player.data.fraction_rank .. " (" .. modules.player.data.fraction_rank_number .. ")", message_color)
+					if modules.player.data.fraction_rank_number >= 9 then
 						settings.general.auto_uninvite = true
 					end
 				end
 			else
 				settings.general.fraction_mode = 'none'
-				settings.player_info.fraction_tag = "ЖДЛС"
-				settings.player_info.fraction_rank = "Бомж"
-				settings.player_info.fraction_rank_number = 1
+				modules.player.data.fraction_tag = "ЖДЛС"
+				modules.player.data.fraction_rank = "Бомж"
+				modules.player.data.fraction_rank_number = 1
 				sampAddChatMessage('[Arizona Helper] {ffffff}Не удалось получить вашу организацию и должность!', message_color)
 				sampAddChatMessage('[Arizona Helper] {ffffff}Присвоил вам режим без организации (ЖДЛС - Бомж - 1).', message_color)
 				sampAddChatMessage('[Arizona Helper] {ffffff}Если вы действительно состоите в организации - перенастройте хелпер вручную.', message_color)
@@ -5640,6 +5511,8 @@ function sampev.onShowDialog(dialogid, style, title, button1, button2, text)
 			import_fraction_data(settings.general.fraction_mode)
 		end
 		save_settings()
+		save_module('player')
+		save_module('departament')
 		sampSendDialogResponse(dialogid, 0, 0, 0)
 		reload_script = true
 		thisScript():reload()
@@ -5654,7 +5527,7 @@ function sampev.onShowDialog(dialogid, style, title, button1, button2, text)
 		if MODULE.Members.info.fraction then
 			MODULE.Members.info.fraction = string.gsub(MODULE.Members.info.fraction, '{(.+)}', '')
 		else
-			MODULE.Members.info.fraction = settings.player_info.fraction -- rodina
+			MODULE.Members.info.fraction = modules.player.data.fraction -- rodina
 		end
         for line in text:gmatch('[^\r\n]+') do
             count = count + 1
@@ -5720,7 +5593,7 @@ function sampev.onShowDialog(dialogid, style, title, button1, button2, text)
 			MODULE.Members.all = MODULE.Members.new
 			MODULE.Members.info.check = false
 			if not settings.general.auto_update_members then
-				sampAddChatMessage('[Arizona Helper] {ffffff}Вы можете включить авто-обновление списка /mb /helper - Функции ' .. settings.player_info.fraction_tag .. '!', message_color)
+				sampAddChatMessage('[Arizona Helper] {ffffff}Вы можете включить авто-обновление списка /mb /helper - Функции ' .. modules.player.data.fraction_tag .. '!', message_color)
 			end
 			MODULE.Members.Window[0] = true
 		else
@@ -5731,7 +5604,7 @@ function sampev.onShowDialog(dialogid, style, title, button1, button2, text)
         return false
     end
 
-	if settings.player_info.fraction_rank_number >= 9 then
+	if modules.player.data.fraction_rank_number >= 9 then
 		if title:find('Выберите ранг для (.+)') and text:find('вакансий') then -- invite
 			sampSendDialogResponse(dialogid, 1, 0, 0)
 			return false
@@ -5762,13 +5635,13 @@ function sampev.onShowDialog(dialogid, style, title, button1, button2, text)
 			end
 			if title:find('Выдача разрешений на поездки Vice City') then
 				MODULE.LeadTools.vc_vize.bool = false
-				sampSendChat("/r Сотруднику "..TranslateNick(sampGetPlayerNickname(tonumber(MODULE.LeadTools.vc_vize.player_id))).." выдана виза Vice City!")
 				sampSendDialogResponse(dialogid, 1, 0, tostring(MODULE.LeadTools.vc_vize.player_id))
+				sampSendChat("/r Сотруднику "..translate(sampGetPlayerNickname(tonumber(MODULE.LeadTools.vc_vize.player_id))).." выдана виза Vice City!")
 				return false 
 			end	
 			if title:find('Забрать разрешение на поездки Vice City') then
 				MODULE.LeadTools.vc_vize.bool = false
-				sampSendChat("/r У сотрудника "..TranslateNick(sampGetPlayerNickname(tonumber(MODULE.LeadTools.vc_vize.player_id))).." была изьята виза Vice City!")
+				sampSendChat("/r У сотрудника "..translate(sampGetPlayerNickname(tonumber(MODULE.LeadTools.vc_vize.player_id))).." была изьята виза Vice City!")
 				sampSendDialogResponse(dialogid, 1, 0, tostring(sampGetPlayerNickname(MODULE.LeadTools.vc_vize.player_id)))
 				return false 
 			end
@@ -5809,7 +5682,15 @@ function sampev.onShowDialog(dialogid, style, title, button1, button2, text)
 				end 
 				if #MODULE.LeadTools.cleaner.players_to_kick > 0 then
 					sampAddChatMessage('[Arizona Helper] {ffffff} Найдено ' .. #MODULE.LeadTools.cleaner.players_to_kick .. ' игроков которые ' .. MODULE.LeadTools.cleaner.day_afk .. " дней не в сети!", message_color)
-					kick_players()
+					lua_thread.create(function()
+						for index, value in ipairs(MODULE.LeadTools.cleaner.players_to_kick) do
+							MODULE.LeadTools.cleaner.reason_day = value.day
+							sampSendChat('/uninviteoff ' .. value.nickname)
+							printStringNow(index .. '/' .. #MODULE.LeadTools.cleaner.players_to_kick, 2000)
+							wait(2000)
+						end
+						MODULE.LeadTools.cleaner.uninvite = false
+					end)
 				else
 					sampAddChatMessage('[Arizona Helper] {ffffff} Нету игроков которые ' .. MODULE.LeadTools.cleaner.day_afk .. " дней не в сети!",  message_color)
 				end
@@ -5850,7 +5731,7 @@ function sampev.onShowDialog(dialogid, style, title, button1, button2, text)
 		sampSendDialogResponse(dialogid, 0, 2, 0)
 		return false 
 	end
-	
+
 	if isMode('gov') then
 		if settings.gov.anti_trivoga and (text:find('Вы действительно хотите вызвать сотрудников полиции?') or text:find('Вы действительно хотите {FFA11C}вызвать{FFFFFF} полицию?')) then
 			sampAddChatMessage('[Arizona Helper] {ffffff}Тревожная кнопка отключена. Для включения используйте /helper - Функции Право', message_color)
@@ -5868,7 +5749,6 @@ function sampev.onShowDialog(dialogid, style, title, button1, button2, text)
 				end
 			end
 			MODULE.Zeks.checker = false
-
 			if #MODULE.Zeks.new == 0 then
 				sampAddChatMessage('[Arizona Helper] {ffffff}Сейчас на сервере нету заключённых игроков!', message_color)
 			else
@@ -5880,14 +5760,13 @@ function sampev.onShowDialog(dialogid, style, title, button1, button2, text)
 				MODULE.Zeks.updzeks.check = true
 				MODULE.Zeks.Window[0] = true
 			end
-
 			sampSendDialogResponse(dialogid, 1, 0, 0)
 			return false
 		end
 	end
 
-	if (settings.general.auto_accept_docs) then
-		if (title:find('Активные предложения') and (text:find('посмотреть его паспорт') or text:find('посмотреть его лицензии') or text:find('посмотреть его мед(.+)карту'))) then
+	if settings.general.auto_accept_docs then
+		if (title:find('Активные предложения', 1, true) and (text:find('паспорт', 1, true) or text:find('лицензии', 1, true) or text:find('мед.+карту', 1, true))) then
 			if text:find('Когда') then
 				sampSendDialogResponse(dialogid, 1, 0, 0)
 				return false
@@ -5944,22 +5823,22 @@ function sampev.onShowDialog(dialogid, style, title, button1, button2, text)
 		end
 		-- rodina
 		if title:find('Выберите медкарту') and text:find('Не определен') and text:find('Наблюдаются отклонения') then
-			sampSendDialogResponse(dialogid, 1, MODULE.Binder.tags.get_medcard_status(), 0)
+			sampSendDialogResponse(dialogid, 1, MODULE.Binder.tag.get_medcard_status(), 0)
 			return false
 		end
 		if title:find('Выбор длительности') and text:find('Выберите количество дней на которое будет') then
 			local days = {[0] = '7', [1] = '14', [2] = '30', [3] = '60'}
-			local day = days[MODULE.Binder.tags.get_medcard_days()]
+			local day = days[MODULE.Binder.tag.get_medcard_days()]
 			sampSendDialogResponse(dialogid, 1, 0, day)
 			return false
 		end
 		if title:find('Выбор стоимости') and text:find('Выберите сумму.+Введите сумму') then
-			sampSendDialogResponse(dialogid, 1, 0, MODULE.Binder.tags.get_medcard_price())
+			sampSendDialogResponse(dialogid, 1, 0, MODULE.Binder.tag.get_medcard_price())
 			return false
 		end
 	end
 
-	if (isMode('smi')) then
+	if isMode('smi') then
 		if MODULE.SmiEdit.skip_dialog then
 			sampSendDialogResponse(dialogid, 0, 0, 0)
 			MODULE.SmiEdit.skip_dialog = false
@@ -5986,7 +5865,7 @@ function sampev.onShowDialog(dialogid, style, title, button1, button2, text)
 			MODULE.SmiEdit.Window[0] = true
 			return false
 		end
-		if (title:find('Редактирование') and text:find('обычных') and text:find('автоматических') and settings.player_info.fraction_rank_number < 9) then
+		if (title:find('Редактирование') and text:find('обычных') and text:find('автоматических') and modules.player.data.fraction_rank_number < 9) then
 			sampSendDialogResponse(dialogid, 1,0,0)
 			return false
 		end
@@ -6024,7 +5903,7 @@ function sampev.onShowDialog(dialogid, style, title, button1, button2, text)
 	end
 	
 	if (isMode('lc')) then
-		if title:find("Дорожные знаки") and (title:find("Los Santos") or title:find("San Fierro") or title:find("Las Venturas") or title:find("Lav Venturas")) and settings.lc.auto_find_clorest_repair_znak then
+		if title:find("Дорожные знаки") and (title:find("Los Santos") or title:find("San Fierro") or title:find("Las Venturas") or title:find("Lav Venturas")) and settings.lc.auto_find_clorest_znak then
 			-- за основу взято https://www.blast.hk/threads/231943/ by безликий
 			local count = 0
 			local znaks = {}
@@ -6061,7 +5940,7 @@ function sampev.onShowDialog(dialogid, style, title, button1, button2, text)
 		end
 	end
 	
-	if (isMode('fd')) then
+	if isMode('fd') then
 		if title:find('Список происшествий') then
 			if text:find('В данный момент все спокойно') then
 				sampAddChatMessage('[Arizona Helper] {ffffff}В данный момент пожаров нету, можете отдыхать', message_color)
@@ -6076,7 +5955,12 @@ function sampev.onShowDialog(dialogid, style, title, button1, button2, text)
 		end
 	end
 
-	if (isMode('ins')) then
+	if isMode('ins') then
+		if settings.ins.anti_trivoga and (text:find('Вы действительно хотите вызвать сотрудников полиции?') or text:find('Вы действительно хотите {FFA11C}вызвать{FFFFFF} полицию?')) then
+			sampAddChatMessage('[Arizona Helper] {ffffff}Тревожная кнопка отключена. Для включения используйте /helper - Функции СТК', message_color)
+			sampSendDialogResponse(dialogid, 2, 0, 0)
+			return false
+		end
 		if (settings.ins.auto_input_ticket and title:find('Заполнение документа')) then
 			local nick = text:match("{ffff00}([%w_]+)")
 			local types = text:match("{ffff00}(%w+)")
@@ -6091,15 +5975,6 @@ function sampev.onShowDialog(dialogid, style, title, button1, button2, text)
 				return false
 			end
 		end
-
-		if (settings.ins.auto_catch_ticket and (title:find('Заявление %№(%d+)') and (not text:find('Сейчас на рассмотрении у сотрудника')))) then
-			local nick = text:match('Заявление %№%d+ от {ffff00}(.+):\n\n{ffffff}Тип имущества')
-			local money = text:match('Оплата сотруднику %(с вашим рангом%)%: (.+)%$\nПойдёт') or '0'
-			local types = (text:find('Автомобиль') and 'Автомобиль') or (text:find('Дом') and 'Дом') or (text:find('Бизнес')  and 'Бизнес')
-			sampAddChatMessage('[Arizona Helper] {ffffff}Приняли заявление от ' .. message_color_hex .. nick .. '{ffffff} на "' .. message_color_hex .. types .. '{ffffff}", за которое заработаете ' .. message_color_hex .. "$" .. money, message_color)
-			sampSendDialogResponse(dialogid, 1, 0, 0)
-			return false
-		end
 	end
 
 end
@@ -6107,7 +5982,7 @@ function sampev.onCreate3DText(id, color, position, distance, testLOS, attachedP
    	if MODULE.DEBUG then
 		
 	end
-	if settings.gov.anti_trivoga and text_3d then
+	if text_3d and ((isMode('gov') and settings.gov.anti_trivoga) or (isMode())) then
 		if text_3d:find('Тревожная кнопка') or text_3d:find('Кнопка для вызова полиции') then
 			sampAddChatMessage('[Arizona Helper | Ассистент] {ffffff}Тревожная кнопка удалена из интерьера, поскольку вы отключили её.', message_color)
 			return false
@@ -6124,19 +5999,19 @@ function sampev.onPlayerChatBubble(player_id, color, distance, duration, message
 			local nick = message:match(' (.+) достал скрепки для взлома наручников')
 			local id = sampGetPlayerIdByNickname(nick)
 			sampAddChatMessage('[Arizona Helper] {ffffff}Внимание! ' .. nick .. '[' .. id .. '] использует скрепки и начинает взламывать наручники!', message_color)
-			playNotifySound()
+			play_sound()
 			local result, handle = sampGetCharHandleBySampPlayerId(id)
 			if result then
 				local x, y, z = getCharCoordinates(handle)
 				local mx, my, mz = getCharCoordinates(PLAYER_PED)
 				if getDistanceBetweenCoords3d(mx, my, mz, x, y, z) <= 1.5 then
 					sampAddChatMessage('[Arizona Helper] {ffffff}Пытаюсь изьять скрепки у этого игрока...', message_color)
-					find_and_use_command('/bot {arg_id}', sampGetPlayerIdByNickname(nick))
+					find_and_use_command('/bot {id}', id)
 				else
-					sampAddChatMessage('[Arizona Helper] {ffffff}Подойдите к игроку ' .. nick .. ' и используйте команду /bot ' .. sampGetPlayerIdByNickname(nick), message_color)
+					sampAddChatMessage('[Arizona Helper] {ffffff}Подойдите к игроку ' .. nick .. ' и используйте команду /bot ' .. id, message_color)
 				end
 			elseif (IS_MOBILE and modules.commands.path:find('git')) then -- x64 костыль для монетки
-				sampAddChatMessage('[Arizona Helper] {ffffff}Подойдите к игроку ' .. nick .. ' и используйте команду /bot ' .. sampGetPlayerIdByNickname(nick), message_color)
+				sampAddChatMessage('[Arizona Helper] {ffffff}Подойдите к игроку ' .. nick .. ' и используйте команду /bot ' .. id, message_color)
 			end
 		end
 	end
@@ -6175,30 +6050,30 @@ addEventHandler('onReceivePacket', function(id, bs)
 		local id = raknetBitStreamReadInt8(bs)
         local cmd = raknetBitStreamReadInt8(bs)
 		-- if MODULE.DEBUG then
-		-- 	local function dumpFullBitStream(bs)
-		-- 		local bitsLeft = raknetBitStreamGetNumberOfUnreadBits(bs)
-		-- 		if not bitsLeft then
-		-- 			print("dumpFullBitStream: raknetBitStreamGetNumberOfUnreadBits ошибка!")
-		-- 			return
-		-- 		end
-		-- 		local bytesLeft = math.floor(bitsLeft / 8)
-		-- 		if bytesLeft == 0 then
-		-- 			print("dumpFullBitStream: нету доступных байтов для чтения")
-		-- 			return
-		-- 		end
-		-- 		local bytes = {}
-		-- 		for i = 1, bytesLeft do
-		-- 			bytes[i] = raknetBitStreamReadInt8(bs)
-		-- 		end
-		-- 		local hexStrParts = {}
-		-- 		for i, b in ipairs(bytes) do
-		-- 			hexStrParts[i] = string.format("%02X", b)
-		-- 		end
-		-- 		return(table.concat(hexStrParts, " "))
-		-- 	end
-		-- 	local dump = dumpFullBitStream(bs)
-		-- 	sampAddChatMessage('[ReceivePacket] {ffffff}' .. dump, message_color)
-		-- 	print("[ReceivePacket] " .. dump)
+			-- local function dumpFullBitStream(bs)
+			-- 	local bitsLeft = raknetBitStreamGetNumberOfUnreadBits(bs)
+			-- 	if not bitsLeft then
+			-- 		print("dumpFullBitStream: raknetBitStreamGetNumberOfUnreadBits ошибка!")
+			-- 		return
+			-- 	end
+			-- 	local bytesLeft = math.floor(bitsLeft / 8)
+			-- 	if bytesLeft == 0 then
+			-- 		print("dumpFullBitStream: нету доступных байтов для чтения")
+			-- 		return
+			-- 	end
+			-- 	local bytes = {}
+			-- 	for i = 1, bytesLeft do
+			-- 		bytes[i] = raknetBitStreamReadInt8(bs)
+			-- 	end
+			-- 	local hexStrParts = {}
+			-- 	for i, b in ipairs(bytes) do
+			-- 		hexStrParts[i] = string.format("%02X", b)
+			-- 	end
+			-- 	return(table.concat(hexStrParts, " "))
+			-- end
+			-- local dump = dumpFullBitStream(bs)
+			-- sampAddChatMessage('[ReceivePacket] {ffffff}' .. dump, message_color)
+			-- print("[ReceivePacket] " .. dump)
 		-- end
 		if cmd == 153 then
             local carId = raknetBitStreamReadInt16(bs)
@@ -6249,7 +6124,6 @@ addEventHandler('onReceivePacket', function(id, bs)
 						sampShowDialog(897124, 'Arizona Helper - Ассистент', "Правильные конверты: " .. result .. ".\nСчитать их нужно слева направо", '{009EFF}Закрыть', '', 0)
 					end
 				end
-
 			end
 		end
 	end
@@ -6279,10 +6153,8 @@ imgui.OnInitialize(function()
 	end
 
 	fa.Init(14 * settings.general.custom_dpi)
-	for key, value in pairs(fa) do 
-		if key ~= 'Init' then
-			table.insert(MODULE.Icons.keys, key)
-		end
+	for key, value in pairs(fa) do
+		if key ~= 'Init' then table.insert(MODULE.Icons.keys, key) end
 	end
 	table.sort(MODULE.Icons.keys)
 
@@ -6295,6 +6167,17 @@ imgui.OnInitialize(function()
 	end
 
 	imgui.GetIO().ConfigFlags = imgui.ConfigFlags.NoMouseCursorChange
+
+	function TextEditCallback(data)
+		MODULE.INPUT.CURSOR_POS = data.CursorPos
+		if data.CursorPos ~= MODULE.INPUT.CURSOR_POS or data.SelectionStart ~= MODULE.INPUT.SELECTION_START or data.SelectionEnd ~= MODULE.INPUT.SELECTION_END then
+			MODULE.INPUT.USER_MOVED_CURSOR = true
+		end
+		MODULE.INPUT.SELECTION_START = data.SelectionStart
+		MODULE.INPUT.SELECTION_END = data.SelectionEnd
+		return 0
+	end
+	TextEditCallback = ffi.cast('int (*)(ImGuiInputTextCallbackData* data)', TextEditCallback)
 
 end)
 
@@ -6380,8 +6263,8 @@ imgui.OnFrame(
 					MODULE.Initial.step2_result = 61
 					MODULE.Initial.step = 3
 				elseif MODULE.Initial.fraction_type_selector == 0 then
-					settings.player_info.fraction_rank = 'Нету'
-					settings.player_info.fraction_rank_number = 0
+					modules.player.data.fraction_rank = 'Нету'
+					modules.player.data.fraction_rank_number = 0
 					MODULE.Initial.step = 4
 				else
 					MODULE.Initial.step = 2
@@ -6501,9 +6384,9 @@ imgui.OnFrame(
 			end
 			imgui.SameLine()
 			if imgui.Button(u8('Продолжить ') .. fa.CIRCLE_ARROW_RIGHT, imgui.ImVec2(imgui.GetMiddleButtonX(2), 0)) then
-				settings.player_info.fraction_rank = u8:decode(ffi.string(MODULE.Initial.input))
-				settings.player_info.fraction_rank_number = MODULE.Initial.slider[0]
-				if settings.player_info.fraction_rank_number >= 9 then
+				modules.player.data.fraction_rank = u8:decode(ffi.string(MODULE.Initial.input))
+				modules.player.data.fraction_rank_number = MODULE.Initial.slider[0]
+				if modules.player.data.fraction_rank_number >= 9 then
 					settings.general.auto_uninvite = true
 				end
 				imgui.StrCopy(MODULE.Initial.input, "")
@@ -6513,7 +6396,7 @@ imgui.OnFrame(
 			imgui.CenterText(u8('Введите ваш полный игровой никнейм (на английском):'))
 			imgui.PushItemWidth(520 * settings.general.custom_dpi)
 			imgui.InputText(u8'##input_nick', MODULE.Initial.input, 256)
-			imgui.CenterTextDisabled(u8(TranslateNick(u8:decode(ffi.string(MODULE.Initial.input)))))
+			imgui.CenterTextDisabled(u8(translate(u8:decode(ffi.string(MODULE.Initial.input)))))
 			imgui.Separator()
 			if imgui.Button(fa.CIRCLE_ARROW_LEFT .. u8(' Назад'), imgui.ImVec2(imgui.GetMiddleButtonX(2), 0)) then
 				imgui.StrCopy(MODULE.Initial.input, "")
@@ -6521,8 +6404,8 @@ imgui.OnFrame(
 			end
 			imgui.SameLine()
 			if imgui.Button(u8('Завершить настройку ') .. fa.FLAG_CHECKERED, imgui.ImVec2(imgui.GetMiddleButtonX(2), 0)) then
-				settings.player_info.nick = u8:decode(ffi.string(MODULE.Initial.input))
-				settings.player_info.name_surname = TranslateNick(settings.player_info.nick)
+				modules.player.data.nick = u8:decode(ffi.string(MODULE.Initial.input))
+				modules.player.data.name_surname = translate(modules.player.data.nick)
 				MODULE.Initial.step = 5
 			end
 		elseif MODULE.Initial.step == 5 then
@@ -6578,13 +6461,15 @@ imgui.OnFrame(
 			for index, value in ipairs(fraction_modes) do
 				if value.id == MODULE.Initial.step2_result then
 					settings.general.fraction_mode = value.mode
-					settings.player_info.fraction = value.name
-					settings.player_info.fraction_tag = value.tag
+					modules.player.data.fraction = value.name
+					modules.player.data.fraction_tag = value.tag
 					break
 				end
 			end
 			import_fraction_data(settings.general.fraction_mode)
 			save_settings()
+			save_module('player')
+			save_module('departament')
 			reload_script = true
 			thisScript():reload()
 		end
@@ -6624,14 +6509,17 @@ imgui.OnFrame(
 					imgui.CenterColumnText(u8"Имя и Фамилия:")
 					imgui.SetColumnWidth(-1, 230 * settings.general.custom_dpi)
 					imgui.NextColumn()
-					imgui.CenterColumnText(u8(settings.player_info.name_surname))
+					imgui.CenterColumnText(u8(modules.player.data.name_surname))
 					imgui.SetColumnWidth(-1, 250 * settings.general.custom_dpi)
 					imgui.NextColumn()
 					if imgui.CenterColumnSmallButton(fa.PEN_TO_SQUARE .. '##name_surname') then
-						settings.player_info.name_surname = TranslateNick(sampGetPlayerNickname(select(2, sampGetPlayerIdByCharHandle(PLAYER_PED))))
-						imgui.StrCopy(MODULE.Main.input, u8(settings.player_info.name_surname))
-						imgui.StrCopy(MODULE.Initial.input, u8(settings.player_info.nick))
+						modules.player.data.name_surname = translate(sampGetPlayerNickname(select(2, sampGetPlayerIdByCharHandle(PLAYER_PED))))
+						imgui.StrCopy(MODULE.Main.input, u8(modules.player.data.name_surname))
+						imgui.StrCopy(MODULE.Initial.input, u8(modules.player.data.nick))
 						imgui.OpenPopup(getUserIcon() .. u8' Имя и Фамилия ' .. getUserIcon() .. '##name_surname')
+					end
+					if imgui.IsItemHovered() then
+						imgui.SetTooltip(u8'Изменить свой ник')
 					end
 					imgui.SetNextWindowPos(imgui.ImVec2(sizeX / 2, sizeY / 2), imgui.Cond.Always, imgui.ImVec2(0.5, 0.5))
 					if imgui.BeginPopupModal(getUserIcon() .. u8' Имя и Фамилия ' .. getUserIcon() .. '##name_surname', _, imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoResize + imgui.WindowFlags.NoScrollbar) then
@@ -6640,16 +6528,16 @@ imgui.OnFrame(
 						imgui.InputTextWithHint(u8'##name_surname', u8('Введите имя и фамилию вашего персонажа...'), MODULE.Main.input, 256)
 						imgui.PushItemWidth(405 * settings.general.custom_dpi)
 						if imgui.InputTextWithHint(u8'##nickname', u8('Введите ваш игровой никнейм...'), MODULE.Initial.input, 256) then
-							imgui.StrCopy(MODULE.Main.input, u8(TranslateNick(u8:decode(ffi.string(MODULE.Initial.input)))))
+							imgui.StrCopy(MODULE.Main.input, u8(translate(u8:decode(ffi.string(MODULE.Initial.input)))))
 						end
 						if imgui.Button(fa.CIRCLE_XMARK .. u8' Отмена##cancel_name_surname', imgui.ImVec2(200 * settings.general.custom_dpi, 25 * settings.general.custom_dpi)) then
 							imgui.CloseCurrentPopup()
 						end
 						imgui.SameLine()
 						if imgui.Button(fa.FLOPPY_DISK .. u8' Сохранить##save_name_surname', imgui.ImVec2(200 * settings.general.custom_dpi, 25 * settings.general.custom_dpi)) then
-							settings.player_info.name_surname = u8:decode(ffi.string(MODULE.Main.input))
-							settings.player_info.nick = u8:decode(ffi.string(MODULE.Initial.input))
-							save_settings()
+							modules.player.data.name_surname = u8:decode(ffi.string(MODULE.Main.input))
+							modules.player.data.nick = u8:decode(ffi.string(MODULE.Initial.input))
+							save_module('player')
 							imgui.CloseCurrentPopup()
 						end
 						imgui.End()
@@ -6661,21 +6549,28 @@ imgui.OnFrame(
 					imgui.CenterColumnText(u8"Акцент персонажа:")
 					imgui.NextColumn()
 					if MODULE.Main.checkbox.accent_enable[0] then
-						imgui.CenterColumnText(u8(settings.player_info.accent))
+						local accent_display = modules.player.data.accent:gsub('%[(.-) акцент%]?:?', '%1')
+						imgui.CenterColumnText(u8(accent_display))
 					else 
 						imgui.CenterColumnText(u8'Отключено')
 					end
 					imgui.NextColumn()
 					if imgui.CenterColumnSmallButton(fa.PEN_TO_SQUARE .. '##accent') then
-						imgui.StrCopy(MODULE.Main.input, u8(settings.player_info.accent))
+						imgui.StrCopy(MODULE.Main.input, u8(modules.player.data.accent))
 						imgui.OpenPopup(getUserIcon() .. u8' Акцент персонажа ' .. getUserIcon() .. '##accent')
+					end
+					if imgui.IsItemHovered() then
+						imgui.SetTooltip(u8'Настроить акцент')
 					end
 					imgui.SetNextWindowPos(imgui.ImVec2(sizeX / 2, sizeY / 2), imgui.Cond.Always, imgui.ImVec2(0.5, 0.5))
 					if imgui.BeginPopupModal(getUserIcon() .. u8' Акцент персонажа ' .. getUserIcon() .. '##accent', _, imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoResize + imgui.WindowFlags.NoScrollbar) then
 						change_dpi()
 						if imgui.Checkbox('##MODULE.Main.checkbox.accent_enable', MODULE.Main.checkbox.accent_enable) then
-							settings.player_info.accent_enable = MODULE.Main.checkbox.accent_enable[0]
+							settings.general.accent_enable = MODULE.Main.checkbox.accent_enable[0]
 							save_settings()
+						end
+						if imgui.IsItemHovered() then
+							imgui.SetTooltip(u8'Работоспособность акцента')
 						end
 						imgui.SameLine()
 						imgui.PushItemWidth(375 * settings.general.custom_dpi)
@@ -6685,8 +6580,8 @@ imgui.OnFrame(
 						end
 						imgui.SameLine()
 						if imgui.Button(fa.FLOPPY_DISK .. u8' Сохранить##save_accent', imgui.ImVec2(200 * settings.general.custom_dpi, 25 * settings.general.custom_dpi)) then 
-							settings.player_info.accent = u8:decode(ffi.string(MODULE.Main.input))
-							save_settings()
+							modules.player.data.accent = u8:decode(ffi.string(MODULE.Main.input))
+							save_module('player')
 							imgui.CloseCurrentPopup()
 						end
 						imgui.End()
@@ -6696,22 +6591,25 @@ imgui.OnFrame(
 					imgui.Columns(3)
 					imgui.CenterColumnText(u8"Пол персонажа:")
 					imgui.NextColumn()
-					imgui.CenterColumnText(u8(settings.player_info.sex))
+					imgui.CenterColumnText(u8(modules.player.data.sex))
 					imgui.NextColumn()
 					if imgui.CenterColumnSmallButton(fa.PEN_TO_SQUARE .. '##sex') then
-						settings.player_info.sex = (settings.player_info.sex ~= 'Мужчина') and 'Мужчина' or 'Женщина'
-						save_settings()
+						modules.player.data.sex = (modules.player.data.sex ~= 'Мужчина') and 'Мужчина' or 'Женщина'
+						save_module('player')
+					end
+					if imgui.IsItemHovered() then
+						imgui.SetTooltip(u8'Изменить пол персонажа')
 					end
 					imgui.Columns(1)
 					imgui.Separator()
 					imgui.Columns(3)
 					imgui.CenterColumnText(u8"Организация:")
 					imgui.NextColumn()
-					imgui.CenterColumnText(u8(settings.player_info.fraction))
+					imgui.CenterColumnText(u8(modules.player.data.fraction))
 					imgui.NextColumn()
 					imgui.SetNextWindowPos(imgui.ImVec2(sizeX / 2, sizeY / 2), imgui.Cond.Always, imgui.ImVec2(0.5, 0.5))
 					if imgui.CenterColumnSmallButton(fa.PEN_TO_SQUARE .. "##fraction") then
-						imgui.StrCopy(MODULE.Main.input, u8(settings.player_info.fraction))
+						imgui.StrCopy(MODULE.Main.input, u8(modules.player.data.fraction))
 						imgui.OpenPopup(getHelperIcon() .. u8' Организация ' .. getHelperIcon() .. '##fraction')
 					end
 					imgui.SetNextWindowPos(imgui.ImVec2(sizeX / 2, sizeY / 2), imgui.Cond.Always, imgui.ImVec2(0.5, 0.5))
@@ -6724,7 +6622,7 @@ imgui.OnFrame(
 						end
 						imgui.SameLine()
 						if imgui.Button(fa.FLOPPY_DISK .. u8' Сохранить##save_fraction_edit', imgui.ImVec2(200 * settings.general.custom_dpi, 25 * settings.general.custom_dpi)) then
-							settings.player_info.fraction = u8:decode(ffi.string(MODULE.Main.input))
+							modules.player.data.fraction = u8:decode(ffi.string(MODULE.Main.input))
 							save_settings()
 							imgui.CloseCurrentPopup()
 						end
@@ -6733,6 +6631,9 @@ imgui.OnFrame(
 					imgui.SameLine()
 					if imgui.SmallButton(fa.GEAR .. '##fraction') then
 						imgui.OpenPopup(getHelperIcon() .. u8' Смена организации ' .. getHelperIcon() .. '##fraction')
+					end
+					if imgui.IsItemHovered() then
+						imgui.SetTooltip(u8'Полная смена организации')
 					end
 					imgui.SetNextWindowPos(imgui.ImVec2(sizeX / 2, sizeY / 2), imgui.Cond.Always, imgui.ImVec2(0.5, 0.5))
 					if imgui.BeginPopupModal(getHelperIcon() .. u8' Смена организации ' .. getHelperIcon() .. '##fraction', _, imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoResize + imgui.WindowFlags.NoScrollbar) then
@@ -6745,7 +6646,7 @@ imgui.OnFrame(
 							imgui.CloseCurrentPopup()
 						end
 						imgui.SameLine()
-						if imgui.Button(fa.GEARS .. u8' Сбросить##reset_fraction', imgui.ImVec2(200 * settings.general.custom_dpi, 25 * settings.general.custom_dpi)) then
+						if imgui.Button(fa.GEARS .. u8' Сменить фракцию##reset_fraction', imgui.ImVec2(200 * settings.general.custom_dpi, 25 * settings.general.custom_dpi)) then
 							delete_default_fraction_cmds(modules.commands.data.commands.my, get_fraction_cmds(settings.general.fraction_mode, false))
 							delete_default_fraction_cmds(modules.commands.data.commands_manage.my, get_fraction_cmds(settings.general.fraction_mode, true))
 							MODULE.Initial.Window[0] = true
@@ -6758,11 +6659,11 @@ imgui.OnFrame(
 					imgui.Columns(3)
 					imgui.CenterColumnText(u8"Должность:")
 					imgui.NextColumn()
-					imgui.CenterColumnText(u8(settings.player_info.fraction_rank) .. " (" .. settings.player_info.fraction_rank_number .. ")")
+					imgui.CenterColumnText(u8(modules.player.data.fraction_rank) .. " (" .. modules.player.data.fraction_rank_number .. ")")
 					imgui.NextColumn()
 					if imgui.CenterColumnSmallButton(fa.PEN_TO_SQUARE .. "##rank") then
-						imgui.StrCopy(MODULE.Main.input, u8(settings.player_info.fraction_rank))
-						MODULE.Main.slider[0] = settings.player_info.fraction_rank_number
+						imgui.StrCopy(MODULE.Main.input, u8(modules.player.data.fraction_rank))
+						MODULE.Main.slider[0] = modules.player.data.fraction_rank_number
 						imgui.OpenPopup(getHelperIcon() .. u8' Должность в организации ' .. getHelperIcon() .. '##fraction_rank')
 					end
 					imgui.SetNextWindowPos(imgui.ImVec2(sizeX / 2, sizeY / 2), imgui.Cond.Always, imgui.ImVec2(0.5, 0.5))
@@ -6777,13 +6678,13 @@ imgui.OnFrame(
 						end
 						imgui.SameLine()
 						if imgui.Button(fa.FLOPPY_DISK .. u8' Сохранить##save_fraction_rank', imgui.ImVec2(200 * settings.general.custom_dpi, 25 * settings.general.custom_dpi)) then
-							local old_rank_number = settings.player_info.fraction_rank_number
-							settings.player_info.fraction_rank = u8:decode(ffi.string(MODULE.Main.input))
-							settings.player_info.fraction_rank_number = MODULE.Main.slider[0]
-							save_settings()
-							if old_rank_number < 9 and settings.player_info.fraction_rank_number >= 9 then
+							local old_rank_number = modules.player.data.fraction_rank_number
+							modules.player.data.fraction_rank = u8:decode(ffi.string(MODULE.Main.input))
+							modules.player.data.fraction_rank_number = MODULE.Main.slider[0]
+							save_module('player')
+							if old_rank_number < 9 and modules.player.data.fraction_rank_number >= 9 then
 								reload_script = true
-								sampAddChatMessage("[Arizona Helper] {FFFFFF}Поскольку вы стали " .. (settings.player_info.fraction_rank_number == 10 and 'лидером' or 'заместителем') .. ", нужно перезагрузить хелпер для пременения доп.функций. Перезагрузка...", message_color)
+								sampAddChatMessage("[Arizona Helper] {FFFFFF}Поскольку вы стали " .. (modules.player.data.fraction_rank_number == 10 and 'лидером' or 'заместителем') .. ", нужно перезагрузить хелпер для пременения доп.функций. Перезагрузка...", message_color)
 								thisScript():reload()
 							end	
 							imgui.CloseCurrentPopup()
@@ -6795,16 +6696,22 @@ imgui.OnFrame(
 						check_stats = true
 						sampSendChat('/stats')
 					end
+					if imgui.IsItemHovered() then
+						imgui.SetTooltip(u8'Получить данные из /stats')
+					end
 					imgui.Columns(1)
 					imgui.Separator()
 					imgui.Columns(3)
 					imgui.CenterColumnText(u8"Тег организации:")
 					imgui.NextColumn()
-					imgui.CenterColumnText(u8(settings.player_info.fraction_tag))
+					imgui.CenterColumnText(u8(modules.player.data.fraction_tag))
 					imgui.NextColumn()
 					if imgui.CenterColumnSmallButton(fa.PEN_TO_SQUARE .. '##fraction_tag') then
-						imgui.StrCopy(MODULE.Main.input, u8(settings.player_info.fraction_tag))
+						imgui.StrCopy(MODULE.Main.input, u8(modules.player.data.fraction_tag))
 						imgui.OpenPopup(getHelperIcon() .. u8' Тег организации ' .. getHelperIcon() .. '##fraction_tag')
+					end
+					if imgui.IsItemHovered() then
+						imgui.SetTooltip(u8'Изменить тег организации')
 					end
 					imgui.SetNextWindowPos(imgui.ImVec2(sizeX / 2, sizeY / 2), imgui.Cond.Always, imgui.ImVec2(0.5, 0.5))
 					if imgui.BeginPopupModal(getHelperIcon() .. u8' Тег организации ' .. getHelperIcon() .. '##fraction_tag', _, imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoResize + imgui.WindowFlags.NoScrollbar) then
@@ -6816,8 +6723,8 @@ imgui.OnFrame(
 						end
 						imgui.SameLine()
 						if imgui.Button(fa.FLOPPY_DISK .. u8' Сохранить##save_fraction_tag', imgui.ImVec2(200 * settings.general.custom_dpi, 25 * settings.general.custom_dpi)) then
-							settings.player_info.fraction_tag = u8:decode(ffi.string(MODULE.Main.input))
-							save_settings()
+							modules.player.data.fraction_tag = u8:decode(ffi.string(MODULE.Main.input))
+							save_module('player')
 							imgui.CloseCurrentPopup()
 						end
 						imgui.End()
@@ -7039,19 +6946,17 @@ imgui.OnFrame(
 									imgui.SetTooltip(u8(tooltip .. command.cmd))
 								end
 								imgui.SameLine()
-								if imgui.SmallButton(fa.PEN_TO_SQUARE .. '##'..command.cmd) then
+								if imgui.SmallButton(fa.PEN_TO_SQUARE .. '##' .. index) then
 									if command.arg == '' then
 										MODULE.Binder.ComboTags[0] = 0
 									elseif command.arg == '{arg}' then	
 										MODULE.Binder.ComboTags[0] = 1
-									elseif command.arg == '{arg_id}' then
+									elseif command.arg == '{id}' then
 										MODULE.Binder.ComboTags[0] = 2
-									elseif command.arg == '{arg_id} {arg2}' then
+									elseif command.arg == '{id} {arg}' then
 										MODULE.Binder.ComboTags[0] = 3
-									elseif command.arg == '{arg_id} {arg2} {arg3}' then
+									elseif command.arg == '{id} {number} {arg}' then
 										MODULE.Binder.ComboTags[0] = 4
-									elseif command.arg == '{arg_id} {arg2} {arg3} {arg4}' then
-										MODULE.Binder.ComboTags[0] = 5
 									end
 									MODULE.Binder.data = {
 										change_waiting = command.waiting,
@@ -7071,14 +6976,14 @@ imgui.OnFrame(
 									imgui.SetTooltip(u8"Изменение команды /"..command.cmd)
 								end
 								imgui.SameLine()
-								if imgui.SmallButton(fa.TRASH_CAN .. '##'..command.cmd) then
-									imgui.OpenPopup(fa.TRIANGLE_EXCLAMATION .. u8' Предупреждение ' .. fa.TRIANGLE_EXCLAMATION ..  '##' .. command.cmd)
+								if imgui.SmallButton(fa.TRASH_CAN .. '##' .. index) then
+									imgui.OpenPopup(fa.TRIANGLE_EXCLAMATION .. u8' Предупреждение ' .. fa.TRIANGLE_EXCLAMATION ..  '##' .. index)
 								end
 								if imgui.IsItemHovered() then
 									imgui.SetTooltip(u8"Удаление команды /"..command.cmd)
 								end
 								imgui.SetNextWindowPos(imgui.ImVec2(sizeX / 2, sizeY / 2), imgui.Cond.Always, imgui.ImVec2(0.5, 0.5))
-								if imgui.BeginPopupModal(fa.TRIANGLE_EXCLAMATION .. u8' Предупреждение ' .. fa.TRIANGLE_EXCLAMATION ..  '##' .. command.cmd, _, imgui.WindowFlags.NoResize ) then
+								if imgui.BeginPopupModal(fa.TRIANGLE_EXCLAMATION .. u8' Предупреждение ' .. fa.TRIANGLE_EXCLAMATION ..  '##'  .. index, _, imgui.WindowFlags.NoResize ) then
 									change_dpi()
 									imgui.CenterText(u8'Вы действительно хотите удалить команду /' .. u8(command.cmd) .. '?')
 									imgui.Separator()
@@ -7129,27 +7034,27 @@ imgui.OnFrame(
 						imgui.EndTabItem()
 					end
 					if imgui.BeginTabItem(fa.BARS..u8' RP команды (9/10)') then 
-						if settings.player_info.fraction_rank_number == 9 or settings.player_info.fraction_rank_number == 10 then
+						if modules.player.data.fraction_rank_number == 9 or modules.player.data.fraction_rank_number == 10 then
 							render_cmds(true)
 						else
 							if imgui.BeginChild('##no_rank_access', imgui.ImVec2(589 * settings.general.custom_dpi, 338 * settings.general.custom_dpi), true) then
 								imgui.CenterText(fa.TRIANGLE_EXCLAMATION .. u8" Внимание " .. fa.TRIANGLE_EXCLAMATION)
 								imgui.Separator()
 								imgui.CenterText(u8"У вас нету доступа к данным командам!")
-								imgui.CenterText(u8"Необходимо иметь 9 или 10 ранг, у вас же - " .. settings.player_info.fraction_rank_number .. u8" ранг!")
+								imgui.CenterText(u8"Необходимо иметь 9 или 10 ранг, у вас же - " .. modules.player.data.fraction_rank_number .. u8" ранг!")
 								imgui.Separator()
 								imgui.EndChild()
 							end
 						end
 						imgui.EndTabItem() 
 					end
-					if imgui.BeginTabItem(fa.COMPASS .. u8' Fast Menu') then 
+					if imgui.BeginTabItem(fa.COMPASS .. u8' Фаст Меню') then 
 						function render_fastmenu(name, use, text, text2)
 							if imgui.BeginChild('##fastmenu'..name, imgui.ImVec2(193.3 * settings.general.custom_dpi, 338 * settings.general.custom_dpi), true) then
 								imgui.CenterText(u8(name))
 								imgui.Separator()
 								imgui.CenterText(u8("Использование:"))
-								if name == 'Leader FastMenu' and settings.player_info.fraction_rank_number < 9 then
+								if name == 'Leader FastMenu' and modules.player.data.fraction_rank_number < 9 then
 									imgui.CenterText(u8"Вам недоступно, вы не 9/10")
 								else
 									imgui.CenterText(use)
@@ -7162,7 +7067,7 @@ imgui.OnFrame(
 								imgui.CenterText(u8(text2))
 								imgui.SetCursorPosY(308 * settings.general.custom_dpi)
 								if imgui.Button(fa.GEAR .. u8(' Настроить команды меню ') .. "##" .. name) then
-									if name == 'Leader FastMenu' and settings.player_info.fraction_rank_number < 9 then
+									if name == 'Leader FastMenu' and modules.player.data.fraction_rank_number < 9 then
 										sampAddChatMessage('[Arizona Helper] {ffffff}Данное лидерское фастменю доступно только для 9 или 10 ранга!', message_color)
 									else
 										imgui.OpenPopup(fa.COMPASS .. u8' Настройка команд в ' .. u8(name) .. ' ' .. fa.COMPASS .. "##" .. name)
@@ -7184,7 +7089,7 @@ imgui.OnFrame(
 										imgui.SetColumnWidth(-1, 300 * settings.general.custom_dpi)
 										imgui.Columns(1)
 										for index, value in ipairs(arr) do
-											if (value.arg == "{arg_id}") then
+											if (value.arg == "{id}") then
 												imgui.Separator()
 												imgui.Columns(3)
 												local btn = (value.in_fastmenu) and (fa.SQUARE_CHECK .. u8'  (есть)') or (fa.SQUARE .. u8'  (нету)')
@@ -7210,9 +7115,9 @@ imgui.OnFrame(
 								imgui.EndChild()
 							end
 						end
-						render_fastmenu('FastMenu', u8'/hm ID или ' .. fa.KEYBOARD .. (IS_MOBILE and u8' Кнопочки' or u8' Hotkeys'), 'Быстрые RP команды', '{arg_id}')
+						render_fastmenu('FastMenu', u8'/hm ID или ' .. fa.KEYBOARD .. (IS_MOBILE and u8' Кнопочки' or u8' Hotkeys'), 'Быстрые RP команды', '{id}')
 						imgui.SameLine()
-						render_fastmenu('Leader FastMenu', u8'/lm ID' .. (IS_MOBILE and '' or (u8' или ' .. fa.KEYBOARD .. u8' Hotkeys')), 'Быстрые RP команды 9-10', '{arg_id}')
+						render_fastmenu('Leader FastMenu', u8'/lm ID' .. (IS_MOBILE and '' or (u8' или ' .. fa.KEYBOARD .. u8' Hotkeys')), 'Быстрые RP команды 9-10', '{id}')
 						imgui.SameLine()
 						if imgui.BeginChild('##piemenu_editor', imgui.ImVec2(193.3 * settings.general.custom_dpi, 338 * settings.general.custom_dpi), true) then
 							imgui.CenterText(u8("PieMenu"))
@@ -7241,7 +7146,7 @@ imgui.OnFrame(
 							imgui.SetCursorPosY(308 * settings.general.custom_dpi)
 							if imgui.Button(fa.GEAR .. u8(' Настроить круговое меню ')) then
 								if pie_no_errors then
-									MODULE.PieMenu.editor.current = modules.piemenu.data.my
+									MODULE.PieMenu.editor.current = modules.piemenu.data
 									imgui.OpenPopup(fa.COMPASS .. u8' Настройка PieMenu ' .. fa.COMPASS)
 								else
 									sampAddChatMessage('[Arizona Helper] {ffffff}У вас отсуствует библиотека PieMenu, невозможно включить/настроить круговое меню!', message_color)
@@ -7252,12 +7157,12 @@ imgui.OnFrame(
 								change_dpi()
 								if imgui.BeginChild('##piemenu_configurige', imgui.ImVec2(591 * settings.general.custom_dpi, 365 * settings.general.custom_dpi), true) then
 									if MODULE.PieMenu.editor.title ~= '' then
-										imgui.CenterText(u8('Редактирование подменю ') ..pieTextFormat(MODULE.PieMenu.editor.title))
+										imgui.CenterText(u8('Редактирование подменю ') ..iconTextFormat(MODULE.PieMenu.editor.title))
 										imgui.Separator()
 									end
 									for i, item in ipairs(MODULE.PieMenu.editor.current) do
 										imgui.Columns(2)
-										imgui.BulletText(pieTextFormat(item))
+										imgui.BulletText(iconTextFormat(item))
 										imgui.NextColumn()
 										if imgui.Button(fa.PEN_TO_SQUARE .. '##edit_' .. i) then
 											MODULE.PieMenu.editor.item   = item
@@ -7278,7 +7183,7 @@ imgui.OnFrame(
 										imgui.SetNextWindowPos(imgui.ImVec2(sizeX / 2, sizeY / 2), imgui.Cond.Always, imgui.ImVec2(0.5, 0.5))
 										if imgui.BeginPopupModal(fa.TRIANGLE_EXCLAMATION .. u8' Предупреждение ' .. fa.TRIANGLE_EXCLAMATION ..  '##' .. item.name .. i, _, imgui.WindowFlags.NoResize ) then
 											change_dpi()
-											imgui.CenterText(u8'Вы действительно хотите удалить ' .. u8(item.next and 'подменю ' or 'пункт ') .. pieTextFormat(item) .. '?')
+											imgui.CenterText(u8'Вы действительно хотите удалить ' .. u8(item.next and 'подменю ' or 'пункт ') .. iconTextFormat(item) .. '?')
 											imgui.Separator()
 											if imgui.Button(fa.CIRCLE_XMARK .. u8' Нет, отменить##delete' .. i, imgui.ImVec2(200 * settings.general.custom_dpi, 25 * settings.general.custom_dpi)) then
 												imgui.CloseCurrentPopup()
@@ -7373,26 +7278,26 @@ imgui.OnFrame(
 									if imgui.ItemSelector(u8'', { u8'Один пункт', u8'Подменю для пунктов' }, MODULE.PieMenu.editor.selector, 200 * settings.general.custom_dpi) then
 										local bool = (MODULE.PieMenu.editor.selector[0] ~= 2)
 										local number = #MODULE.PieMenu.editor.current
-										if number < (thisScript().version:find('VIP') and 10 or 5) then
+										if number < (thisScript().version:find('VIP') and 8 or 5) then
 											number = number + 1
 											if bool then
 												table.insert(MODULE.PieMenu.editor.current, {name = 'Item ' .. number, icon = '', action = 'Item ' .. number})
 											else
-												table.insert(MODULE.PieMenu.editor.current, {name = 'SubMenu ' .. number , icon = '', next = {}})
+												table.insert(MODULE.PieMenu.editor.current, {name = 'SubMenu ' .. number, icon = '', next = {}})
 											end
 											save_module('piemenu')
 										else
 											if thisScript().version:find('VIP') then
-												sampAddChatMessage('[Arizona Helper] {ffffff}Системный лимит 10 элементов в одном списка, используйте другие подменю!', message_color)
+												sampAddChatMessage('[Arizona Helper] {ffffff}Для стабильности лимит 8 элементов в одном меню, используйте подменю!', message_color)
 											else
-												sampAddChatMessage('[Arizona Helper] {ffffff}Ограничение 5 (в VIP 10) элементов в одном списке, используйте другие подменю или VIP!', message_color)
+												sampAddChatMessage('[Arizona Helper] {ffffff}Ограничение 5 (в VIP 8) элементов в одном меню, используйте подменю или VIP!', message_color)
 											end
 										end
 										imgui.CloseCurrentPopup()
 									end
 									imgui.End()
 								end
-								if MODULE.PieMenu.editor.current == modules.piemenu.data.my then
+								if MODULE.PieMenu.editor.current == modules.piemenu.data then
 									if imgui.Button(fa.CIRCLE_PLUS .. u8' Добавить пункт/подменю##add_pie_item', imgui.ImVec2(imgui.GetMiddleButtonX(2), 25 * settings.general.custom_dpi)) then
 										imgui.OpenPopup(fa.CIRCLE_PLUS .. u8' Выберите что именно нужно добавить ' .. fa.CIRCLE_PLUS)
 									end
@@ -7421,41 +7326,251 @@ imgui.OnFrame(
 						end
 						imgui.EndTabItem() 
 					end
-					if imgui.BeginTabItem(fa.KEYBOARD .. (IS_MOBILE and u8' Кнопочки' or u8' Hotkeys')) then 
-						if imgui.BeginChild('##999', imgui.ImVec2(589 * settings.general.custom_dpi, 338 * settings.general.custom_dpi), true) then
-							if IS_MOBILE then
-								imgui.CenterText(u8('Наэкранные кнопочки для работы функций хелпера'))
+					if imgui.BeginTabItem(fa.KEYBOARD .. (IS_MOBILE and u8' Кнопочки' or u8' Хоткеи')) then 
+						if IS_MOBILE then
+							if imgui.BeginChild('##999', imgui.ImVec2(589 * settings.general.custom_dpi, 309 * settings.general.custom_dpi), true) then
+								
+								imgui.Columns(3)
+								imgui.CenterColumnText(u8'Кнопка')
+								imgui.SetColumnWidth(-1, 200 * settings.general.custom_dpi)
+								imgui.NextColumn()
+								imgui.CenterColumnText(u8'Действие кнопки')
+								imgui.SetColumnWidth(-1, 250 * settings.general.custom_dpi)
+								imgui.NextColumn()
+								imgui.CenterColumnText(u8'Управление')
+								imgui.SetColumnWidth(-1, 120 * settings.general.custom_dpi)
+								imgui.Columns(1)
 								imgui.Separator()
-								if imgui.Checkbox(u8(' Отображение кнопки "Взаимодействие" (аналог /hm ID)'), MODULE.Main.checkbox.mobile_fastmenu_button) then
-									settings.general.mobile_fastmenu_button = MODULE.Main.checkbox.mobile_fastmenu_button[0]
-									MODULE.FastMenuButton.Window[0] = MODULE.Main.checkbox.mobile_fastmenu_button[0]
+
+								imgui.Columns(3)
+								if settings.general.mobile_fastmenu_button then
+									imgui.CenterColumnText(fa.IMAGE_PORTRAIT .. u8(' Взаимодействие'))
+								else
+									imgui.CenterColumnTextDisabled(fa.IMAGE_PORTRAIT .. u8(' Взаимодействие'))
+								end
+								imgui.NextColumn()
+								if settings.general.mobile_fastmenu_button then
+									imgui.CenterColumnText(u8('Быстрый аналог /hm ID'))
+								else
+									imgui.CenterColumnTextDisabled(u8('Быстрый аналог /hm ID'))
+								end
+								imgui.NextColumn()
+								if imgui.CenterColumnSmallButton((settings.general.mobile_fastmenu_button and fa.TOGGLE_ON or fa.TOGGLE_OFF) .. '##mobile_fastmenu_button') then
+									settings.general.mobile_fastmenu_button = not settings.general.mobile_fastmenu_button
+									MODULE.FastMenuButton.Window[0] = settings.general.mobile_fastmenu_button
 									save_settings()
 								end
-								if imgui.Checkbox(u8(' Отображение кнопки "Остановить" (аналог /stop)'), MODULE.Main.checkbox.mobile_stop_button) then
-									settings.general.mobile_stop_button = MODULE.Main.checkbox.mobile_stop_button[0]
+								if imgui.IsItemHovered() then
+									imgui.SetTooltip(u8(settings.general.mobile_fastmenu_button and "Отключить кнопку" or "Включить кнопку"))
+								end
+								imgui.Columns(1)
+								imgui.Separator()
+
+								imgui.Columns(3)
+								if settings.general.mobile_stop_button then
+									imgui.CenterColumnText(fa.CIRCLE_STOP..u8' Остановить отыгровку')
+								else
+									imgui.CenterColumnTextDisabled(fa.CIRCLE_STOP..u8' Остановить отыгровку')
+								end
+								imgui.NextColumn()
+								if settings.general.mobile_stop_button then
+									imgui.CenterColumnText(u8('Быстрый аналог /stop'))
+								else
+									imgui.CenterColumnTextDisabled(u8('Быстрый аналог /stop'))
+								end
+								imgui.NextColumn()
+								if imgui.CenterColumnSmallButton((settings.general.mobile_stop_button and fa.TOGGLE_ON or fa.TOGGLE_OFF) .. '##mobile_stop_button') then
+									settings.general.mobile_stop_button = not settings.general.mobile_stop_button
 									save_settings()
 								end
-								if imgui.Checkbox(u8(' Отображение кнопки "PieMenu"'), MODULE.Main.checkbox.mobile_piemenu_button) then
+								if imgui.IsItemHovered() then
+									imgui.SetTooltip(u8(settings.general.mobile_stop_button and "Отключить кнопку" or "Включить кнопку"))
+								end
+								imgui.Columns(1)
+								imgui.Separator()
+
+								imgui.Columns(3)
+								if settings.general.piemenu then
+									imgui.CenterColumnText(fa.GEAR .. u8(' PieMenu'))
+								else
+									imgui.CenterColumnTextDisabled(fa.GEAR .. u8(' PieMenu'))
+								end
+								imgui.NextColumn()
+								if settings.general.piemenu then
+									imgui.CenterColumnText(u8('Открыть круговое меню'))
+								else
+									imgui.CenterColumnTextDisabled(u8('Открыть круговое меню'))
+								end
+								imgui.NextColumn()
+								if imgui.CenterColumnSmallButton((settings.general.piemenu and fa.TOGGLE_ON or fa.TOGGLE_OFF) .. '##mobile_piemenu_button') then
 									if pie_no_errors then
-										settings.general.piemenu = MODULE.Main.checkbox.mobile_piemenu_button[0]
-										MODULE.PieMenu.Window[0] = MODULE.Main.checkbox.mobile_piemenu_button[0]
+										settings.general.piemenu = not settings.general.piemenu
+										MODULE.PieMenu.Window[0] = settings.general.piemenu
 										save_settings()
 									else
 										sampAddChatMessage('[Arizona Helper] {ffffff}У вас отсуствует библиотека PieMenu, невозможно включить/настроить круговое меню!', message_color)
 									end
 								end
-								if isMode('police') or isMode('fbi') or isMode('prison') then
-									if imgui.Checkbox(u8(' Отображение кнопки "Taser" (аналог /taser)'), MODULE.Main.checkbox.mobile_taser_button) then
-										settings.mj.mobile_taser_button = MODULE.Main.checkbox.mobile_taser_button[0]
-										MODULE.Taser.Window[0] = settings.mj.mobile_taser_button
-										save_settings()
-									end
+								if imgui.IsItemHovered() then
+									imgui.SetTooltip(u8(settings.general.piemenu and "Отключить кнопку" or "Включить кнопку"))
 								end
+								imgui.Columns(1)
 								imgui.Separator()
-								if imgui.CenterButton(u8('[DEBUG] Добавить свою кастомную кнопочку')) then
-									sampAddChatMessage('[DEBUG] ВРЕМЕННО НЕДОСТУПНО, БУДЕТ КОГДА-ТО ПОЗЖЕ', -1)
+
+								for index, button in ipairs(modules.buttons.data) do
+									imgui.Columns(3)
+									if button.enable then
+										imgui.CenterColumnText(iconTextFormat(button))
+									else
+										imgui.CenterColumnTextDisabled(iconTextFormat(button))
+									end
+									imgui.NextColumn()
+									if button.enable then
+										imgui.CenterColumnText(u8(button.action))
+									else
+										imgui.CenterColumnTextDisabled(u8(button.action))
+									end
+									imgui.NextColumn()
+									imgui.SetCursorPosX(imgui.GetCursorPos().x + 17 * settings.general.custom_dpi)
+									if imgui.SmallButton((button.enable and fa.TOGGLE_ON or fa.TOGGLE_OFF) .. '##mb_toggle' .. index) then
+										button.enable = not button.enable
+										local WindowName = button.name .. index
+										if MODULE.Buttons[WindowName] then
+											MODULE.Buttons[WindowName][0] = button.enable
+										else
+											sampAddChatMessage('[Arizona Helper] {ffffff}Кнопка заработает только после перезагрузки хелпера или перезахода в игру!', message_color)
+											play_sound()
+										end
+										save_module('buttons')
+									end
+									if imgui.IsItemHovered() then
+										imgui.SetTooltip(u8(button.enable and "Отключить кнопку" or "Включить кнопку"))
+									end
+									imgui.SameLine()
+									imgui.SetNextWindowPos(imgui.ImVec2(sizeX / 2, sizeY / 2), imgui.Cond.Always, imgui.ImVec2(0.5, 0.5))
+									if imgui.BeginPopupModal(fa.PEN_TO_SQUARE .. u8' Редактирование кнопки ' .. fa.PEN_TO_SQUARE .. '##' .. index, _, imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoResize + imgui.WindowFlags.NoScrollbar) then
+										change_dpi()
+										imgui.CenterText(fa.SIGNATURE .. u8' Название:')
+										imgui.PushItemWidth(205 * settings.general.custom_dpi)
+										imgui.InputTextWithHint(u8'##name', u8'Текст который будет на кнопке', MODULE.Buttons.Editor.name, 64)
+										imgui.Separator()
+										imgui.CenterText(fa.CIRCLE_PLAY ..  u8' Действие (в чат):')
+										imgui.PushItemWidth(205 * settings.general.custom_dpi)
+										imgui.InputTextWithHint(u8'##action', u8'Любой текст/команда для чата', MODULE.Buttons.Editor.action, 256)
+										imgui.Separator()
+										imgui.CenterText(fa.IMAGE .. u8' Иконка:')
+										if button.icon ~= '' then
+											imgui.SameLine()
+											imgui.Text(fa[button.icon])
+										end
+										imgui.SetNextWindowPos(imgui.ImVec2(sizeX / 2, sizeY / 2), imgui.Cond.Always, imgui.ImVec2(0.5, 0.5))
+										imgui.SetNextWindowSize(imgui.ImVec2(250 * settings.general.custom_dpi, 295 * settings.general.custom_dpi), imgui.Cond.FirstUseEver)
+										if imgui.BeginPopupModal(fa.IMAGE .. u8' Выбор иконки для кнопки ' .. fa.IMAGE, nil, imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoResize) then
+											imgui.PushItemWidth(240 * settings.general.custom_dpi)
+											imgui.InputTextWithHint('##icon_filter', u8'Ищите иконки по названию на англ...', MODULE.Icons.input, 32)
+											local filter = ffi.string(MODULE.Icons.input):upper()
+											imgui.GetStyle().ScrollbarSize = 17 * settings.general.custom_dpi
+											if imgui.BeginChild('##icons', imgui.ImVec2(240 * settings.general.custom_dpi, 200 * settings.general.custom_dpi), true) then
+												for _, key in ipairs(MODULE.Icons.keys) do
+													if filter == '' or key:find(filter, 1, true) then
+														if imgui.Selectable(fa[key] .. ' ' .. key) then
+															button.icon = key
+															imgui.CloseCurrentPopup()
+														end
+													end
+												end
+												imgui.EndChild()
+											end
+											imgui.GetStyle().ScrollbarSize = (IS_MOBILE and 15 or 10) * settings.general.custom_dpi
+											if imgui.Button(fa.CIRCLE_XMARK .. u8' Закрыть', imgui.ImVec2(imgui.GetMiddleButtonX(1), 25 * settings.general.custom_dpi)) then
+												imgui.CloseCurrentPopup()
+											end
+											imgui.EndPopup()
+										end
+										if imgui.Button(fa.HAND_POINT_RIGHT .. u8' Выбрать иконку из списка ' .. fa.HAND_POINT_LEFT) then
+											imgui.OpenPopup(fa.IMAGE .. u8' Выбор иконки для кнопки ' .. fa.IMAGE)
+										end
+										imgui.Separator()
+										imgui.CenterText(fa.MAXIMIZE .. u8(" Размер (X, Y):"))
+										imgui.PushItemWidth(100 * settings.general.custom_dpi)
+										imgui.SliderInt(u8"##sizex", MODULE.Buttons.Editor.size.x, 1, 500)
+										imgui.SameLine()
+										imgui.PushItemWidth(100 * settings.general.custom_dpi)
+										imgui.SliderInt(u8"##sizey", MODULE.Buttons.Editor.size.y, 1, 500)
+										imgui.Separator()
+										imgui.CenterText(fa.DRAW_POLYGON .. u8(" Позиция на экране:"))
+										imgui.CenterText(u8('Зажмите кнопку в углу и двигайте'))
+										imgui.Separator()
+										if imgui.Button(fa.CIRCLE_XMARK .. u8' Отмена', imgui.ImVec2(100 * settings.general.custom_dpi, 25 * settings.general.custom_dpi)) then
+											imgui.CloseCurrentPopup()
+										end
+										imgui.SameLine()
+										if imgui.Button(fa.FLOPPY_DISK .. u8' Сохранить', imgui.ImVec2(100 * settings.general.custom_dpi, 25 * settings.general.custom_dpi)) then
+											button.name = u8:decode(ffi.string(MODULE.Buttons.Editor.name))
+											button.action = u8:decode(ffi.string(MODULE.Buttons.Editor.action))
+											button.size.x = MODULE.Buttons.Editor.size.x[0]
+											button.size.y = MODULE.Buttons.Editor.size.y[0]
+											save_module('buttons')
+											sampAddChatMessage('[Arizona Helper] {ffffff}Размер изменится только после перезагрузки хелпера или перезахода в игру!', message_color)
+											play_sound()
+											imgui.CloseCurrentPopup()
+										end
+										imgui.EndPopup()
+									end
+
+									if imgui.CenterColumnSmallButton(fa.PEN_TO_SQUARE .. '##mb_edit' .. index) then
+										imgui.StrCopy(MODULE.Buttons.Editor.name, u8(button.name))
+										imgui.StrCopy(MODULE.Buttons.Editor.action, u8(button.action))
+										MODULE.Buttons.Editor.size.x  = imgui.new.int(button.size.x)
+										MODULE.Buttons.Editor.size.y  = imgui.new.int(button.size.y)
+										imgui.OpenPopup(fa.PEN_TO_SQUARE .. u8' Редактирование кнопки ' .. fa.PEN_TO_SQUARE .. '##' .. index)
+									end
+									if imgui.IsItemHovered() then
+										imgui.SetTooltip(u8("Редактировать кнопку"))
+									end
+									imgui.SameLine()
+									imgui.SetNextWindowPos(imgui.ImVec2(sizeX / 2, sizeY / 2), imgui.Cond.Always, imgui.ImVec2(0.5, 0.5))
+									if imgui.BeginPopupModal(fa.TRIANGLE_EXCLAMATION .. u8' Предупреждение ' .. fa.TRIANGLE_EXCLAMATION ..  '##' .. index, _, imgui.WindowFlags.NoResize) then
+										change_dpi()
+										imgui.CenterText(u8("Вы действительно хотите удалить \"" .. button.name .. "\"?"))
+										imgui.Separator()
+										if imgui.Button(fa.CIRCLE_XMARK .. u8' Нет, отменить', imgui.ImVec2(200 * settings.general.custom_dpi, 25 * settings.general.custom_dpi)) then
+											imgui.CloseCurrentPopup()
+										end
+										imgui.SameLine()
+										if imgui.Button(fa.TRASH_CAN .. u8' Да, удалить', imgui.ImVec2(200 * settings.general.custom_dpi, 25 * settings.general.custom_dpi)) then
+											table.remove(modules.buttons.data, index)
+											save_module('buttons')
+											local WindowName = button.name .. index
+											if MODULE.Buttons[WindowName] and MODULE.Buttons[WindowName][0] then
+												MODULE.Buttons[WindowName][0] = false
+											end
+											imgui.CloseCurrentPopup()
+										end
+										imgui.EndPopup()
+									end
+									if imgui.SmallButton(fa.TRASH_CAN .. '##mb_delete' .. index) then
+										imgui.OpenPopup(fa.TRIANGLE_EXCLAMATION .. u8' Предупреждение ' .. fa.TRIANGLE_EXCLAMATION ..  '##' .. index)
+									end
+									if imgui.IsItemHovered() then
+										imgui.SetTooltip(u8("Удалить кнопку"))
+									end
+									imgui.Columns(1)
+									imgui.Separator()
 								end
-							else
+								imgui.EndChild()
+							end
+							if imgui.Button(fa.CIRCLE_PLUS .. u8' Добавить кнопку##add_mobile_button', imgui.ImVec2(imgui.GetMiddleButtonX(1), 0)) then
+								if #modules.buttons.data > 5 and not thisScript().version:find('VIP') then
+									sampAddChatMessage('[Arizona Helper] {ffffff}В бесплатной версии ограничение всего 5 кнопок! Купите VIP версию для безлимитных кнопок!', message_color)
+									return
+								end
+								local new_button = {icon = '', name = 'Button ' .. (#modules.buttons.data + 1), action = '', enable = false,  size = {x = 100, y = 25}, pos = {sizeX / 2, y = sizeY / 2}}
+								table.insert(modules.buttons.data, new_button)
+								save_module('buttons')
+							end
+						else
+							if imgui.BeginChild('##999', imgui.ImVec2(589 * settings.general.custom_dpi, 338 * settings.general.custom_dpi), true) then
 								imgui.CenterText(fa.KEYBOARD .. u8' Главные бинды для работы хелпера (бинды для RP команд в редакторе команд) ' .. fa.KEYBOARD)
 								if hotkey_no_errors then
 									imgui.Separator()
@@ -7479,7 +7594,7 @@ imgui.OnFrame(
 										save_settings()
 									end
 
-									if settings.player_info.fraction_rank_number >= 9 then
+									if modules.player.data.fraction_rank_number >= 9 then
 										imgui.Separator()
 										imgui.CenterText(u8'Открытие быстрого меню управления игроком (аналог /lm для 9/10):')
 										imgui.CenterText(u8'Навестись на игрока через ПКМ и нажать клавишу')
@@ -7516,8 +7631,8 @@ imgui.OnFrame(
 									imgui.Separator()
 									imgui.CenterText(fa.TRIANGLE_EXCLAMATION .. u8' У вас отсутствует библиотека mimgui_hotkeys.lua ' .. fa.TRIANGLE_EXCLAMATION)
 								end
+								imgui.EndChild()
 							end
-							imgui.EndChild()
 						end
 						imgui.EndTabItem() 
 					end
@@ -7525,7 +7640,7 @@ imgui.OnFrame(
 				end
 				imgui.EndTabItem()
 			end
-			local fraction = (isMode('smi')) and 'СМИ' or settings.player_info.fraction_tag:sub(1, 5)
+			local fraction = isMode('smi') and 'СМИ' or modules.player.data.fraction_tag:sub(1, 5)
 			if imgui.BeginTabItem(fa.GEARS .. u8' Функции ' .. u8(fraction)) then
 				render_fractions_functions()
 				imgui.EndTabItem()
@@ -7612,7 +7727,7 @@ imgui.OnFrame(
 				end
 				imgui.EndChild()
 				if imgui.Button(fa.CIRCLE_PLUS .. u8' Создать новую заметку', imgui.ImVec2(imgui.GetMiddleButtonX(1), 0)) then
-					if #modules.notes.data >= 10 then
+					if #modules.notes.data > 5 then
 						send_no_vip_msg()
 						return
 					end
@@ -7634,11 +7749,17 @@ imgui.OnFrame(
 					if imgui.SmallButton(u8'YouTube') then
 						openLink('https://www.youtube.com/@mtg_mods/videos')
 					end
+					if imgui.IsItemHovered() then
+						imgui.SetTooltip(u8'Открыть видео-обзор хелпера')
+					end
 					imgui.Separator()
 					imgui.Text(fa.HEADSET..u8" Тех.поддержка по хелперу:")
 					imgui.SameLine()
 					if imgui.SmallButton(u8'Discord') then
 						openLink('https://discord.gg/qBPEYjfNhv')
+					end
+					if imgui.IsItemHovered() then
+						imgui.SetTooltip(u8'Перейти в Discord сервер MTG MODS')
 					end
 					imgui.SameLine()
 					imgui.Text('/')
@@ -7646,11 +7767,17 @@ imgui.OnFrame(
 					if imgui.SmallButton(u8'Telegram') then
 						openLink('https://t.me/mtgmods')
 					end
+					if imgui.IsItemHovered() then
+						imgui.SetTooltip(u8'Перейти в Telegram канал MTG MODS')
+					end
 					imgui.SameLine()
 					imgui.Text('/')
 					imgui.SameLine()
 					if imgui.SmallButton(u8'BlastHack') then
 						openLink('https://www.blast.hk/threads/244597/')
+					end
+					if imgui.IsItemHovered() then
+						imgui.SetTooltip(u8'Открыть тему хелпера на BlastHack)')
 					end
 					imgui.Separator()
 					imgui.Text(fa.GLOBE..u8" Другие скрипты от MTG MODS:")
@@ -7796,7 +7923,7 @@ imgui.OnFrame(
 						end
 						imgui.SameLine()
 						if imgui.Button(fa.CLOCK_ROTATE_LEFT .. u8' Да, сбросить##yes_restore', imgui.ImVec2(200 * settings.general.custom_dpi, 25 * settings.general.custom_dpi)) then
-							deleteHelperData()
+							delete_helpers_data()
 						end
 						imgui.End()
 					end
@@ -7816,7 +7943,7 @@ imgui.OnFrame(
 						imgui.SameLine()
 						if imgui.Button(fa.TRASH_CAN .. u8' Да, удалить##delete_helper', imgui.ImVec2(200 * settings.general.custom_dpi, 25 * settings.general.custom_dpi)) then
 							reload_script = true
-							deleteHelperData(true)
+							delete_helpers_data(true)
 						end
 						imgui.End()
 					end
@@ -7828,6 +7955,7 @@ imgui.OnFrame(
 		imgui.End()
     end
 )
+
 imgui.OnFrame(
     function() return MODULE.Binder.Window[0] end,
     function(player)
@@ -7845,16 +7973,27 @@ imgui.OnFrame(
 			imgui.InputText("##MODULE.Binder.input_cmd", MODULE.Binder.input_cmd, 256)
 			imgui.Separator()
 			imgui.CenterText(fa.CODE .. u8' Аргументы которые принимает команда:')
+			local args = {[1] = '{arg}', [2] = '{id}', [3] = '{id} {arg}', [4] = '{id} {number} {arg}'}
+			local selected_args = args[MODULE.Binder.ComboTags[0]]
+			if selected_args then
+				for token in selected_args:gmatch("{[^}]+}") do
+					if imgui.Button(token, imgui.ImVec2(65 * settings.general.custom_dpi, 24 * settings.general.custom_dpi)) then
+						insert_to_cursor(token .. ' ', MODULE.Binder.input_text)
+					end
+					imgui.SameLine()
+				end
+			end
+			imgui.PushItemWidth(581 * settings.general.custom_dpi - imgui.GetCursorPos().x)
 	    	imgui.Combo(u8'', MODULE.Binder.ComboTags, MODULE.Binder.ImItems, #MODULE.Binder.item_list)
 	 	    imgui.Separator()
 	        imgui.CenterText(fa.FILE_WORD .. u8' Текстовый бинд команды:')
-			imgui.InputTextMultiline("##text_multiple", MODULE.Binder.input_text, 8192, imgui.ImVec2(579 * settings.general.custom_dpi, 173 * settings.general.custom_dpi))
+			imgui.InputTextMultiline("##text_multiple", MODULE.Binder.input_text, 8192, imgui.ImVec2(579 * settings.general.custom_dpi, 173 * settings.general.custom_dpi), imgui.InputTextFlags.CallbackAlways + imgui.InputTextFlags.CallbackCompletion, TextEditCallback)
 		imgui.EndChild() end
-		if imgui.Button(fa.CIRCLE_XMARK .. u8' Отмена##binder_cancel', imgui.ImVec2(imgui.GetMiddleButtonX(5), 0)) then
+		if imgui.Button(fa.CIRCLE_XMARK .. u8' Отмена##binder_cancel', imgui.ImVec2(imgui.GetMiddleButtonX(IS_MOBILE and 4 or 5), 0)) then
 			MODULE.Binder.Window[0] = false
 		end
 		imgui.SameLine()
-		if imgui.Button(fa.CLOCK .. u8' Задержка##binder_wait', imgui.ImVec2(imgui.GetMiddleButtonX(5), 0)) then
+		if imgui.Button(fa.CLOCK .. u8' Задержка##binder_wait', imgui.ImVec2(imgui.GetMiddleButtonX(IS_MOBILE and 4 or 5), 0)) then
 			imgui.OpenPopup(fa.CLOCK .. u8' Задержка (в секундах) '  .. fa.CLOCK)
 		end
 		imgui.SetNextWindowPos(imgui.ImVec2(sizeX / 2, sizeY / 2), imgui.Cond.Always, imgui.ImVec2(0.5, 0.5))
@@ -7873,75 +8012,106 @@ imgui.OnFrame(
 			imgui.End()
 		end
 		imgui.SameLine()
-		if imgui.Button(fa.TAGS .. u8' Теги##binder_tags', imgui.ImVec2(imgui.GetMiddleButtonX(5), 0)) then
-			imgui.OpenPopup(fa.TAGS .. u8' Теги для использования в биндере')
+		if imgui.Button(fa.TAGS .. u8' Теги##binder_tags', imgui.ImVec2(imgui.GetMiddleButtonX(IS_MOBILE and 4 or 5), 0)) then
+			imgui.OpenPopup(fa.TAGS .. u8' Теги для использования в биндере ' .. fa.TAGS)
 		end
 		imgui.SetNextWindowPos(imgui.ImVec2(sizeX / 2, sizeY / 2), imgui.Cond.Always, imgui.ImVec2(0.5, 0.5))
-		if imgui.BeginPopupModal(fa.TAGS .. u8' Теги для использования в биндере', _, imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoResize + imgui.WindowFlags.NoScrollbar + imgui.WindowFlags.AlwaysAutoResize) then
-			imgui.CenterText(u8('СИСТЕМА ТЕГОВ БУДЕТ ИЗМЕНЕНА'))
-			imgui.Text(u8(binder_tags_text))
+		if imgui.BeginPopupModal(fa.TAGS .. u8' Теги для использования в биндере ' .. fa.TAGS, _, imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoResize + imgui.WindowFlags.NoScrollbar + imgui.WindowFlags.AlwaysAutoResize) then
+			if imgui.BeginChild("taglist", imgui.ImVec2(589 * settings.general.custom_dpi, 361 * settings.general.custom_dpi), true) then
+				imgui.Columns(3, "tags_columns", true)
+				imgui.Text(u8"Тег")
+				imgui.NextColumn()
+				imgui.Text(u8"Описание тега")
+				imgui.NextColumn()
+				imgui.Text(u8"Пример вывода")
+				imgui.NextColumn()
+				local last_category = nil
+				for _, tag in ipairs(MODULE.Binder.tags) do
+					if tag.category ~= last_category then
+						imgui.Columns(1)
+						imgui.Separator()
+						imgui.BulletText(u8(tag.category))
+						imgui.Separator()
+						imgui.Columns(3, "tags_columns", true)
+						last_category = tag.category
+					end
+					if imgui.Selectable("{" .. tag.key .. "}") then
+						insert_to_cursor("{" .. tag.key .. "}", MODULE.Binder.input_text)
+						imgui.CloseCurrentPopup()
+					end
+					imgui.NextColumn()
+					imgui.Text(u8(tag.description))
+					imgui.NextColumn()
+					local example = ""
+					if tag.func then
+						local ok, result = pcall(tag.func)
+						if ok and result then
+							example = tostring(result)
+						end
+					end
+					imgui.Text(u8(example))
+					imgui.NextColumn()
+				end
+				imgui.Columns(1)
+				imgui.EndChild()
+			end
 			imgui.Separator()
 			if imgui.Button(fa.CIRCLE_XMARK .. u8' Закрыть', imgui.ImVec2(imgui.GetMiddleButtonX(1), 0)) then
 				imgui.CloseCurrentPopup()
 			end
 			imgui.End()
 		end
-		imgui.SameLine()
-		if imgui.Button(fa.KEYBOARD .. u8' Забиндить##binder_bind', imgui.ImVec2(imgui.GetMiddleButtonX(5), 0)) then
-			if MODULE.Binder.ComboTags[0] == 0 then
-				if IS_MOBILE then
-					sampAddChatMessage('[Arizona Helper] {ffffff}Данная функция доступа только на ПК!', message_color)
-				else
+		if not IS_MOBILE then
+			imgui.SameLine()
+			if imgui.Button(fa.KEYBOARD .. u8' Забиндить##binder_bind', imgui.ImVec2(imgui.GetMiddleButtonX(IS_MOBILE and 4 or 5), 0)) then
+				if MODULE.Binder.ComboTags[0] == 0 then
 					if hotkey_no_errors then
+						if hotkey.HotKeyIsEdit ~= nil then hotkey.HotKeyIsEdit = nil end
 						imgui.OpenPopup(fa.KEYBOARD .. u8' Бинд для команды /' .. MODULE.Binder.data.change_cmd)
 					else
 						sampAddChatMessage('[Arizona Helper] {ffffff}Данная функция недоступна, у вас отсуствуют файлы библиотеки mimgui_hotkeys!', message_color)
 					end
-				end
-			else
-				sampAddChatMessage('[Arizona Helper] {ffffff}Данная функция доступа только если команда "Без аргументов"', message_color)
-			end
-		end
-		imgui.SetNextWindowPos(imgui.ImVec2(sizeX / 2, sizeY / 2), imgui.Cond.Always, imgui.ImVec2(0.5, 0.5))
-		if imgui.BeginPopupModal(fa.KEYBOARD .. u8' Бинд для команды /' .. MODULE.Binder.data.change_cmd, _, imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoResize + imgui.WindowFlags.NoScrollbar + imgui.WindowFlags.AlwaysAutoResize) then
-			local hotkeyObject = hotkeys[MODULE.Binder.data.change_cmd .. "HotKey"]
-			if hotkeyObject then
-				imgui.CenterText(u8('Клавиша активации бинда:'))
-				local calc
-				if MODULE.Binder.data.change_bind == '{}' or MODULE.Binder.data.change_bind == '[]' then
-					calc = imgui.CalcTextSize('< click and select keys >')
-				elseif MODULE.Binder.data.change_bind == nil then
-					MODULE.Binder.data.change_bind = {}
 				else
-					calc = imgui.CalcTextSize(getNameKeysFrom(MODULE.Binder.data.change_bind))
+					sampAddChatMessage('[Arizona Helper] {ffffff}Данная функция доступа только если команда "Без аргументов"', message_color)
 				end
-				local width = imgui.GetWindowWidth()
-				local temp = (calc and calc.x and calc.x / 2) or 0
-				imgui.SetCursorPosX(width / 2 - temp)
-				if hotkeyObject:ShowHotKey() then
-					MODULE.Binder.data.change_bind = encodeJson(hotkeyObject:GetHotKey())
-				end
-			else
-				if not MODULE.Binder.data.change_bind then
-				 	MODULE.Binder.data.change_bind = {}
-				end
-				
-				hotkeys[MODULE.Binder.data.change_cmd .. "HotKey"] = hotkey.RegisterHotKey(MODULE.Binder.data.change_cmd .. "HotKey", false, decodeJson(MODULE.Binder.data.change_bind), function()
-					if (not (sampIsChatInputActive() or sampIsDialogActive() or isSampfuncsConsoleActive())) then
-						sampProcessChatInput('/' .. MODULE.Binder.data.change_cmd)
+			end
+			imgui.SetNextWindowPos(imgui.ImVec2(sizeX / 2, sizeY / 2), imgui.Cond.Always, imgui.ImVec2(0.5, 0.5))
+			if imgui.BeginPopupModal(fa.KEYBOARD .. u8' Бинд для команды /' .. MODULE.Binder.data.change_cmd, _, imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoResize + imgui.WindowFlags.NoScrollbar + imgui.WindowFlags.AlwaysAutoResize) then
+				local hotkeyObject = hotkeys[MODULE.Binder.data.change_cmd .. "HotKey"]
+				if hotkeyObject then
+					imgui.CenterText(u8('Клавиша активации бинда:'))
+					local calc
+					if MODULE.Binder.data.change_bind == '{}' or MODULE.Binder.data.change_bind == '[]' then
+						calc = imgui.CalcTextSize('< click and select keys >')
+					elseif MODULE.Binder.data.change_bind == nil then
+						MODULE.Binder.data.change_bind = {}
+					else
+						calc = imgui.CalcTextSize(getNameKeysFrom(MODULE.Binder.data.change_bind))
 					end
-				end)
-				hotkeyObject = hotkeys[MODULE.Binder.data.change_cmd .. "HotKey"]
+					local width = imgui.GetWindowWidth()
+					local temp = (calc and calc.x and calc.x / 2) or 0
+					imgui.SetCursorPosX(width / 2 - temp)
+					if hotkeyObject:ShowHotKey() then
+						MODULE.Binder.data.change_bind = encodeJson(hotkeyObject:GetHotKey())
+					end
+				else
+					if not MODULE.Binder.data.change_bind then
+						MODULE.Binder.data.change_bind = {}
+					end
+					hotkeys[MODULE.Binder.data.change_cmd .. "HotKey"] = hotkey.RegisterHotKey(MODULE.Binder.data.change_cmd .. "HotKey", false, decodeJson(MODULE.Binder.data.change_bind), function()
+						if not sampIsCursorActive() then sampProcessChatInput('/' .. MODULE.Binder.data.change_cmd) end
+					end)
+					hotkeyObject = hotkeys[MODULE.Binder.data.change_cmd .. "HotKey"]
+				end
+				imgui.Separator()
+				if imgui.Button(fa.CIRCLE_XMARK .. u8' Закрыть##binder_bind_close', imgui.ImVec2(300 * settings.general.custom_dpi, 30 * settings.general.custom_dpi)) then
+					imgui.CloseCurrentPopup()
+				end
+				imgui.End()
 			end
-			imgui.Separator()
-			if imgui.Button(fa.CIRCLE_XMARK .. u8' Закрыть##binder_bind_close', imgui.ImVec2(300 * settings.general.custom_dpi, 30 * settings.general.custom_dpi)) then
-				hotkeyObject:RemoveHotKey()
-				imgui.CloseCurrentPopup()
-			end
-			imgui.End()
 		end
 		imgui.SameLine()
-		if imgui.Button(fa.FLOPPY_DISK .. u8' Сохранить##binder_save', imgui.ImVec2(imgui.GetMiddleButtonX(5), 0)) then	
+		if imgui.Button(fa.FLOPPY_DISK .. u8' Сохранить##binder_save', imgui.ImVec2(imgui.GetMiddleButtonX(IS_MOBILE and 4 or 5), 0)) then	
 			if ffi.string(MODULE.Binder.input_cmd):find('%W') or ffi.string(MODULE.Binder.input_cmd) == '' or ffi.string(MODULE.Binder.input_description) == '' or ffi.string(MODULE.Binder.input_text) == '' then
 				imgui.OpenPopup(fa.TRIANGLE_EXCLAMATION .. u8' Ошибка сохранения команды ' .. fa.TRIANGLE_EXCLAMATION)
 			else
@@ -7951,13 +8121,11 @@ imgui.OnFrame(
 				elseif MODULE.Binder.ComboTags[0] == 1 then
 					new_arg = '{arg}'
 				elseif MODULE.Binder.ComboTags[0] == 2 then
-					new_arg = '{arg_id}'
+					new_arg = '{id}'
 				elseif MODULE.Binder.ComboTags[0] == 3 then
-					new_arg = '{arg_id} {arg2}'
+					new_arg = '{id} {arg}'
                 elseif MODULE.Binder.ComboTags[0] == 4 then
-					new_arg = '{arg_id} {arg2} {arg3}'
-				elseif MODULE.Binder.ComboTags[0] == 5 then
-					new_arg = '{arg_id} {arg2} {arg3} {arg4}'
+					new_arg = '{id} {number} {arg}'
 				end
 				local new_command = u8:decode(ffi.string(MODULE.Binder.input_cmd))
 				local temp_array = (MODULE.Binder.data.create_command_9_10) and modules.commands.data.commands_manage.my or modules.commands.data.commands.my
@@ -7975,14 +8143,12 @@ imgui.OnFrame(
 							sampAddChatMessage('[Arizona Helper] {ffffff}Команда ' .. message_color_hex .. '/' .. new_command .. ' {ffffff}успешно сохранена!', message_color)
 						elseif command.arg == '{arg}' then
 							sampAddChatMessage('[Arizona Helper] {ffffff}Команда ' .. message_color_hex .. '/' .. new_command .. ' [аргумент] {ffffff}успешно сохранена!', message_color)
-						elseif command.arg == '{arg_id}' then
+						elseif command.arg == '{id}' then
 							sampAddChatMessage('[Arizona Helper] {ffffff}Команда ' .. message_color_hex .. '/' .. new_command .. ' [ID игрока] {ffffff}успешно сохранена!', message_color)
-						elseif command.arg == '{arg_id} {arg2}' then
+						elseif command.arg == '{id} {arg}' then
 							sampAddChatMessage('[Arizona Helper] {ffffff}Команда ' .. message_color_hex .. '/' .. new_command .. ' [ID игрока] [аргумент] {ffffff}успешно сохранена!', message_color)
-						elseif command.arg == '{arg_id} {arg2} {arg3}' then
+						elseif command.arg == '{id} {number} {arg}' then
 							sampAddChatMessage('[Arizona Helper] {ffffff}Команда ' .. message_color_hex .. '/' .. new_command .. ' [ID игрока] [число] [аргумент] {ffffff}успешно сохранена!', message_color)
-						elseif command.arg == '{arg_id} {arg2} {arg3} {arg4}' then
-							sampAddChatMessage('[Arizona Helper] {ffffff}Команда ' .. message_color_hex .. '/' .. new_command .. ' [ID игрока] [число] [аргумент] [аргумент] {ffffff}успешно сохранена!', message_color)
 						end
 						sampUnregisterChatCommand(MODULE.Binder.data.change_cmd)
 						register_command(command.cmd, command.arg, command.text, tonumber(command.waiting))
@@ -8015,6 +8181,7 @@ imgui.OnFrame(
 		imgui.End()
     end
 )
+
 imgui.OnFrame(
     function() return MODULE.Note.Window[0] end,
     function(player)
@@ -8028,128 +8195,188 @@ imgui.OnFrame(
         imgui.End()
     end
 )
+
+function iconTextFormat(item)
+	if item.icon and item.icon ~= '' and fa[item.icon] then
+		return fa[item.icon] .. ' ' .. u8(item.name)
+	end
+	return u8(item.name)
+end
+function render_buttons()
+	for index, value in ipairs(modules.buttons.data) do
+		local WindowName = value.name .. index
+		if not MODULE.Buttons[WindowName] then
+			MODULE.Buttons[WindowName] = imgui.new.bool(value.enable)
+		end
+		imgui.OnFrame(
+			function() return MODULE.Buttons[WindowName][0] end,
+			function(player)
+				imgui.SetNextWindowPos(imgui.ImVec2(value.pos.x, value.pos.y), imgui.Cond.FirstUseEver)
+				imgui.Begin("##BUTTON" .. value.name, MODULE.Buttons[WindowName], imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoResize + imgui.WindowFlags.NoBackground + imgui.WindowFlags.NoTitleBar + imgui.WindowFlags.NoScrollbar)
+				change_dpi()
+				if imgui.Button(iconTextFormat(value), imgui.ImVec2(value.size.x * settings.general.custom_dpi, value.size.y * settings.general.custom_dpi)) then
+					sampProcessChatInput(value.action)
+				end
+				local posX, posY = imgui.GetWindowPos().x, imgui.GetWindowPos().y
+				if posX ~= value.pos.x or posY ~= value.pos.y then
+					value.pos.x = posX
+					value.pos.y = posY
+					save_module('buttons')
+				end
+				imgui.End()
+			end
+		)
+	end
+end
 ------------------------------------------ FRACTION GUI -------------------------------------------
-function render_fractions_functions()
-	local function render_assist_item(name, description, tbl, key, isVip, func)
-		imgui.Separator()
-		imgui.Columns(3)
-		if tbl and tbl[key] then
-			imgui.CenterColumnText((isVip and fa.CROWN .. ' ' or '') .. u8(name))
+function render_assist_item(name, description, tbl, key, isVip, func)
+	imgui.Separator()
+	imgui.Columns(3)
+	if tbl and tbl[key] then
+		if isVip then
+			imgui.CenterColumnColorText(imgui.ImVec4(0.93, 0.79, 0.15, 1.0), fa.CROWN .. ' ' .. u8(name))
 		else
-			imgui.CenterColumnTextDisabled((isVip and fa.CROWN .. ' ' or '') .. u8(name))
+			imgui.CenterColumnText(u8(name))
 		end
-		imgui.NextColumn()
-		imgui.SetNextWindowPos(imgui.ImVec2(sizeX / 2, sizeY / 2), imgui.Cond.Always, imgui.ImVec2(0.5, 0.5))
-		if imgui.BeginPopupModal(fa.CIRCLE_INFO .. ' ' .. u8(name) .. ' ' .. fa.CIRCLE_INFO, _, imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoResize + imgui.WindowFlags.NoScrollbar + imgui.WindowFlags.AlwaysAutoResize) then
-			change_dpi()
-			imgui.TextWrapped(u8(description))
-			imgui.Separator()
-			if imgui.Button(fa.CIRCLE_XMARK .. u8' Закрыть', imgui.ImVec2(500 * settings.general.custom_dpi, 25 * settings.general.custom_dpi)) then
-				imgui.CloseCurrentPopup()
-			end
-			imgui.EndPopup()
+	else
+		if isVip then
+			imgui.CenterColumnColorText(imgui.ImVec4(0.55, 0.45, 0.08, 1.0), fa.CROWN .. ' ' .. u8(name))
+		else
+			imgui.CenterColumnTextDisabled(u8(name))
 		end
-		if imgui.CenterColumnSmallButton(u8('Посмотреть##' .. name .. key)) then
-			imgui.OpenPopup(fa.CIRCLE_INFO .. ' ' .. u8(name) .. ' ' .. fa.CIRCLE_INFO)
-		end
-		imgui.NextColumn()
-		if imgui.CenterColumnSmallButton(u8(((tbl and tbl[key]) and 'Отключить' or 'Включить') .. '##' .. name .. key)) then
-			if ((isVip) and (not thisScript().version:find('VIP'))) then 
-				send_no_vip_msg()
-			else
-				tbl[key] = not tbl[key]
-				save_settings()
-			end
-		end
-		if func and tbl and tbl[key] then
-			imgui.SameLine()
-			if imgui.SmallButton(fa.GEAR .. '##' .. name) then
-				func()
-			end
-		end
-		imgui.Columns(1)
 	end
-	local function firs_render_assist_gui()
-		imgui.Columns(3)
-		imgui.CenterColumnText(u8("Название функции"))
-		imgui.SetColumnWidth(-1, 270 * settings.general.custom_dpi)
-		imgui.NextColumn()
-		imgui.CenterColumnText(u8("Описание функции"))
-		imgui.SetColumnWidth(-1, 150 * settings.general.custom_dpi)
-		imgui.NextColumn()
-		imgui.CenterColumnText(u8("Управление"))
-		imgui.SetColumnWidth(-1, 170 * settings.general.custom_dpi)
-		imgui.NextColumn()
-		imgui.Columns(1)
+	imgui.NextColumn()
+	imgui.SetNextWindowPos(imgui.ImVec2(sizeX / 2, sizeY / 2), imgui.Cond.Always, imgui.ImVec2(0.5, 0.5))
+	if imgui.BeginPopupModal(fa.CIRCLE_INFO .. ' ' .. u8(name) .. ' ' .. fa.CIRCLE_INFO, _, imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoResize + imgui.WindowFlags.NoScrollbar + imgui.WindowFlags.AlwaysAutoResize) then
+		change_dpi()
+		imgui.TextWrapped(u8(description))
+		imgui.Separator()
+		if imgui.Button(fa.CIRCLE_XMARK .. u8' Закрыть', imgui.ImVec2(500 * settings.general.custom_dpi, 25 * settings.general.custom_dpi)) then
+			imgui.CloseCurrentPopup()
+		end
+		imgui.EndPopup()
+	end
+	if imgui.CenterColumnSmallButton(u8('Посмотреть##' .. name .. key)) then
+		imgui.OpenPopup(fa.CIRCLE_INFO .. ' ' .. u8(name) .. ' ' .. fa.CIRCLE_INFO)
+	end
+	imgui.NextColumn()
+	if imgui.CenterColumnSmallButton((((tbl and tbl[key]) and fa.TOGGLE_ON or fa.TOGGLE_OFF) .. '##' .. name .. key)) then
+		if ((isVip) and (not thisScript().version:find('VIP'))) then 
+			send_no_vip_msg()
+		else
+			tbl[key] = not tbl[key]
+			save_settings()
+		end
+	end
+	if imgui.IsItemHovered() then
+		local label = (tbl and tbl[key]) and ('Отключить') or ('Включить')
+		imgui.SetTooltip(u8(label))
+	end
+	if func and tbl and tbl[key] then
+		imgui.SameLine()
+		if imgui.SmallButton(fa.GEAR .. '##' .. name) then
+			func()
+		end
+		if imgui.IsItemHovered() then
+			imgui.SetTooltip(u8("Настроить"))
+		end
+	end
+	imgui.Columns(1)
+end
+function firs_render_assist_gui()
+	imgui.Columns(3)
+	imgui.CenterColumnText(u8("Функция Ассистента"))
+	imgui.SetColumnWidth(-1, 320 * settings.general.custom_dpi)
+	imgui.NextColumn()
+	imgui.CenterColumnText(u8("Описание функции"))
+	imgui.SetColumnWidth(-1, 150 * settings.general.custom_dpi)
+	imgui.NextColumn()
+	imgui.CenterColumnText(u8("Управление"))
+	imgui.SetColumnWidth(-1, 100 * settings.general.custom_dpi)
+	imgui.NextColumn()
+	imgui.Columns(1)
+	render_assist_item(
+		"RP общение в чатах",
+		"Ваши сообщения в чат будут отправляться с заглавной буквы и точкой в конце.\nТак-же работает и в таких чатах как: /s /do /f /fb /r /rb /j /jb /fam /al",
+		settings.general,
+		"rp_chat"
+	)
+	render_assist_item(
+		"RP отыгровка оружия",
+		"При использовании или скролле оружия, в чате будут RP отыгровки.\nНастроить можно через команду /rpguns или кнопкой шестеренки справа.",
+		settings.general,
+		"rp_guns",
+		false,
+		function()
+			MODULE.RPWeapon.Window[0] = true
+		end
+	)
+	render_assist_item(
+		"RP проверка документов",
+		"Автоматически принимает документы из /offer\nТак-же через RP отыгровку проверяет их, затем возвращает.",
+		settings.general,
+		"auto_accept_docs"
+	)
+	render_assist_item(
+		"Пинг в чате @" .. MODULE.Binder.tag.my_nick(),
+		"Звуковое оповещение на пинг вашего никнейма в игровых чатах",
+		settings.general,
+		"ping"
+	)
+	render_assist_item(
+		"Круиз контроль транспорта",
+		"Система поддержки движения по маршруту с ограничением скорости.\n\nКомандой /cruise можно активировать или отключить CRUISE CONTROL.\nПосле выбора пункта назначения, ваш т/с будет двигаться со скоростю 80 км/ч.\nВсе ваши действия будут происходить с RP отыгровками как в жизни\n\nМОЖЕТ БЫТЬ ЗАПРЕЩЕНО НА НЕКОТОРЫХ СЕРВЕРАХ! УТОЧНЯЙТЕ В /REPORT",
+		settings.general,
+		"cruise_control"
+	)
+	render_assist_item(
+		"Автофлип через /domkrat",
+		"Если перевернётесь на авто, автоматически используется /domkrat для спасения.\nЕсли у вас не будет их в инвентаре, то ваше авто не перевернётся!",
+		settings.general,
+		"aflip_domkrat",
+		true
+	)
+	render_assist_item(
+		"Переодевание маски",
+		"Если ваша маска слетает, сразу же автоматически надевает новую.\nВаш цветной клист даже не успеет появиться на карте.",
+		settings.general,
+		"auto_mask",
+		true
+	)
+	if not isMode('none') then
 		render_assist_item(
-			"RP общение в чатах",
-			"Ваши сообщения в чат будут отправляться с заглавной буквы и точкой в конце.\nТак-же работает и в таких чатах как: /s /do /f /fb /r /rb /j /jb /fam /al",
-			settings.player_info,
-			"rp_chat"
-		)
-		render_assist_item(
-			"RP отыгровка оружия",
-			"При использовании или скролле оружия, в чате будут RP отыгровки.\nНастроить можно через команду /rpguns или кнопкой шестеренки справа.",
+			"Обновление списка /mb",
+			"Автоматически обновляет список сотрудников в /mb каждые 3 секунды.",
 			settings.general,
-			"rp_guns",
-			false,
-			function()
-				MODULE.RPWeapon.Window[0] = true
-			end
-		)
-		render_assist_item(
-			"RP проверка документов",
-			"Автоматически принимает документы из /offer\nТак-же через RP отыгровку проверяет их, затем возвращает.",
-			settings.general,
-			"auto_accept_docs"
-		)
-		render_assist_item(
-			"Автофлип через /domkrat",
-			"Если перевернётесь на авто, автоматически используется /domkrat для спасения.\nЕсли у вас не будет их в инвентаре, то ваше авто не перевернётся!",
-			settings.general,
-			"aflip_domkrat",
+			"auto_update_members",
 			true
 		)
 		render_assist_item(
-			"Переодевание маски",
-			"Если ваша маска слетает, сразу же автоматически надевает новую.\nВаш цветной клист даже не успеет появиться на карте.",
+			"Авто-доклады /post",
+			"Автоматически отправляет доклад в рацию каждые 5 минут на посту.\n(вы должны начать /post чтобы данная функция работала)",
 			settings.general,
-			"auto_mask",
+			"auto_doklad_post",
 			true
 		)
-		if not isMode('none') then
-			render_assist_item(
-				"Обновление списка /mb",
-				"Автоматически обновляет список сотрудников в /mb каждые 3 секунды.",
-				settings.general,
-				"auto_update_members",
-				true
-			)
-			render_assist_item(
-				"Доклады на посту (/post)",
-				"Автоматически отправляет доклад в рацию каждые 5 минут на посту.\n(вы должны начать /post чтобы функция работала)",
-				settings.general,
-				"auto_doklad_post",
-				true
-			)
-		end
-		if settings.player_info.fraction_rank_number >= 9 then
-			render_assist_item(
-				"Инвайт игроков по фразе [9/10]",
-				'Автоматически инвайтит игроков, которые просят инвайт в чате.\nДля настройки выдачи ранга нажмите на шестерёнку справа от кнопки\n\nМОЖЕТ БЫТЬ ЗАПРЕЩЕНО НА НЕКОТОРЫХ СЕРВЕРАХ! УТОЧНЯЙТЕ В /REPORT',
-				settings.general.auto_invite,
-				"enable",
-				true
-			)
-			render_assist_item(
-				"Увал сотрудников по ПСЖ [9/10]",
-				"Автоматическое увольнение сотрудников, которые просят увал ПСЖ в /r /rb /f /fb\nПример ситуации как это работает:\n1) Игрок пишет в /r Увольте меня по псж\n2) Cкрипт отвечает: /rb Nick_Name, отправьте /rb +++ чтобы уволиться ПСЖ!\n3) Игрок отправляет /rb +++ и скрипт его увольняет по ПСЖ\n\nP.S. Если игрок флудит просьбами об увале, скрипт САМ его уволит, без +++\nP.S.S. Данная функция работает только если вы одеты в рабочую форму.",
-				settings.general,
-				"auto_uninvite"
-			)
-		end
 	end
-	if isMode('police') or isMode('fbi') then 
+	if modules.player.data.fraction_rank_number >= 9 then
+		render_assist_item(
+			"Инвайт игроков по фразе [9/10]",
+			'Автоматически инвайтит игроков, которые просят инвайт в чате.\nДля настройки выдачи ранга нажмите на шестерёнку справа от кнопки\n\nМОЖЕТ БЫТЬ ЗАПРЕЩЕНО НА НЕКОТОРЫХ СЕРВЕРАХ! УТОЧНЯЙТЕ В /REPORT',
+			settings.general.auto_invite,
+			"enable",
+			true
+		)
+		render_assist_item(
+			"Увал сотрудников по ПСЖ [9/10]",
+			"Автоматическое увольнение сотрудников, которые просят увал ПСЖ в /r /rb /f /fb\nПример ситуации как это работает:\n1) Игрок пишет в /r Увольте меня по псж\n2) Cкрипт отвечает: /rb Nick_Name, отправьте /rb +++ чтобы уволиться ПСЖ!\n3) Игрок отправляет /rb +++ и скрипт его увольняет по ПСЖ\n\nP.S. Если игрок флудит просьбами об увале, скрипт САМ его уволит, без +++\nP.S.S. Данная функция работает только если вы одеты в рабочую форму.",
+			settings.general,
+			"auto_uninvite"
+		)
+	end
+end
+function render_fractions_functions() 
+	if (isMode('police') or isMode('fbi')) then 
 		if imgui.BeginTabBar('FractinFunctions') then
 			if imgui.BeginTabItem(fa.ROBOT .. u8' Личный помощник "Ассистент"') then 
 				if imgui.BeginChild('##mj_assist', imgui.ImVec2(589 * settings.general.custom_dpi, 338 * settings.general.custom_dpi), true) then
@@ -8161,13 +8388,13 @@ function render_fractions_functions()
 						"auto_time"
 					)
 					render_assist_item(
-						"Смена CODE 3/4 от мигалок т/с",
+						"Смена CODE 3/4 от статуса мигалок т/с",
 						"Автоматически меняет ситуационный код при управлении мигалками.",
 						settings.mj,
 						"auto_change_code_siren"
 					)
 					render_assist_item(
-						"Анти Скрепки",
+						"Антивзлом наручников скрепами",
 						"Если игрок попытается взломать наруники скрепками, вы получите уведомление.\nТак-же скрипт попробует автоматически изьять скрепки у игрока, если вы рядом.",
 						settings.mj,
 						"anti_screpki"
@@ -8179,7 +8406,7 @@ function render_fractions_functions()
 						"auto_doklad_damage"
 					)
 					render_assist_item(
-						"Доклад в патруле (/patrool)",
+						"Авто-доклады /patrool",
 						"Автоматически отправляет доклад в рацию каждые 5 минут в патруле.\n(вы должны начать /patrool чтобы функция работала)",
 						settings.mj,
 						"auto_doklad_patrool",
@@ -8290,28 +8517,41 @@ function render_fractions_functions()
 			end
 			imgui.EndTabBar() 
 		end
-	elseif (isMode('smi')) then
+	elseif isMode('smi') then
 		if imgui.BeginTabBar('FractinFunctions') then
 			if imgui.BeginTabItem(fa.ROBOT .. u8' Личный помощник "Ассистент"') then 
 				if imgui.BeginChild('##smi_assist', imgui.ImVec2(589 * settings.general.custom_dpi, 338 * settings.general.custom_dpi), true) then	
 					firs_render_assist_gui()
 					render_assist_item(
-						"Копирка редакта обьяв коллег",
-						"Сохрание в историю обьяв, которые отредактировали ваши коллеги.\nТаким образом, у вас будет возможность быстрой отправки такого обьявления",
+						"История отредаченных обьявлений",
+						"Сохрание в историю обьявлений, которые были отредаченны лично вами.\nТаким образом, вы сможете вставлять из истории в строчку редакта.",
+						settings.smi,
+						"ads_history"
+					)
+					render_assist_item(
+						"Копирование чужих редактов",
+						"Сохрание в историю обьявлений, которые отредактировали ваши коллеги.\nТаким образом, у вас будет возможность быстрой отправки такого обьявления.\n\nЕсли 2+ обьявы одновременно, то функция может дать сбой и сохранит неверно!\n\nМОЖЕТ БЫТЬ ЗАПРЕЩЕНО НА НЕКОТОРЫХ СЕРВЕРАХ! УТОЧНЯЙТЕ В /REPORT",
 						settings.smi,
 						"steal_other_ads",
 						true
 					)
+					-- render_assist_item(
+					-- 	"Кнопка AI генерации редакта",
+					-- 	"В менюшке редактирования обьяввлений появится новая кнопочка робота\nНажав на неё, пойдёт зарос к ИИ, и в случае успеха, вставиться редакт\n\nПЕРЕД ИСПОЛЬЗОВАНИЕМ ВАМ НУЖНО НАСТРОИТЬ ИИ (МОДЕЛЬ, ТОКЕН)\nДля настройки ИИ используйте кнопку шестеренки справа\n\nМОЖЕТ БЫТЬ ЗАПРЕЩЕНО НА НЕКОТОРЫХ СЕРВЕРАХ! УТОЧНЯЙТЕ В /REPORT",
+					-- 	settings.smi,
+					-- 	"ai_generate",
+					-- 	true
+					-- )
 					render_assist_item(
-						"Авто-редакт (запоминание из истории)",
-						"Скрипт запоминает объявления игроков, которые вы редактируете.\nЭта функция автоматически отправит сохранённую объяву от того же игрока.\n\nМОЖЕТ БЫТЬ ЗАПРЕЩЕНО НА НЕКОТОРЫХ СЕРВЕРАХ! УТОЧНЯЙТЕ В /REPORT",
+						"Авто-редакт из истории обьяв",
+						"Авто-отправа сохранённой объявы от того же игрока, если он кидает повторно.\nЛибо вставит текст обьявки в строчку редактирования, если функция отключена\n\nМОЖЕТ БЫТЬ ЗАПРЕЩЕНО НА НЕКОТОРЫХ СЕРВЕРАХ! УТОЧНЯЙТЕ В /REPORT",
 						settings.smi,
-						"auto_send_old_ads_from_history",
+						"send_from_history",
 						true
 					)
 					render_assist_item(
-						"Авто-ловля новых объявлений",
-						"При поступлении нового объявления автоматически прописывает /newsredak вместо вас.\n\nМОЖЕТ БЫТЬ ЗАПРЕЩЕНО НА НЕКОТОРЫХ СЕРВЕРАХ! УТОЧНЯЙТЕ В /REPORT",
+						"Ловля новых объявлений",
+						"При поступлении новой обьявки прописывает /newsredak и пытается словить её.\nЕсли сразу два игрока с функций, то словит тот, у кого меньше PING & PacketLoss.\n\nМОЖЕТ БЫТЬ ЗАПРЕЩЕНО НА НЕКОТОРЫХ СЕРВЕРАХ! УТОЧНЯЙТЕ В /REPORT",
 						settings.smi,
 						"auto_catch_ads",
 						true
@@ -8323,70 +8563,74 @@ function render_fractions_functions()
 			end
 			if imgui.BeginTabItem(fa.CLOCK_ROTATE_LEFT .. u8' Управление историей обьявявлений') then
 				if imgui.BeginChild('##ads_history_menu', imgui.ImVec2(589 * settings.general.custom_dpi, 338 * settings.general.custom_dpi), true) then
-					if modules.ads_history.data then 
-						if #modules.ads_history.data == 0 then
-							imgui.CenterText(u8('История обьявлений пуста'))
-							imgui.CenterText(u8('Отредактированные обьявления будут отображаться здесь'))
-						else
-							imgui.PushItemWidth(570 * settings.general.custom_dpi)
-							imgui.InputTextWithHint(u8'##input_ads_search', u8'Поиск обьявлений по нужной фразе, начинайте вводить её сюда...', MODULE.SmiEdit.input_ads_search, 128)
-							imgui.Separator()
-							imgui.SetNextWindowPos(imgui.ImVec2(sizeX / 2, sizeY / 2), imgui.Cond.Always, imgui.ImVec2(0.5, 0.5))
-							if imgui.BeginPopupModal(fa.CLOCK_ROTATE_LEFT .. u8' Обьявление из истории отредаченных обьяв', _, imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoResize) then
-								change_dpi()
-								imgui.CenterText(u8(MODULE.SmiEdit.adshistory_orig))
-								imgui.PushItemWidth(500 * settings.general.custom_dpi)
-								imgui.InputTextWithHint(u8'##input_ads_my_edit', u8'Введите ваш вариант редакции данного обьяаления...', MODULE.SmiEdit.adshistory_input_text, 128)
+					if settings.smi.ads_history then
+						if modules.ads_history.data then 
+							if #modules.ads_history.data == 0 then
+								imgui.CenterText(u8('История обьявлений пуста'))
+								imgui.CenterText(u8('Отредактированные обьявления будут отображаться здесь'))
+							else
+								imgui.PushItemWidth(570 * settings.general.custom_dpi)
+								imgui.InputTextWithHint(u8'##input_ads_search', u8'Поиск обьявлений по нужной фразе, начинайте вводить её сюда...', MODULE.SmiEdit.input_search, 128)
 								imgui.Separator()
-								if imgui.Button(fa.CIRCLE_XMARK .. u8' Отмена', imgui.ImVec2(imgui.GetMiddleButtonX(3), 25 * settings.general.custom_dpi)) then
-									imgui.CloseCurrentPopup()
+								imgui.SetNextWindowPos(imgui.ImVec2(sizeX / 2, sizeY / 2), imgui.Cond.Always, imgui.ImVec2(0.5, 0.5))
+								if imgui.BeginPopupModal(fa.CLOCK_ROTATE_LEFT .. u8' Обьявление из истории отредаченных обьяв', _, imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoResize) then
+									change_dpi()
+									imgui.CenterText(u8(MODULE.SmiEdit.adshistory_orig))
+									imgui.PushItemWidth(500 * settings.general.custom_dpi)
+									imgui.InputTextWithHint(u8'##input_ads_my_edit', u8'Введите ваш вариант редакции данного обьяаления...', MODULE.SmiEdit.adshistory_input_text, 128)
+									imgui.Separator()
+									if imgui.Button(fa.CIRCLE_XMARK .. u8' Отмена', imgui.ImVec2(imgui.GetMiddleButtonX(3), 25 * settings.general.custom_dpi)) then
+										imgui.CloseCurrentPopup()
+									end
+									imgui.SameLine()
+									if imgui.Button(fa.TRASH_CAN .. u8' Удалить', imgui.ImVec2(imgui.GetMiddleButtonX(3), 25 * settings.general.custom_dpi)) then
+										for id, ad in ipairs(modules.ads_history.data) do
+											if ad.text == MODULE.SmiEdit.adshistory_orig then
+												table.remove(modules.ads_history.data, id)
+												save_module('ads_history')
+												sampAddChatMessage("[Arizona Helper] {ffffff}Обьявление из истории успешно удалено!", message_color)
+												break
+											end
+										end
+										imgui.CloseCurrentPopup()
+									end
+									imgui.SameLine()
+									if imgui.Button(fa.CIRCLE_XMARK .. u8' Сохранить', imgui.ImVec2(imgui.GetMiddleButtonX(3), 25 * settings.general.custom_dpi)) then
+										for id, ad in ipairs(modules.ads_history.data) do
+											if ad.text == MODULE.SmiEdit.adshistory_orig then
+												ad.my_text = u8:decode(ffi.string(MODULE.SmiEdit.adshistory_input_text))
+												save_module('ads_history')
+												sampAddChatMessage("[Arizona Helper] {ffffff}Обьявление из истории успешно изменено и сохранено!", message_color)
+												break
+											end
+										end
+										imgui.CloseCurrentPopup()
+									end
+									imgui.EndPopup()
 								end
-								imgui.SameLine()
-								if imgui.Button(fa.TRASH_CAN .. u8' Удалить', imgui.ImVec2(imgui.GetMiddleButtonX(3), 25 * settings.general.custom_dpi)) then
-									for id, ad in ipairs(modules.ads_history.data) do
-										if ad.text == MODULE.SmiEdit.adshistory_orig then
-											table.remove(modules.ads_history.data, id)
-											save_module('ads_history')
-											sampAddChatMessage("[Arizona Helper] {ffffff}Обьявление из истории успешно удалено!", message_color)
-											break
+								local input_ads_decoded = u8:decode(ffi.string(MODULE.SmiEdit.input_search))
+								for id, ad in ipairs(modules.ads_history.data) do
+									if (ad and ad.text and ad.my_text) then
+										if ((input_ads_decoded == '') or (ad.my_text:rupper():find(input_ads_decoded:rupper(), 1, true))) then
+											if imgui.Button(u8(ad.my_text .. '##' .. id), imgui.ImVec2(imgui.GetMiddleButtonX(1), 25 * settings.general.custom_dpi)) then
+												MODULE.SmiEdit.adshistory_orig = ad.text
+												imgui.StrCopy(MODULE.SmiEdit.adshistory_input_text, u8(ad.my_text))
+												imgui.OpenPopup(fa.CLOCK_ROTATE_LEFT .. u8' Обьявление из истории отредаченных обьяв')
+											end
 										end
 									end
-									imgui.CloseCurrentPopup()
 								end
-								imgui.SameLine()
-								if imgui.Button(fa.CIRCLE_XMARK .. u8' Сохранить', imgui.ImVec2(imgui.GetMiddleButtonX(3), 25 * settings.general.custom_dpi)) then
-									for id, ad in ipairs(modules.ads_history.data) do
-										if ad.text == MODULE.SmiEdit.adshistory_orig then
-											ad.my_text = u8:decode(ffi.string(MODULE.SmiEdit.adshistory_input_text))
-											save_module('ads_history')
-											sampAddChatMessage("[Arizona Helper] {ffffff}Обьявление из истории успешно изменено и сохранено!", message_color)
-											break
-										end
-									end
-									imgui.CloseCurrentPopup()
-								end
-								imgui.EndPopup()
 							end
-							local input_ads_decoded = u8:decode(ffi.string(MODULE.SmiEdit.input_ads_search))
-							for id, ad in ipairs(modules.ads_history.data) do
-								if (ad and ad.text and ad.my_text) then
-									if ((input_ads_decoded == '') or (ad.my_text:rupper():find(input_ads_decoded:rupper(), 1, true))) then
-										if imgui.Button(u8(ad.my_text .. '##' .. id), imgui.ImVec2(imgui.GetMiddleButtonX(1), 25 * settings.general.custom_dpi)) then
-											MODULE.SmiEdit.adshistory_orig = ad.text
-											imgui.StrCopy(MODULE.SmiEdit.adshistory_input_text, u8(ad.my_text))
-											imgui.OpenPopup(fa.CLOCK_ROTATE_LEFT .. u8' Обьявление из истории отредаченных обьяв')
-										end
-									end
-								end
-							end
+						else
+							imgui.CenterText(u8('Ошибка загрузки истории обьявлений, что-то сломалось'))
+							imgui.Separator()
+							imgui.CenterText(u8('Чтобы пофиксить, удалите файлик Ads.json, который находиться по пути:'))
+							imgui.TextWrapped(u8(modules.ads_history.path))
+							imgui.Separator()
+							imgui.CenterText(u8('Либо если вы опытный юзер, вручную откройте файл в CP1251 и исправьте ошибку'))
 						end
 					else
-						imgui.CenterText(u8('Ошибка загрузки истории обьявлений, что-то сломалось'))
-						imgui.Separator()
-						imgui.CenterText(u8('Чтобы пофиксить, удалите файлик Ads.json, который находиться по пути:'))
-						imgui.TextWrapped(u8(modules.ads_history.path))
-						imgui.Separator()
-						imgui.CenterText(u8('Либо если вы опытный юзер, вручную откройте файл в CP1251 и исправьте ошибку'))
+						imgui.CenterText(u8('Вы отключили функцию "История обьявлений" в /helper - Функции СМИ, включите её'))
 					end
 					imgui.EndChild()
 				end
@@ -8503,7 +8747,7 @@ function render_fractions_functions()
 						"Авто-выбор ближайшего знака",
 						"Автоматически выбирает ближайший дорожный знак для обслуживания.",
 						settings.lc,
-						"auto_find_clorest_repair_znak"
+						"auto_find_clorest_znak"
 					)
 					render_assist_item(
 						"Авто-кликер на ремонт знаков",
@@ -8521,7 +8765,7 @@ function render_fractions_functions()
 					)
 					render_assist_item(
 						"Авто-выдача лицензий",
-						"Автоматечески выдаёт лицензии игрокам пока вы стоите за стойкой.\nИгроки должны написать в чат тип лицензии (частоиспользуемые фразы) и срок.\nЕсли срок не написан, например просто \"права\", то автовыдача выдаст на 3 месяца.\n\nЕсть два режима работы авто-выдачи лицензий:\n1) Без RP отыгровок\nИспользуя RP отыгровку\nДля смены режима используйте кнопочку шестерёнки справа\n\nМОЖЕТ БЫТЬ ЗАПРЕЩЕНО НА НЕКОТОРЫХ СЕРВЕРАХ! УТОЧНЯЙТЕ В /REPORT",
+						"Автоматечески выдаёт лицензии игрокам пока вы стоите за стойкой.\nИгроки должны написать в чат тип лицензии (частоиспользуемые фразы) и срок.\nЕсли срок не написан, например просто \"права\", то автовыдача выдаст на 3 месяца.\n\nЕсть два режима работы авто-выдачи лицензий:\n1) Без RP отыгровки\n2) Используя RP отыгровку\nДля смены режима используйте кнопочку шестерёнки справа\n\nМОЖЕТ БЫТЬ ЗАПРЕЩЕНО НА НЕКОТОРЫХ СЕРВЕРАХ! УТОЧНЯЙТЕ В /REPORT",
 						settings.lc.auto_lic,
 						"enable",
 						true,
@@ -8617,7 +8861,7 @@ function render_fractions_functions()
 			imgui.Separator()
 			imgui.EndChild()
 		end
-	elseif (isMode('fd')) then
+	elseif isMode('fd') then
 		if imgui.BeginChild('##fd_assist', imgui.ImVec2(589 * settings.general.custom_dpi, 367 * settings.general.custom_dpi), true) then
 			firs_render_assist_gui()
 			render_assist_item(
@@ -8668,9 +8912,15 @@ function render_fractions_functions()
 			imgui.Separator()
 			imgui.EndChild()
 		end
-	elseif (isMode('ins')) then
+	elseif isMode('ins') then
 		if imgui.BeginChild('##ins_assist', imgui.ImVec2(589 * settings.general.custom_dpi, 367 * settings.general.custom_dpi), true) then
 			firs_render_assist_gui()
+			render_assist_item(
+				"Анти Тревожная Кнопка",
+				"Убирает тревожную кнопку вызова полиции с интерьера.\nТем самым вы не будете случайно вызывать МЮ из-за этой кнопки.",
+				settings.ins,
+				"anti_trivoga"
+			)
 			render_assist_item(
 				"Звуковое оповещение заявок",
 				"Звуковое уведомление при поступлении новых заявок, musthave при АФК.",
@@ -8779,7 +9029,7 @@ if (not isMode('none')) then
 					end
 				end
 				imgui.CenterColumnColorText(imgui_RGBA, text)
-				if (imgui.IsItemClicked() and settings.player_info.fraction_rank_number >= 9) then 
+				if (imgui.IsItemClicked() and modules.player.data.fraction_rank_number >= 9) then 
 					show_leader_fast_menu(v.id)
 					MODULE.Members.Window[0] = false
 				end
@@ -8804,6 +9054,23 @@ if (not isMode('none')) then
 			imgui.End()
 		end
 	)
+	imgui.OnFrame(
+		function() return MODULE.GiveRank.Window[0] end,
+		function(player)
+			imgui.SetNextWindowPos(imgui.ImVec2(sizeX / 2, sizeY / 2), imgui.Cond.Always, imgui.ImVec2(0.5, 0.5))
+			imgui.Begin(getHelperIcon().." Arizona Helper " .. getHelperIcon() .. "##rank", _, imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoResize + imgui.WindowFlags.NoScrollbar + imgui.WindowFlags.AlwaysAutoResize)
+			change_dpi()
+			imgui.CenterText(u8'Выберите ранг для '.. u8(sampGetPlayerNickname(player_id)) .. ':')
+			imgui.PushItemWidth(250 * settings.general.custom_dpi)
+			imgui.SliderInt('', MODULE.GiveRank.number, 1, (modules.player.data.fraction_rank_number == 9) and 8 or 9)
+			imgui.Separator()
+			local label = ' Выдать ранг' .. ((hotkey_no_errors and settings.general.bind_action) and (' [' .. getNameKeysFrom(settings.general.bind_action) .. ']') or '')
+			if imgui.Button(fa.USER .. u8(label), imgui.ImVec2(imgui.GetMiddleButtonX(1), 0)) then
+				MODULE.GiveRank.Window[0] = false
+			end
+			imgui.End()
+		end
+	)
 end
 if not (isMode('ghetto') or isMode('mafia')) then
 	imgui.OnFrame(
@@ -8818,7 +9085,7 @@ if not (isMode('ghetto') or isMode('mafia')) then
 					imgui.Separator()
 					if imgui.Button(fa.PLAY .. u8" Начать собеседование", imgui.ImVec2(-1, 25 * settings.general.custom_dpi)) then
 						lua_thread.create(function()
-							sampSendChat("Здравствуйте, я " .. settings.player_info.name_surname .. " - " .. settings.player_info.fraction_rank .. ' ' .. settings.player_info.fraction_tag)
+							sampSendChat("Здравствуйте, я " .. modules.player.data.name_surname .. " - " .. modules.player.data.fraction_rank .. ' ' .. modules.player.data.fraction_tag)
 							wait(1500)
 							sampSendChat("Вы пришли к нам на собеседование?")
 						end)
@@ -8841,7 +9108,7 @@ if not (isMode('ghetto') or isMode('mafia')) then
 						sampSendChat("/todo Поздравляю! Вы успешно прошли собеседование!*улыбаясь")
 					end
 					if imgui.Button(fa.USER_PLUS .. u8" Пригласить в организацию", imgui.ImVec2(-1, 25 * settings.general.custom_dpi)) then
-						find_and_use_command('/invite {arg_id}', player_id)
+						find_and_use_command('/invite {id}', player_id)
 						MODULE.Sobes.Window[0] = false
 					end
 					imgui.EndChild()
@@ -8939,8 +9206,8 @@ if not (isMode('ghetto') or isMode('mafia')) then
 														imgui.StrCopy(input_var, u8(tag))
 													else
 														table.remove(tags, i)
-														save_module('departament')
 													end
+													save_module('departament')
 													imgui.CloseCurrentPopup()
 												end
 												imgui.End()
@@ -8951,6 +9218,7 @@ if not (isMode('ghetto') or isMode('mafia')) then
 												imgui.OpenPopup(fa.GEAR .. u8' Выберите что именно нужно сделать ' .. fa.GEAR .. '##' .. i)
 											else
 												imgui.StrCopy(input_var, u8(tag))
+												save_module('departament')
 												imgui.CloseCurrentPopup()
 											end
 										end
@@ -9142,9 +9410,9 @@ if not (isMode('ghetto') or isMode('mafia')) then
 			change_dpi()
 			safery_disable_cursor(player)
 			if MODULE.Post.active then
-				imgui.Text(fa.MAP_LOCATION_DOT .. u8(' Пост: ') .. u8(MODULE.Binder.tags.get_post_name()))
-				imgui.Text(fa.CLOCK .. u8(' Время на посту: ') .. u8(MODULE.Binder.tags.get_post_time()))
-				imgui.Text(fa.CIRCLE_INFO .. u8(' Состояние: ') .. u8(MODULE.Binder.tags.get_post_code()))
+				imgui.Text(fa.MAP_LOCATION_DOT .. u8(' Пост: ') .. u8(MODULE.Binder.tag.get_post_name()))
+				imgui.Text(fa.CLOCK .. u8(' Время на посту: ') .. u8(MODULE.Binder.tag.get_post_time()))
+				imgui.Text(fa.CIRCLE_INFO .. u8(' Состояние: ') .. u8(MODULE.Binder.tag.get_post_code()))
 				imgui.SameLine()
 				if imgui.SmallButton(fa.GEAR) then
 					imgui.OpenPopup(fa.BUILDING_SHIELD .. u8(' Arizona Helper##post_select_code'))
@@ -9155,9 +9423,9 @@ if not (isMode('ghetto') or isMode('mafia')) then
 						MODULE.Post.process_doklad = true
 						lua_thread.create(function()
 							MODULE.Binder.state.isActive = true
-							sampSendChat('/r Докладывает ' .. MODULE.Binder.tags.my_doklad_nick() .. '. Пост: ' .. MODULE.Binder.tags.get_post_name() .. ', состояние ' .. MODULE.Binder.tags.get_post_code())
+							sampSendChat('/r Докладывает ' .. MODULE.Binder.tag.my_doklad_nick() .. '. Пост: ' .. MODULE.Binder.tag.get_post_name() .. ', состояние ' .. MODULE.Binder.tag.get_post_code())
 							wait(1500)
-							sampSendChat('/r Нахожусь на посту уже ' .. MODULE.Binder.tags.get_post_format_time())
+							sampSendChat('/r Нахожусь на посту уже ' .. MODULE.Binder.tag.get_post_format_time())
 							MODULE.Binder.state.isActive = false
 							MODULE.Post.process_doklad = false
 						end)
@@ -9169,9 +9437,9 @@ if not (isMode('ghetto') or isMode('mafia')) then
 						MODULE.Post.Window[0] = false
 						MODULE.Post.active = false
 						MODULE.Binder.state.isActive = true
-						sampSendChat('/r ' .. MODULE.Binder.tags.my_doklad_nick() .. ' на CONTROL. Пост: ' .. MODULE.Binder.tags.get_post_name() .. ', состояние ' .. MODULE.Binder.tags.get_post_code() .. '.')
+						sampSendChat('/r ' .. MODULE.Binder.tag.my_doklad_nick() .. ' на CONTROL. Пост: ' .. MODULE.Binder.tag.get_post_name() .. ', состояние ' .. MODULE.Binder.tag.get_post_code() .. '.')
 						wait(1500)
-						sampSendChat('/r Освобождаю пост! Простоял' .. MODULE.Binder.tags.sex() .. ' на посту: ' .. MODULE.Binder.tags.get_post_format_time() .. '.', -1)
+						sampSendChat('/r Освобождаю пост! Простоял' .. MODULE.Binder.tag.sex() .. ' на посту: ' .. MODULE.Binder.tag.get_post_format_time() .. '.', -1)
 						MODULE.Binder.state.isActive = false
 						MODULE.Post.time = 0
 						MODULE.Post.start_time = 0
@@ -9196,7 +9464,7 @@ if not (isMode('ghetto') or isMode('mafia')) then
 					MODULE.Post.start_time = os.time()
 					MODULE.Post.active = true
 					MODULE.Binder.state.isActive = true
-					sampSendChat('/r Докладывает ' .. MODULE.Binder.tags.my_doklad_nick() .. '. Заступаю на пост ' .. MODULE.Binder.tags.get_post_name() .. ', состояние ' .. MODULE.Binder.tags.get_post_code() .. '.')
+					sampSendChat('/r Докладывает ' .. MODULE.Binder.tag.my_doklad_nick() .. '. Заступаю на пост ' .. MODULE.Binder.tag.get_post_name() .. ', состояние ' .. MODULE.Binder.tag.get_post_code() .. '.')
 					MODULE.Binder.state.isActive = false
 					imgui.CloseCurrentPopup()
 				end
@@ -9221,34 +9489,37 @@ if not (isMode('ghetto') or isMode('mafia')) then
 	)
 end
 if isMode('police') or isMode('fbi') or isMode('prison') then
-	imgui.OnFrame(
-		function() return MODULE.Taser.Window[0] end,
-		function(player)
-			imgui.SetNextWindowPos(imgui.ImVec2(settings.windows_pos.taser.x, settings.windows_pos.taser.y), imgui.Cond.FirstUseEver)
-			imgui.Begin(" Arizona Helper##MODULE.Taser.Window", MODULE.Taser.Window, imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoResize + imgui.WindowFlags.NoBackground + imgui.WindowFlags.NoTitleBar + imgui.WindowFlags.NoScrollbar)
-			change_dpi()
-			safery_disable_cursor(player)
-			if imgui.Button(fa.GUN .. u8' Taser ',  imgui.ImVec2(75 * settings.general.custom_dpi, 25 * settings.general.custom_dpi)) then
-				sampSendChat('/taser')
+	function get_updated_at(data)
+		for index, value in ipairs(data) do
+			if value.name == '##updated_at' then
+				return os.date("%d.%m.%Y %H:%M", value.updated_at)
 			end
-			local posX, posY = imgui.GetWindowPos().x, imgui.GetWindowPos().y
-			if posX ~= settings.windows_pos.taser.x or posY ~= settings.windows_pos.taser.y then
-				settings.windows_pos.taser = {x = posX, y = posY}
-				save_settings()
-			end
-			imgui.End()
 		end
-	)
-end
-if isMode('police') or isMode('fbi') or isMode('prison') then
+		return nil
+	end
+	function set_updated_at(data, module, timestamp)
+		for index, value in ipairs(data) do
+			if value.name == '##updated_at' then
+				value.updated_at = timestamp
+				save_module(module)
+				return
+			end
+		end
+		table.insert(data, {name = '##updated_at', updated_at = timestamp})
+		save_module(module)
+	end
 	function renderSmartGUI(title, icon, downloadPath, editPopupTitle, data, saveFunction, usageText, pathDisplay, download_file_name, download_item)
-		if imgui.BeginChild('##smart'..title, imgui.ImVec2(589 * settings.general.custom_dpi, 338 * settings.general.custom_dpi), true) then
+		if imgui.BeginChild('##smart'..title, imgui.ImVec2(589 * settings.general.custom_dpi, 338 * settings.general.custom_dpi), true, imgui.WindowFlags.NoScrollbar) then
 			if #data ~= 0 then
 				imgui.CenterColorText(imgui.ImVec4(0, 1, 0, 1), u8("Активно - ") .. u8(usageText))
 			else
 				imgui.CenterColorText(imgui.ImVec4(1, 0.231, 0.231, 1), u8("Неактивно - Загрузите ") .. u8(download_item) .. u8(" из облака или заполните вручную"))
 			end
 			imgui.Separator()
+			local updated_at = get_updated_at(data)
+			if updated_at then
+				imgui.CenterText(u8("Последняя редакция " .. editPopupTitle .. ": ") .. get_updated_at(data))
+			end
 			imgui.SetCursorPosY(90 * settings.general.custom_dpi)
 			imgui.SetCursorPosX(220 * settings.general.custom_dpi)
 			if imgui.Button(fa.DOWNLOAD .. (#data ~= 0 and u8' Обновить из облака 'or u8' Загрузить из облака ') .. fa.DOWNLOAD .. '##smart'..title) then
@@ -9305,193 +9576,192 @@ if isMode('police') or isMode('fbi') or isMode('prison') then
 				change_dpi()
 				if imgui.BeginChild('##smart'..title..'edit', imgui.ImVec2(589 * settings.general.custom_dpi, 368 * settings.general.custom_dpi), true) then
 					for chapter_index, chapter in ipairs(data) do
-						imgui.Columns(2)
-						imgui.Text("> " .. u8(chapter.name))
-						imgui.SetColumnWidth(-1, 515 * settings.general.custom_dpi)
-						imgui.NextColumn()
-						if imgui.Button(fa.PEN_TO_SQUARE .. '##' .. title .. chapter_index) then
-							imgui.OpenPopup(u8(chapter.name).. '##' .. title .. chapter_index)
-						end
-						imgui.SameLine()
-						if imgui.Button(fa.TRASH_CAN .. '##' .. title .. chapter_index) then
-							imgui.OpenPopup(fa.TRIANGLE_EXCLAMATION .. u8' Предупреждение ' .. fa.TRIANGLE_EXCLAMATION .. '##' .. title .. chapter_index)
-						end
-						imgui.SetNextWindowPos(imgui.ImVec2(sizeX / 2, sizeY / 2), imgui.Cond.Always, imgui.ImVec2(0.5, 0.5))
-						if imgui.BeginPopupModal(fa.TRIANGLE_EXCLAMATION .. u8' Предупреждение ' .. fa.TRIANGLE_EXCLAMATION .. '##' .. title .. chapter_index, _, imgui.WindowFlags.NoResize) then
-							change_dpi()
-							imgui.CenterText(u8'Вы действительно хотите удалить пункт?')
-							if imgui.Button(fa.CIRCLE_XMARK .. u8' Нет, отменить##cancel_delete_item_smart' .. chapter_index, imgui.ImVec2(200 * settings.general.custom_dpi, 25 * settings.general.custom_dpi)) then
-								imgui.CloseCurrentPopup()
+						if chapter.name ~= '##updated_at' then
+							imgui.Columns(2)
+							imgui.Text("> " .. u8(chapter.name))
+							imgui.SetColumnWidth(-1, 515 * settings.general.custom_dpi)
+							imgui.NextColumn()
+							if imgui.Button(fa.PEN_TO_SQUARE .. '##' .. title .. chapter_index) then
+								imgui.OpenPopup(u8(chapter.name).. '##' .. title .. chapter_index)
 							end
 							imgui.SameLine()
-							if imgui.Button(fa.TRASH_CAN .. u8' Да, удалить##delete_item_smart' .. chapter_index, imgui.ImVec2(200 * settings.general.custom_dpi, 25 * settings.general.custom_dpi)) then
-								table.remove(data, chapter_index)
-								saveFunction()
-								imgui.CloseCurrentPopup()
-							end
-							imgui.End()
-						end
-						imgui.SetColumnWidth(-1, 100 * settings.general.custom_dpi)
-						imgui.Columns(1)
-						imgui.SetNextWindowPos(imgui.ImVec2(sizeX / 2, sizeY / 2), imgui.Cond.Always, imgui.ImVec2(0.5, 0.5))
-						if imgui.BeginPopupModal(u8(chapter.name).. '##' .. title .. chapter_index, _, imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoResize) then
-							change_dpi()
-							if imgui.BeginChild('##smart'..title..'edititem', imgui.ImVec2(589 * settings.general.custom_dpi, 368 * settings.general.custom_dpi), true) then
-								if chapter.item then
-									for index, item in ipairs(chapter.item) do
-										imgui.Columns(2)
-										imgui.Text("> " .. u8(item.text))
-										imgui.SetColumnWidth(-1, 515 * settings.general.custom_dpi)
-										imgui.NextColumn()
-										if imgui.Button(fa.PEN_TO_SQUARE .. '##' .. chapter_index .. '##' .. title .. index) then
-											_G['input_'..title:lower()..'_text'] = imgui.new.char[8192](u8(item.text))
-											_G['input_'..title:lower()..'_value'] = imgui.new.char[256](u8(item[title:find('умного') and 'lvl' or 'amount']))
-											_G['input_'..title:lower()..'_reason'] = imgui.new.char[1024](u8(item.reason))
-											imgui.OpenPopup(fa.PEN_TO_SQUARE .. u8(" Редактирование подпункта##") .. title .. chapter.name .. index .. chapter_index)
-										end
-										imgui.SetNextWindowPos(imgui.ImVec2(sizeX / 2, sizeY / 2), imgui.Cond.Always, imgui.ImVec2(0.5, 0.5))
-										if imgui.BeginPopupModal(fa.PEN_TO_SQUARE .. u8(" Редактирование подпункта##") .. title .. chapter.name .. index .. chapter_index, _, imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoResize + imgui.WindowFlags.NoScrollbar) then
-											change_dpi()
-											if imgui.BeginChild('##smart'..title..'edititeminput', imgui.ImVec2(489 * settings.general.custom_dpi, 150 * settings.general.custom_dpi), true) then    
-												imgui.CenterText(u8'Название подпункта:')
-												imgui.PushItemWidth(478 * settings.general.custom_dpi)
-												imgui.InputText(u8'##input_'..title:lower()..'_text', _G['input_'..title:lower()..'_text'], 8192)
-												if title == 'Система умного розыска' then
-													imgui.CenterText(u8'Уровень розыска для выдачи (от 1 до 6):')
-												elseif title == 'Система умных штрафов' then
-													imgui.CenterText(u8'Сумма штрафа (цифры без каких либо символов):')
-												elseif title == 'Система умного продления срока' then
-													imgui.CenterText(u8'Уровень срока для выдачи (от 1 до 10):')
-												end
-												imgui.PushItemWidth(478 * settings.general.custom_dpi)
-												imgui.InputText(u8'##input_'..title:lower()..'_value', _G['input_'..title:lower()..'_value'], 256)
-												imgui.CenterText(u8'Причина:')
-												imgui.PushItemWidth(478 * settings.general.custom_dpi)
-												imgui.InputText(u8'##input_'..title:lower()..'_reason', _G['input_'..title:lower()..'_reason'], 1024)
-												imgui.EndChild()
-											end    
-											
-											if imgui.Button(fa.CIRCLE_XMARK .. u8' Отмена##canceledititem', imgui.ImVec2(imgui.GetMiddleButtonX(2), 0)) then
-												imgui.CloseCurrentPopup()
-											end
-											imgui.SameLine()
-											if imgui.Button(fa.FLOPPY_DISK .. u8' Сохранить##saveedititem', imgui.ImVec2(imgui.GetMiddleButtonX(2), 0)) then
-												local text = u8:decode(ffi.string(_G['input_'..title:lower()..'_text']))
-												local value = u8:decode(ffi.string(_G['input_'..title:lower()..'_value']))
-												local reason = u8:decode(ffi.string(_G['input_'..title:lower()..'_reason']))
-												local isValid = false
-												if title == 'Система умного розыска' then
-													isValid = value ~= '' and not value:find('%D') and tonumber(value) >= 1 and tonumber(value) <= 6 and text ~= '' and reason ~= ''
-												elseif title == 'Система умных штрафов' then
-													isValid = value ~= '' and value:find('%d') and not value:find('%D') and text ~= '' and reason ~= ''
-												elseif title == 'Система умного продления срока' then
-													isValid = value ~= '' and not value:find('%D') and tonumber(value) >= 1 and tonumber(value) <= 10 and text ~= '' and reason ~= ''
-												end
-												if isValid then
-													item.text = text
-													item[title:find('умного') and 'lvl' or 'amount'] = value
-													item.reason = reason
-													saveFunction()
-													imgui.CloseCurrentPopup()
-												else
-													sampAddChatMessage('[Arizona Helper] {ffffff}Ошибка в указанных данных, исправьте!', message_color)
-												end
-											end
-											imgui.EndPopup()
-										end
-										imgui.SameLine()
-										if imgui.Button(fa.TRASH_CAN .. '##' .. chapter_index .. '##' .. title .. index) then
-											imgui.OpenPopup(fa.TRIANGLE_EXCLAMATION .. u8' Предупреждение ' .. fa.TRIANGLE_EXCLAMATION .. '##' .. title .. chapter_index .. '##' .. index)
-										end
-										imgui.SetNextWindowPos(imgui.ImVec2(sizeX / 2, sizeY / 2), imgui.Cond.Always, imgui.ImVec2(0.5, 0.5))
-										if imgui.BeginPopupModal(fa.TRIANGLE_EXCLAMATION .. u8' Предупреждение ' .. fa.TRIANGLE_EXCLAMATION .. '##' .. title .. chapter_index .. '##' .. index, _, imgui.WindowFlags.NoResize) then
-											change_dpi()
-											imgui.CenterText(u8'Вы действительно хотите удалить подпункт?')
-											imgui.Separator()
-											if imgui.Button(fa.CIRCLE_XMARK .. u8' Нет, отменить##canceldeleteitem', imgui.ImVec2(200 * settings.general.custom_dpi, 25 * settings.general.custom_dpi)) then
-												imgui.CloseCurrentPopup()
-											end
-											imgui.SameLine()
-											if imgui.Button(fa.TRASH_CAN .. u8' Да, удалить##yesdeleteitem', imgui.ImVec2(200 * settings.general.custom_dpi, 25 * settings.general.custom_dpi)) then
-												table.remove(chapter.item, index)
-												saveFunction()
-												imgui.CloseCurrentPopup()
-											end
-											imgui.End()
-										end
-										
-										imgui.SetColumnWidth(-1, 100 * settings.general.custom_dpi)
-										imgui.Columns(1)
-										imgui.Separator()
-									end
-								end
-								imgui.EndChild()
-							end
-							if imgui.Button(fa.CIRCLE_PLUS .. u8' Добавить новый подпункт##smart_add_subitem' .. chapter_index, imgui.ImVec2(imgui.GetMiddleButtonX(2), 25 * settings.general.custom_dpi)) then
-								_G['input_'..title:lower()..'_text'] = imgui.new.char[8192](u8(''))
-								_G['input_'..title:lower()..'_value'] = imgui.new.char[256](u8(''))
-								_G['input_'..title:lower()..'_reason'] = imgui.new.char[8192](u8(''))
-								imgui.OpenPopup(fa.CIRCLE_PLUS .. u8(' Добавление нового подпункта ') .. fa.CIRCLE_PLUS .. '##smart_add_subitem' .. chapter_index)
+							if imgui.Button(fa.TRASH_CAN .. '##' .. title .. chapter_index) then
+								imgui.OpenPopup(fa.TRIANGLE_EXCLAMATION .. u8' Предупреждение ' .. fa.TRIANGLE_EXCLAMATION .. '##' .. title .. chapter_index)
 							end
 							imgui.SetNextWindowPos(imgui.ImVec2(sizeX / 2, sizeY / 2), imgui.Cond.Always, imgui.ImVec2(0.5, 0.5))
-							if imgui.BeginPopupModal(fa.CIRCLE_PLUS .. u8(' Добавление нового подпункта ') .. fa.CIRCLE_PLUS .. '##smart_add_subitem' .. chapter_index, _, imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoResize + imgui.WindowFlags.NoScrollbar) then
-								if imgui.BeginChild('##smart'..title..'edititeminput', imgui.ImVec2(489 * settings.general.custom_dpi, 150 * settings.general.custom_dpi), true) then   
-									change_dpi() 
-									imgui.CenterText(u8'Название подпункта:')
-									imgui.PushItemWidth(478 * settings.general.custom_dpi)
-									imgui.InputText(u8'##input_'..title:lower()..'_text', _G['input_'..title:lower()..'_text'], 8192)
-									if title == 'Система умного розыска' then
-										imgui.CenterText(u8'Уровень розыска для выдачи (от 1 до 6):')
-									elseif title == 'Система умных штрафов' then
-										imgui.CenterText(u8'Сумма штрафа (цифры без каких либо символов):')
-									elseif title == 'Система умного продления срока' then
-										imgui.CenterText(u8'Уровень срока для выдачи (от 1 до 10):')
-									end
-									imgui.PushItemWidth(478 * settings.general.custom_dpi)
-									imgui.InputText(u8'##input_'..title:lower()..'_value', _G['input_'..title:lower()..'_value'], 256)
-									imgui.CenterText(u8'Причина:')
-									imgui.PushItemWidth(478 * settings.general.custom_dpi)
-									imgui.InputText(u8'##input_'..title:lower()..'_reason', _G['input_'..title:lower()..'_reason'], 8192)
-									imgui.EndChild()
-								end    
-								if imgui.Button(fa.CIRCLE_XMARK .. u8' Отмена##' .. chapter_index .. title, imgui.ImVec2(imgui.GetMiddleButtonX(2), 0)) then
+							if imgui.BeginPopupModal(fa.TRIANGLE_EXCLAMATION .. u8' Предупреждение ' .. fa.TRIANGLE_EXCLAMATION .. '##' .. title .. chapter_index, _, imgui.WindowFlags.NoResize) then
+								change_dpi()
+								imgui.CenterText(u8'Вы действительно хотите удалить пункт?')
+								if imgui.Button(fa.CIRCLE_XMARK .. u8' Нет, отменить##cancel_delete_item_smart' .. chapter_index, imgui.ImVec2(200 * settings.general.custom_dpi, 25 * settings.general.custom_dpi)) then
 									imgui.CloseCurrentPopup()
 								end
 								imgui.SameLine()
-								if imgui.Button(fa.FLOPPY_DISK .. u8' Сохранить##' .. chapter_index .. title, imgui.ImVec2(imgui.GetMiddleButtonX(2), 0)) then
-									local text = u8:decode(ffi.string(_G['input_'..title:lower()..'_text']))
-									local value = u8:decode(ffi.string(_G['input_'..title:lower()..'_value']))
-									local reason = u8:decode(ffi.string(_G['input_'..title:lower()..'_reason']))
-									local isValid = false
-									if title == 'Система умного розыска' then
-										isValid = value ~= '' and not value:find('%D') and tonumber(value) >= 1 and tonumber(value) <= 6 and text ~= '' and reason ~= ''
-									elseif title == 'Система умных штрафов' then
-										isValid = value ~= '' and value:find('%d') and not value:find('%D') and text ~= '' and reason ~= ''
-									elseif title == 'Система умного продления срока' then
-										isValid = value ~= '' and not value:find('%D') and tonumber(value) >= 1 and tonumber(value) <= 10 and text ~= '' and reason ~= ''
+								if imgui.Button(fa.TRASH_CAN .. u8' Да, удалить##delete_item_smart' .. chapter_index, imgui.ImVec2(200 * settings.general.custom_dpi, 25 * settings.general.custom_dpi)) then
+									table.remove(data, chapter_index)
+									set_updated_at(data, download_file_name, os.time())
+									saveFunction()
+									imgui.CloseCurrentPopup()
+								end
+								imgui.End()
+							end
+							imgui.SetColumnWidth(-1, 100 * settings.general.custom_dpi)
+							imgui.Columns(1)
+							imgui.SetNextWindowPos(imgui.ImVec2(sizeX / 2, sizeY / 2), imgui.Cond.Always, imgui.ImVec2(0.5, 0.5))
+							if imgui.BeginPopupModal(u8(chapter.name).. '##' .. title .. chapter_index, _, imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoResize) then
+								change_dpi()
+								if imgui.BeginChild('##smart'..title..'edititem', imgui.ImVec2(589 * settings.general.custom_dpi, 368 * settings.general.custom_dpi), true) then
+									if chapter.item then
+										for index, item in ipairs(chapter.item) do
+											imgui.Columns(2)
+											imgui.Text("> " .. u8(item.text))
+											imgui.SetColumnWidth(-1, 515 * settings.general.custom_dpi)
+											imgui.NextColumn()
+											if imgui.Button(fa.PEN_TO_SQUARE .. '##' .. chapter_index .. '##' .. title .. index) then
+												_G['input_'..title:lower()..'_text'] = imgui.new.char[8192](u8(item.text))
+												_G['input_'..title:lower()..'_value'] = imgui.new.char[256](u8(item[title:find('умного') and 'lvl' or 'amount']))
+												_G['input_'..title:lower()..'_reason'] = imgui.new.char[1024](u8(item.reason))
+												imgui.OpenPopup(fa.PEN_TO_SQUARE .. u8(" Редактирование подпункта##") .. title .. chapter.name .. index .. chapter_index)
+											end
+											imgui.SetNextWindowPos(imgui.ImVec2(sizeX / 2, sizeY / 2), imgui.Cond.Always, imgui.ImVec2(0.5, 0.5))
+											if imgui.BeginPopupModal(fa.PEN_TO_SQUARE .. u8(" Редактирование подпункта##") .. title .. chapter.name .. index .. chapter_index, _, imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoResize + imgui.WindowFlags.NoScrollbar) then
+												change_dpi()
+												if imgui.BeginChild('##smart'..title..'edititeminput', imgui.ImVec2(489 * settings.general.custom_dpi, 150 * settings.general.custom_dpi), true) then    
+													imgui.CenterText(u8'Название подпункта:')
+													imgui.PushItemWidth(478 * settings.general.custom_dpi)
+													imgui.InputText(u8'##input_'..title:lower()..'_text', _G['input_'..title:lower()..'_text'], 8192)
+													if title == 'Система умного розыска' then
+														imgui.CenterText(u8'Уровень розыска для выдачи (от 1 до 6):')
+													elseif title == 'Система умных штрафов' then
+														imgui.CenterText(u8'Сумма штрафа (цифры без каких либо символов):')
+													elseif title == 'Система умного продления срока' then
+														imgui.CenterText(u8'Уровень срока для выдачи (от 1 до 10):')
+													end
+													imgui.PushItemWidth(478 * settings.general.custom_dpi)
+													imgui.InputText(u8'##input_'..title:lower()..'_value', _G['input_'..title:lower()..'_value'], 256)
+													imgui.CenterText(u8'Причина:')
+													imgui.PushItemWidth(478 * settings.general.custom_dpi)
+													imgui.InputText(u8'##input_'..title:lower()..'_reason', _G['input_'..title:lower()..'_reason'], 1024)
+													imgui.EndChild()
+												end    
+												if imgui.Button(fa.CIRCLE_XMARK .. u8' Отмена##canceledititem', imgui.ImVec2(imgui.GetMiddleButtonX(2), 0)) then
+													imgui.CloseCurrentPopup()
+												end
+												imgui.SameLine()
+												if imgui.Button(fa.FLOPPY_DISK .. u8' Сохранить##saveedititem', imgui.ImVec2(imgui.GetMiddleButtonX(2), 0)) then
+													local text = u8:decode(ffi.string(_G['input_'..title:lower()..'_text']))
+													local value = u8:decode(ffi.string(_G['input_'..title:lower()..'_value']))
+													local reason = u8:decode(ffi.string(_G['input_'..title:lower()..'_reason']))
+													local isValid = false
+													if title == 'Система умного розыска' then
+														isValid = value ~= '' and not value:find('%D') and tonumber(value) >= 1 and tonumber(value) <= 6 and text ~= '' and reason ~= ''
+													elseif title == 'Система умных штрафов' then
+														isValid = value ~= '' and value:find('%d') and not value:find('%D') and text ~= '' and reason ~= ''
+													elseif title == 'Система умного продления срока' then
+														isValid = value ~= '' and not value:find('%D') and tonumber(value) >= 1 and tonumber(value) <= 10 and text ~= '' and reason ~= ''
+													end
+													if isValid then
+														item.text = text
+														item[title:find('умного') and 'lvl' or 'amount'] = value
+														item.reason = reason
+														saveFunction()
+														set_updated_at(data, download_file_name, os.time())
+														imgui.CloseCurrentPopup()
+													else
+														sampAddChatMessage('[Arizona Helper] {ffffff}Ошибка в указанных данных, исправьте!', message_color)
+													end
+												end
+												imgui.EndPopup()
+											end
+											imgui.SameLine()
+											if imgui.Button(fa.TRASH_CAN .. '##' .. chapter_index .. '##' .. title .. index) then
+												imgui.OpenPopup(fa.TRIANGLE_EXCLAMATION .. u8' Предупреждение ' .. fa.TRIANGLE_EXCLAMATION .. '##' .. title .. chapter_index .. '##' .. index)
+											end
+											imgui.SetNextWindowPos(imgui.ImVec2(sizeX / 2, sizeY / 2), imgui.Cond.Always, imgui.ImVec2(0.5, 0.5))
+											if imgui.BeginPopupModal(fa.TRIANGLE_EXCLAMATION .. u8' Предупреждение ' .. fa.TRIANGLE_EXCLAMATION .. '##' .. title .. chapter_index .. '##' .. index, _, imgui.WindowFlags.NoResize) then
+												change_dpi()
+												imgui.CenterText(u8'Вы действительно хотите удалить подпункт?')
+												imgui.Separator()
+												if imgui.Button(fa.CIRCLE_XMARK .. u8' Нет, отменить##canceldeleteitem', imgui.ImVec2(200 * settings.general.custom_dpi, 25 * settings.general.custom_dpi)) then
+													imgui.CloseCurrentPopup()
+												end
+												imgui.SameLine()
+												if imgui.Button(fa.TRASH_CAN .. u8' Да, удалить##yesdeleteitem', imgui.ImVec2(200 * settings.general.custom_dpi, 25 * settings.general.custom_dpi)) then
+													table.remove(chapter.item, index)
+													saveFunction()
+													set_updated_at(data, download_file_name, os.time())
+													imgui.CloseCurrentPopup()
+												end
+												imgui.End()
+											end
+											imgui.SetColumnWidth(-1, 100 * settings.general.custom_dpi)
+											imgui.Columns(1)
+											imgui.Separator()
+										end
 									end
-									if isValid then
-										local temp = { 
-											text = text, 
-											[title:find('умного') and 'lvl' or 'amount'] = value,
-											reason = reason 
-										}
-										table.insert(chapter.item, temp)
-										saveFunction()
+									imgui.EndChild()
+								end
+								if imgui.Button(fa.CIRCLE_PLUS .. u8' Добавить новый подпункт##smart_add_subitem' .. chapter_index, imgui.ImVec2(imgui.GetMiddleButtonX(2), 25 * settings.general.custom_dpi)) then
+									_G['input_'..title:lower()..'_text'] = imgui.new.char[8192](u8(''))
+									_G['input_'..title:lower()..'_value'] = imgui.new.char[256](u8(''))
+									_G['input_'..title:lower()..'_reason'] = imgui.new.char[8192](u8(''))
+									imgui.OpenPopup(fa.CIRCLE_PLUS .. u8(' Добавление нового подпункта ') .. fa.CIRCLE_PLUS .. '##smart_add_subitem' .. chapter_index)
+								end
+								imgui.SetNextWindowPos(imgui.ImVec2(sizeX / 2, sizeY / 2), imgui.Cond.Always, imgui.ImVec2(0.5, 0.5))
+								if imgui.BeginPopupModal(fa.CIRCLE_PLUS .. u8(' Добавление нового подпункта ') .. fa.CIRCLE_PLUS .. '##smart_add_subitem' .. chapter_index, _, imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoResize + imgui.WindowFlags.NoScrollbar) then
+									if imgui.BeginChild('##smart'..title..'edititeminput', imgui.ImVec2(489 * settings.general.custom_dpi, 150 * settings.general.custom_dpi), true) then   
+										change_dpi() 
+										imgui.CenterText(u8'Название подпункта:')
+										imgui.PushItemWidth(478 * settings.general.custom_dpi)
+										imgui.InputText(u8'##input_'..title:lower()..'_text', _G['input_'..title:lower()..'_text'], 8192)
+										if title == 'Система умного розыска' then
+											imgui.CenterText(u8'Уровень розыска для выдачи (от 1 до 6):')
+										elseif title == 'Система умных штрафов' then
+											imgui.CenterText(u8'Сумма штрафа (цифры без каких либо символов):')
+										elseif title == 'Система умного продления срока' then
+											imgui.CenterText(u8'Уровень срока для выдачи (от 1 до 10):')
+										end
+										imgui.PushItemWidth(478 * settings.general.custom_dpi)
+										imgui.InputText(u8'##input_'..title:lower()..'_value', _G['input_'..title:lower()..'_value'], 256)
+										imgui.CenterText(u8'Причина:')
+										imgui.PushItemWidth(478 * settings.general.custom_dpi)
+										imgui.InputText(u8'##input_'..title:lower()..'_reason', _G['input_'..title:lower()..'_reason'], 8192)
+										imgui.EndChild()
+									end    
+									if imgui.Button(fa.CIRCLE_XMARK .. u8' Отмена##' .. chapter_index .. title, imgui.ImVec2(imgui.GetMiddleButtonX(2), 0)) then
 										imgui.CloseCurrentPopup()
-									else
-										sampAddChatMessage('[Arizona Helper] {ffffff}Ошибка в указанных данных, исправьте!', message_color)
 									end
+									imgui.SameLine()
+									if imgui.Button(fa.FLOPPY_DISK .. u8' Сохранить##' .. chapter_index .. title, imgui.ImVec2(imgui.GetMiddleButtonX(2), 0)) then
+										local text = u8:decode(ffi.string(_G['input_'..title:lower()..'_text']))
+										local value = u8:decode(ffi.string(_G['input_'..title:lower()..'_value']))
+										local reason = u8:decode(ffi.string(_G['input_'..title:lower()..'_reason']))
+										local isValid = false
+										if title == 'Система умного розыска' then
+											isValid = value ~= '' and not value:find('%D') and tonumber(value) >= 1 and tonumber(value) <= 6 and text ~= '' and reason ~= ''
+										elseif title == 'Система умных штрафов' then
+											isValid = value ~= '' and value:find('%d') and not value:find('%D') and text ~= '' and reason ~= ''
+										elseif title == 'Система умного продления срока' then
+											isValid = value ~= '' and not value:find('%D') and tonumber(value) >= 1 and tonumber(value) <= 10 and text ~= '' and reason ~= ''
+										end
+										if isValid then
+											table.insert(chapter.item, {text = text, [title:find('умного') and 'lvl' or 'amount'] = value, reason = reason})
+											saveFunction()
+											set_updated_at(data, download_file_name, os.time())
+											imgui.CloseCurrentPopup()
+										else
+											sampAddChatMessage('[Arizona Helper] {ffffff}Ошибка в указанных данных, исправьте!', message_color)
+										end
+									end
+									imgui.EndPopup()
+								end
+								imgui.SameLine()
+								if imgui.Button(fa.CIRCLE_XMARK .. u8' Закрыть##close' .. chapter_index .. title, imgui.ImVec2(imgui.GetMiddleButtonX(2), 25 * settings.general.custom_dpi)) then
+									imgui.CloseCurrentPopup()
 								end
 								imgui.EndPopup()
 							end
-							imgui.SameLine()
-							if imgui.Button(fa.CIRCLE_XMARK .. u8' Закрыть##close' .. chapter_index .. title, imgui.ImVec2(imgui.GetMiddleButtonX(2), 25 * settings.general.custom_dpi)) then
-								imgui.CloseCurrentPopup()
-							end
-							imgui.EndPopup()
+							imgui.Separator()
 						end
-						imgui.Separator()
 					end
 					imgui.EndChild()	
 					if imgui.Button(fa.CIRCLE_PLUS .. u8' Добавить пункт##smart_add' .. title, imgui.ImVec2(imgui.GetMiddleButtonX(2), 0)) then
@@ -9510,6 +9780,7 @@ if isMode('police') or isMode('fbi') or isMode('prison') then
 							local temp = u8:decode(ffi.string(_G['input_'..title:lower()..'_name']))
 							table.insert(data, {name = temp, item = {}})
 							saveFunction()
+							set_updated_at(data, download_file_name, os.time())
 							imgui.CloseCurrentPopup()
 						end
 						imgui.EndPopup()
@@ -9552,18 +9823,18 @@ if isMode('prison') then
 					end
 					if chapter_has_matching_item then
 						if imgui.CollapsingHeader(u8(chapter.name)) then
-							for _, item in ipairs(chapter.item) do
+							for index, item in ipairs(chapter.item) do
 								if item.text and item.text:rupper():find(input_sum_decoded:rupper(), 1, true) or input_sum_decoded == '' then
-									local popup_id = fa.TRIANGLE_EXCLAMATION .. u8' Перепроверьте данные перед повышением срока ' .. fa.TRIANGLE_EXCLAMATION .. '##' .. item.text .. item.lvl .. item.reason
+									local popup_id = fa.TRIANGLE_EXCLAMATION .. u8' Перепроверьте данные перед повышением срока ' .. fa.TRIANGLE_EXCLAMATION .. '##' .. index
 									imgui.GetStyle().ButtonTextAlign = imgui.ImVec2(0.0, 0.5)
 									imgui.PushStyleColor(imgui.Col.ButtonHovered, imgui.ImVec4(1.00, 0.00, 0.00, 0.65))
-									if imgui.Button(u8(split_text_into_lines(item.text, 85))..'##' .. item.text .. item.lvl .. item.reason, imgui.ImVec2(imgui.GetMiddleButtonX(1), (25 * count_lines_in_text(item.text, 85)) * settings.general.custom_dpi)) then
+									if imgui.Button(u8(split_text_into_lines(item.text, 85))..'##' .. index, imgui.ImVec2(imgui.GetMiddleButtonX(1), (25 * count_lines_in_text(item.text, 85)) * settings.general.custom_dpi)) then
 										imgui.OpenPopup(popup_id)
 									end
 									imgui.PopStyleColor()
 									imgui.GetStyle().ButtonTextAlign = imgui.ImVec2(0.5, 0.5)
 									imgui.SetNextWindowPos(imgui.ImVec2(sizeX / 2, sizeY / 2), imgui.Cond.Always, imgui.ImVec2(0.5, 0.5))
-									if imgui.BeginPopupModal(popup_id, nil, imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoResize) then
+									if imgui.BeginPopupModal(popup_id, nil, imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoResize + imgui.WindowFlags.NoScrollbar) then
 										imgui.Text(fa.USER .. u8' Игрок: ' .. u8(sampGetPlayerNickname(player_id)) .. '[' .. player_id .. ']')
 										imgui.Text(fa.STAR .. u8' Уровень срока: ' .. item.lvl)
 										imgui.Text(fa.COMMENT .. u8' Причина повышения срока: ' .. u8(item.reason))
@@ -9574,7 +9845,7 @@ if isMode('prison') then
 										imgui.SameLine()
 										if imgui.Button(fa.STAR .. u8' Повысить срок##pum', imgui.ImVec2(200 * settings.general.custom_dpi, 25 * settings.general.custom_dpi)) then
 											MODULE.PumMenu.Window[0] = false
-											find_and_use_command('/punish {arg_id} {arg2} 2 {arg3}', player_id .. ' ' .. item.lvl .. ' ' .. item.reason)
+											find_and_use_command('/punish {id} {number} 2 {arg}', player_id .. ' ' .. item.lvl .. ' ' .. item.reason)
 											imgui.CloseCurrentPopup()
 										end
 										imgui.EndPopup()
@@ -9601,9 +9872,9 @@ if isMode('police') or isMode('fbi') then
 			change_dpi()
 			safery_disable_cursor(player)
 			if MODULE.Patrool.active then
-				imgui.Text(fa.CLOCK .. u8(' Время патрулирования: ') .. u8(MODULE.Binder.tags.get_patrool_time()))
-				imgui.Text(fa.CIRCLE_INFO .. u8(' Ваша маркировка: ') .. u8(MODULE.Binder.tags.get_patrool_mark()))
-				imgui.Text(fa.CIRCLE_INFO .. u8(' Ваше состояние: ') .. u8(MODULE.Binder.tags.get_patrool_code()))
+				imgui.Text(fa.CLOCK .. u8(' Время патрулирования: ') .. u8(MODULE.Binder.tag.get_patrool_time()))
+				imgui.Text(fa.CIRCLE_INFO .. u8(' Ваша маркировка: ') .. u8(MODULE.Binder.tag.get_patrool_mark()))
+				imgui.Text(fa.CIRCLE_INFO .. u8(' Ваше состояние: ') .. u8(MODULE.Binder.tag.get_patrool_code()))
 				imgui.SameLine()
 				if imgui.SmallButton(fa.GEAR) then
 					imgui.OpenPopup(fa.BUILDING_SHIELD .. u8(' Arizona Helper##patrool_select_code'))
@@ -9614,14 +9885,14 @@ if isMode('police') or isMode('fbi') then
 						MODULE.Patrool.process_doklad = true
 						lua_thread.create(function()
 							MODULE.Binder.state.isActive = true
-							sampSendChat('/r ' .. MODULE.Binder.tags.my_doklad_nick() .. ' на CONTROL.')
+							sampSendChat('/r ' .. MODULE.Binder.tag.my_doklad_nick() .. ' на CONTROL.')
 							wait(1500)
-							sampSendChat('/r Продолжаю патруль, нахожусь в районе ' .. MODULE.Binder.tags.get_area() .. " (" .. MODULE.Binder.tags.get_square() .. ').')
+							sampSendChat('/r Продолжаю патруль, нахожусь в районе ' .. MODULE.Binder.tag.get_area() .. " (" .. MODULE.Binder.tag.get_square() .. ').')
 							wait(1500)
-							if MODULE.Binder.tags.get_car_units() ~= 'Нету' then
-								sampSendChat('/r Патрулирую уже ' .. MODULE.Binder.tags.get_patrool_format_time() .. ' в составе юнита ' .. MODULE.Binder.tags.get_car_units() .. ', состояние ' .. u8(MODULE.Binder.tags.get_patrool_code()) .. '.')
+							if MODULE.Binder.tag.get_car_units() ~= 'Нету' then
+								sampSendChat('/r Патрулирую уже ' .. MODULE.Binder.tag.get_patrool_format_time() .. ' в составе юнита ' .. MODULE.Binder.tag.get_car_units() .. ', состояние ' .. u8(MODULE.Binder.tag.get_patrool_code()) .. '.')
 							else
-								sampSendChat('/r Патрулирую уже ' .. MODULE.Binder.tags.get_patrool_format_time() .. ', состояние ' .. u8(MODULE.Binder.tags.get_patrool_code()) .. '.')
+								sampSendChat('/r Патрулирую уже ' .. MODULE.Binder.tag.get_patrool_format_time() .. ', состояние ' .. u8(MODULE.Binder.tag.get_patrool_code()) .. '.')
 							end
 							MODULE.Binder.state.isActive = false
 							MODULE.Patrool.process_doklad = false
@@ -9634,11 +9905,11 @@ if isMode('police') or isMode('fbi') then
 						MODULE.Patrool.Window[0] = false
 						MODULE.Patrool.active = false
 						MODULE.Binder.state.isActive = true
-						sampSendChat('/r ' .. MODULE.Binder.tags.my_doklad_nick() .. ' на CONTROL.')
+						sampSendChat('/r ' .. MODULE.Binder.tag.my_doklad_nick() .. ' на CONTROL.')
 						wait(1500)
-						sampSendChat('/r Завершаю патруль, освобождаю маркировку ' .. MODULE.Binder.tags.get_patrool_mark() .. ', состояние ' .. MODULE.Binder.tags.get_patrool_code())
+						sampSendChat('/r Завершаю патруль, освобождаю маркировку ' .. MODULE.Binder.tag.get_patrool_mark() .. ', состояние ' .. MODULE.Binder.tag.get_patrool_code())
 						wait(1500)
-						sampSendChat('/r Патрулировал' .. MODULE.Binder.tags.sex() .. ' ' .. MODULE.Binder.tags.get_patrool_format_time())
+						sampSendChat('/r Патрулировал' .. MODULE.Binder.tag.sex() .. ' ' .. MODULE.Binder.tag.get_patrool_format_time())
 						MODULE.Patrool.time = 0
 						MODULE.Patrool.start_time = 0
 						MODULE.Patrool.current_time = 0
@@ -9667,7 +9938,7 @@ if isMode('police') or isMode('fbi') then
 					MODULE.Patrool.code = MODULE.Patrool.codes[MODULE.Patrool.ComboCode[0] + 1]
 				end
 				imgui.Separator()
-				imgui.Text(fa.CIRCLE_INFO .. u8(' Напарники: ') .. u8(MODULE.Binder.tags.get_car_units()))
+				imgui.Text(fa.CIRCLE_INFO .. u8(' Напарники: ') .. u8(MODULE.Binder.tag.get_car_units()))
 				imgui.Separator()
 				if imgui.Button(fa.CIRCLE_XMARK .. u8' Отмена ', imgui.ImVec2(imgui.GetMiddleButtonX(2), 25 * settings.general.custom_dpi)) then
 					MODULE.Patrool.Window[0] = false
@@ -9679,17 +9950,17 @@ if isMode('police') or isMode('fbi') then
 					MODULE.Patrool.active = true
 					lua_thread.create(function()
 						MODULE.Binder.state.isActive = true
-						sampSendChat('/r ' .. MODULE.Binder.tags.my_doklad_nick() .. ' на CONTROL.')
+						sampSendChat('/r ' .. MODULE.Binder.tag.my_doklad_nick() .. ' на CONTROL.')
 						wait(1500)
-						sampSendChat('/r Начинаю патруль, нахожусь в районе ' .. MODULE.Binder.tags.get_area() .. " (" .. MODULE.Binder.tags.get_square() .. ').')
+						sampSendChat('/r Начинаю патруль, нахожусь в районе ' .. MODULE.Binder.tag.get_area() .. " (" .. MODULE.Binder.tag.get_square() .. ').')
 						wait(1500)
-						if MODULE.Binder.tags.get_car_units() ~= 'Нету' then
-							sampSendChat('/r Занимаю маркировку ' .. MODULE.Binder.tags.get_patrool_mark() .. ', нахожусь в составе юнита ' .. MODULE.Binder.tags.get_car_units() .. ', состояние ' .. MODULE.Binder.tags.get_patrool_code() .. '.')
+						if MODULE.Binder.tag.get_car_units() ~= 'Нету' then
+							sampSendChat('/r Занимаю маркировку ' .. MODULE.Binder.tag.get_patrool_mark() .. ', нахожусь в составе юнита ' .. MODULE.Binder.tag.get_car_units() .. ', состояние ' .. MODULE.Binder.tag.get_patrool_code() .. '.')
 						else
-							sampSendChat('/r Занимаю маркировку ' .. MODULE.Binder.tags.get_patrool_mark() .. ', состояние ' .. MODULE.Binder.tags.get_patrool_code() .. '.')
+							sampSendChat('/r Занимаю маркировку ' .. MODULE.Binder.tag.get_patrool_mark() .. ', состояние ' .. MODULE.Binder.tag.get_patrool_code() .. '.')
 						end
 						wait(1500)
-						sampSendChat('/vdesc ' .. MODULE.Binder.tags.get_patrool_mark())
+						sampSendChat('/vdesc ' .. MODULE.Binder.tag.get_patrool_mark())
 						MODULE.Binder.state.isActive = false
 					end)
 					imgui.CloseCurrentPopup()
@@ -9736,7 +10007,7 @@ if isMode('police') or isMode('fbi') then
 			else
 				if imgui.Button(u8'Обновить список преступников', imgui.ImVec2(340 * settings.general.custom_dpi, 25 * settings.general.custom_dpi)) then
 					MODULE.Wanted.Window[0] = false
-					sampAddChatMessage('[Arizona Helper] {ffffff}Вы можете включить авто-обновление списка /wanteds в /helper - Функции ' .. settings.player_info.fraction_tag .. '!', message_color)
+					sampAddChatMessage('[Arizona Helper] {ffffff}Вы можете включить авто-обновление списка /wanteds в /helper - Функции ' .. modules.player.data.fraction_tag .. '!', message_color)
 					sampProcessChatInput('/wanteds')
 				end
 				imgui.Separator()
@@ -9804,18 +10075,18 @@ if isMode('police') or isMode('fbi') then
 					end
 					if chapter_has_matching_item then
 						if imgui.CollapsingHeader(u8(chapter.name)) then
-							for _, item in ipairs(chapter.item) do
+							for index, item in ipairs(chapter.item) do
 								if item.text and item.text:rupper():find(input_sum_decoded:rupper(), 1, true) or input_sum_decoded == '' then
-									local popup_id = fa.TRIANGLE_EXCLAMATION .. u8' Перепроверьте данные перед выдачей розыска ' .. fa.TRIANGLE_EXCLAMATION .. '##' .. item.text .. item.lvl .. item.reason
+									local popup_id = fa.TRIANGLE_EXCLAMATION .. u8' Перепроверьте данные перед выдачей розыска ' .. fa.TRIANGLE_EXCLAMATION .. '##' .. index
 									imgui.GetStyle().ButtonTextAlign = imgui.ImVec2(0.0, 0.5)
 									imgui.PushStyleColor(imgui.Col.ButtonHovered, imgui.ImVec4(1.00, 0.00, 0.00, 0.65))
-									if imgui.Button("> " .. u8(split_text_into_lines(item.text, 85))..'##' .. item.text .. item.lvl .. item.reason, imgui.ImVec2(imgui.GetMiddleButtonX(1), (25 * count_lines_in_text(item.text, 85)) * settings.general.custom_dpi)) then
+									if imgui.Button("> " .. u8(split_text_into_lines(item.text, 85))..'##' .. index, imgui.ImVec2(imgui.GetMiddleButtonX(1), (25 * count_lines_in_text(item.text, 85)) * settings.general.custom_dpi)) then
 										imgui.OpenPopup(popup_id)
 									end
 									imgui.PopStyleColor()
 									imgui.GetStyle().ButtonTextAlign = imgui.ImVec2(0.5, 0.5)
 									imgui.SetNextWindowPos(imgui.ImVec2(sizeX / 2, sizeY / 2), imgui.Cond.Always, imgui.ImVec2(0.5, 0.5))
-									if imgui.BeginPopupModal(popup_id, nil, imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoResize) then
+									if imgui.BeginPopupModal(popup_id, nil, imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoResize + imgui.WindowFlags.NoScrollbar) then
 										imgui.Text(fa.USER .. u8' Игрок: ' .. u8(sampGetPlayerNickname(player_id)) .. '[' .. player_id .. ']')
 										imgui.Text(fa.STAR .. u8' Уровень розыска: ' .. item.lvl)
 										imgui.Text(fa.COMMENT .. u8' Причина выдачи розыска: ' .. u8(item.reason))
@@ -9826,14 +10097,14 @@ if isMode('police') or isMode('fbi') then
 										imgui.SameLine()
 										if imgui.Button(fa.WALKIE_TALKIE .. u8' Запросить розыск##sum', imgui.ImVec2(150 * settings.general.custom_dpi, 25 * settings.general.custom_dpi)) then
 											MODULE.SumMenu.Window[0] = false
-											find_and_use_command('Прошу обьявить в розыск %{arg2%} степени дело N%{arg_id%}%. Причина%: %{arg3%}', player_id .. ' ' .. item.lvl .. ' ' .. item.reason)
+											find_and_use_command('Прошу обьявить в розыск %{number%} степени дело N%{id%}%. Причина%: %{arg%}', player_id .. ' ' .. item.lvl .. ' ' .. item.reason)
 											imgui.CloseCurrentPopup()
 										end
 										imgui.SameLine()
-										local text_rank = ((settings.player_info.fraction == 'FBI' or settings.player_info.fraction == 'ФCБ') and '[4+]' or '[5+]')
+										local text_rank = ((modules.player.data.fraction == 'FBI' or modules.player.data.fraction == 'ФCБ') and '[4+]' or '[5+]')
 										if imgui.Button(fa.STAR .. u8' Выдать розыск ' .. text_rank, imgui.ImVec2(150 * settings.general.custom_dpi, 25 * settings.general.custom_dpi)) then
 											MODULE.SumMenu.Window[0] = false
-											find_and_use_command('/su {arg_id} {arg2} {arg3}', player_id .. ' ' .. item.lvl .. ' ' .. item.reason)
+											find_and_use_command('/su {id} {number} {arg}', player_id .. ' ' .. item.lvl .. ' ' .. item.reason)
 											imgui.CloseCurrentPopup()
 										end
 										imgui.EndPopup()
@@ -9874,18 +10145,18 @@ if isMode('police') or isMode('fbi') then
 					end
 					if chapter_has_matching_item then
 						if imgui.CollapsingHeader(u8(chapter.name)) then
-							for _, item in ipairs(chapter.item) do
+							for index, item in ipairs(chapter.item) do
 								if item.text and item.text:rupper():find(input_tsm_decoded:rupper(), 1, true) or input_tsm_decoded == '' then
-									local popup_id = fa.TRIANGLE_EXCLAMATION .. u8' Перепроверьте данные перед выдачей штрафа ' .. fa.TRIANGLE_EXCLAMATION .. '##' .. item.text .. item.amount .. item.reason
+									local popup_id = fa.TRIANGLE_EXCLAMATION .. u8' Перепроверьте данные перед выдачей штрафа ' .. fa.TRIANGLE_EXCLAMATION .. '##' .. index
 									imgui.GetStyle().ButtonTextAlign = imgui.ImVec2(0.0, 0.5)
 									imgui.PushStyleColor(imgui.Col.ButtonHovered, imgui.ImVec4(1.00, 0.00, 0.00, 0.65))
-									if imgui.Button(u8(split_text_into_lines(item.text,85))..'##' .. item.text .. item.amount .. item.reason, imgui.ImVec2( imgui.GetMiddleButtonX(1), (25 * count_lines_in_text(item.text, 85)) * settings.general.custom_dpi)) then
+									if imgui.Button(u8(split_text_into_lines(item.text,85))..'##' .. index, imgui.ImVec2( imgui.GetMiddleButtonX(1), (25 * count_lines_in_text(item.text, 85)) * settings.general.custom_dpi)) then
 										imgui.OpenPopup(popup_id)
 									end 
 									imgui.PopStyleColor()
 									imgui.GetStyle().ButtonTextAlign = imgui.ImVec2(0.5, 0.5)
 									imgui.SetNextWindowPos(imgui.ImVec2(sizeX / 2, sizeY / 2), imgui.Cond.Always, imgui.ImVec2(0.5, 0.5))
-									if imgui.BeginPopupModal(popup_id, nil, imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoResize) then
+									if imgui.BeginPopupModal(popup_id, nil, imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoResize + imgui.WindowFlags.NoScrollbar) then
 										imgui.Text(fa.USER .. u8' Игрок: ' .. u8(sampGetPlayerNickname(player_id)) .. '[' .. player_id .. ']')
 										imgui.Text(fa.MONEY_CHECK_DOLLAR .. u8' Сумма штрафа: $' .. item.amount)
 										imgui.Text(fa.COMMENT .. u8' Причина выдачи штрафа: ' .. u8(item.reason))
@@ -9896,7 +10167,7 @@ if isMode('police') or isMode('fbi') then
 										imgui.SameLine()
 										if imgui.Button(fa.TICKET .. u8' Выписать штраф##tsm', imgui.ImVec2(200 * settings.general.custom_dpi, 25 * settings.general.custom_dpi)) then
 											MODULE.TsmMenu.Window[0] = false
-											find_and_use_command('ticket {arg_id}', player_id .. ' ' .. item.amount .. ' ' .. item.reason)
+											find_and_use_command('ticket {id}', player_id .. ' ' .. item.amount .. ' ' .. item.reason)
 											imgui.CloseCurrentPopup()
 										end
 										imgui.EndPopup()
@@ -9919,7 +10190,7 @@ if isMode('hospital') then
 		function() return MODULE.MedCard.Window[0] end,
 		function(player)
 			imgui.SetNextWindowPos(imgui.ImVec2(sizeX / 2, sizeY / 2), imgui.Cond.FirstUseEver, imgui.ImVec2(0.5, 0.5))
-			imgui.Begin(fa.HOSPITAL.." Arizona Helper " .. fa.HOSPITAL .. "##medcard", MODULE.MedCard.Window, imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoResize + imgui.WindowFlags.NoScrollbar + imgui.WindowFlags.AlwaysAutoResize)
+			imgui.Begin(fa.HOSPITAL.." Arizona Helper " .. fa.HOSPITAL .. "##medcard", _, imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoResize + imgui.WindowFlags.NoScrollbar + imgui.WindowFlags.AlwaysAutoResize)
 			change_dpi()
 			imgui.CenterText(u8'Срок действия мед.карты:')
 			if imgui.RadioButtonIntPtr(u8" 7 дней ##0",MODULE.MedCard.days,0) then
@@ -9949,80 +10220,8 @@ if isMode('hospital') then
 				MODULE.MedCard.status[0] = 3
 			end
 			imgui.Separator()
-			if imgui.Button(fa.ID_CARD_CLIP..u8" Выдать мед.карту", imgui.ImVec2(imgui.GetMiddleButtonX(1), 0)) then
-				local command_find = false
-				for _, command in ipairs(modules.commands.data.commands.my) do
-					if command.enable and command.text:find('/medcard') then
-						command_find = true
-						local modifiedText = command.text
-						local wait_tag = false
-						local arg_id = player_id
-						modifiedText = modifiedText:gsub('%{get_nick%(%{arg_id%}%)%}', sampGetPlayerNickname(arg_id) or "")
-						modifiedText = modifiedText:gsub('%{get_rp_nick%(%{arg_id%}%)%}', sampGetPlayerNickname(arg_id):gsub('_',' ') or "")
-						modifiedText = modifiedText:gsub('%{get_ru_nick%(%{arg_id%}%)%}', TranslateNick(sampGetPlayerNickname(arg_id)) or "")
-						modifiedText = modifiedText:gsub('%{arg_id%}', arg_id or "")
-						lua_thread.create(function()
-							MODULE.Binder.state.isActive = true
-							MODULE.Binder.state.isPause = false
-							if modifiedText:find('&.+&') then
-								info_stop_command()
-							end
-							local lines = {}
-							for line in string.gmatch(modifiedText, "[^&]+") do
-								table.insert(lines, line)
-							end
-							for line_index, line in ipairs(lines) do 
-								if MODULE.Binder.state.isStop then 
-									MODULE.Binder.state.isStop = false 
-									MODULE.Binder.state.isActive = false
-									if IS_MOBILE and settings.general.mobile_stop_button then
-										MODULE.CommandStop.Window[0] = false
-									end
-									sampAddChatMessage('[Arizona Helper] {ffffff}Отыгровка команды /' .. command.cmd .. " успешно остановлена!", message_color) 
-									return 
-								end
-								if wait_tag then
-									for tag, replacement in pairs(MODULE.Binder.tags) do
-										if line:find("{" .. tag .. "}") then
-											local success, result = pcall(string.gsub, line, "{" .. tag .. "}", replacement())
-											if success then
-												line = result
-											end
-										end
-									end
-									if line == "{pause}" then
-										sampAddChatMessage('[Arizona Helper] {ffffff}Команда /' .. command.cmd .. ' поставлена на паузу!', message_color)
-										MODULE.Binder.state.isPause = true
-										MODULE.CommandPause.Window[0] = true
-										while MODULE.Binder.state.isPause do
-											wait(0)
-										end
-										if not MODULE.Binder.state.isStop then
-											sampAddChatMessage('[Arizona Helper] {ffffff}Продолжаю отыгровку команды /' .. command.cmd, message_color)	
-										end					
-									else
-										sampSendChat(line)
-										if MODULE.DEBUG then sampAddChatMessage('[DEBUG] SEND: ' .. line, message_color) end	
-										wait(command.waiting * 1000)
-									end
-								end
-								if not wait_tag then
-									if line == '{show_medcard_menu}' then
-										wait_tag = true
-									end
-								end
-							end
-							MODULE.Binder.state.isActive = false
-							if IS_MOBILE and settings.general.mobile_stop_button then
-								MODULE.CommandStop.Window[0] = false
-							end
-						end)
-					end
-				end
-				if not command_find then
-					sampAddChatMessage('[Arizona Helper] {ffffff}Бинд для выдачи мед.карты отсутствует либо отключён!', message_color)
-					sampAddChatMessage('[Arizona Helper] {ffffff}Попробуйте сбросить настройки хелпера!', message_color)
-				end
+			local label = ' Выдать ' .. ((hotkey_no_errors and settings.general.bind_action) and ('[' .. getNameKeysFrom(settings.general.bind_action) .. ']') or 'мед.карту')
+			if imgui.Button(fa.ID_CARD_CLIP .. u8(label), imgui.ImVec2(imgui.GetMiddleButtonX(1), 0)) then
 				MODULE.MedCard.Window[0] = false
 			end
 			imgui.End()
@@ -10032,86 +10231,14 @@ if isMode('hospital') then
 		function() return MODULE.Recept.Window[0] end,
 		function(player)
 			imgui.SetNextWindowPos(imgui.ImVec2(sizeX / 2, sizeY / 2), imgui.Cond.FirstUseEver, imgui.ImVec2(0.5, 0.5))
-			imgui.Begin(fa.HOSPITAL.." Arizona Helper " .. fa.HOSPITAL .. "##recept", MODULE.Recept.Window, imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoResize + imgui.WindowFlags.NoScrollbar + imgui.WindowFlags.AlwaysAutoResize)
+			imgui.Begin(fa.HOSPITAL.." Arizona Helper " .. fa.HOSPITAL .. "##recept", _, imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoResize + imgui.WindowFlags.NoScrollbar + imgui.WindowFlags.AlwaysAutoResize)
 			change_dpi()
 			imgui.CenterText(u8'Количество рецептов для выдачи:')
 			imgui.PushItemWidth(250 * settings.general.custom_dpi)
 			imgui.SliderInt('', MODULE.Recept.recepts, 1, 5)
 			imgui.Separator()
-			if imgui.Button(fa.CAPSULES .. u8" Выдать рецепты", imgui.ImVec2(imgui.GetMiddleButtonX(1), 0)) then
-				local command_find = false
-				for _, command in ipairs(modules.commands.data.commands.my) do
-					if command.enable and command.text:find('/recept') then
-						command_find = true
-						local modifiedText = command.text
-						local wait_tag = false
-						local arg_id = player_id
-						modifiedText = modifiedText:gsub('%{get_nick%(%{arg_id%}%)%}', sampGetPlayerNickname(arg_id) or "")
-						modifiedText = modifiedText:gsub('%{get_rp_nick%(%{arg_id%}%)%}', sampGetPlayerNickname(arg_id):gsub('_',' ') or "")
-						modifiedText = modifiedText:gsub('%{get_ru_nick%(%{arg_id%}%)%}', TranslateNick(sampGetPlayerNickname(arg_id)) or "")
-						modifiedText = modifiedText:gsub('%{arg_id%}', arg_id or "")
-						lua_thread.create(function()
-							MODULE.Binder.state.isActive = true
-							MODULE.Binder.state.isPause = false
-							if modifiedText:find('&.+&') then
-								info_stop_command()
-							end
-							local lines = {}
-							for line in string.gmatch(modifiedText, "[^&]+") do
-								table.insert(lines, line)
-							end
-							for line_index, line in ipairs(lines) do 
-								if MODULE.Binder.state.isStop then 
-									MODULE.Binder.state.isStop = false 
-									MODULE.Binder.state.isActive = false
-									if IS_MOBILE and settings.general.mobile_stop_button then
-										MODULE.CommandStop.Window[0] = false
-									end
-									sampAddChatMessage('[Arizona Helper] {ffffff}Отыгровка команды /' .. command.cmd .. " успешно остановлена!", message_color) 
-									return 
-								end
-								if wait_tag then
-									for tag, replacement in pairs(MODULE.Binder.tags) do
-										if line:find("{" .. tag .. "}") then
-											local success, result = pcall(string.gsub, line, "{" .. tag .. "}", replacement())
-											if success then
-												line = result
-											end
-										end
-									end
-									if line == "{pause}" then
-										sampAddChatMessage('[Arizona Helper] {ffffff}Команда /' .. command.cmd .. ' поставлена на паузу!', message_color)
-										MODULE.Binder.state.isPause = true
-										MODULE.CommandPause.Window[0] = true
-										while MODULE.Binder.state.isPause do
-											wait(0)
-										end
-										if not MODULE.Binder.state.isStop then
-											sampAddChatMessage('[Arizona Helper] {ffffff}Продолжаю отыгровку команды /' .. command.cmd, message_color)	
-										end					
-									else
-										sampSendChat(line)
-										if MODULE.DEBUG then sampAddChatMessage('[DEBUG] SEND: ' .. line, message_color) end	
-										wait(command.waiting * 1000)
-									end
-								end
-								if not wait_tag then
-									if line == '{show_recept_menu}' then
-										wait_tag = true
-									end
-								end
-							end
-							MODULE.Binder.state.isActive = false
-							if IS_MOBILE and settings.general.mobile_stop_button then
-								MODULE.CommandStop.Window[0] = false
-							end
-						end)
-					end
-				end
-				if not command_find then
-					sampAddChatMessage('[Arizona Helper] {ffffff}Бинд для выдачи рецептов отсутствует либо отключён!', message_color)
-					sampAddChatMessage('[Arizona Helper] {ffffff}Попробуйте сбросить настройки хелпера!', message_color)
-				end
+			local label = ' Выдать ' .. ((hotkey_no_errors and settings.general.bind_action) and ('[' .. getNameKeysFrom(settings.general.bind_action) .. ']') or 'рецепты')
+			if imgui.Button(fa.CAPSULES .. u8(label), imgui.ImVec2(imgui.GetMiddleButtonX(1), 0)) then
 				MODULE.Recept.Window[0] = false
 			end
 			imgui.End()
@@ -10121,86 +10248,14 @@ if isMode('hospital') then
 		function() return MODULE.Antibiotik.Window[0] end,
 		function(player)
 			imgui.SetNextWindowPos(imgui.ImVec2(sizeX / 2, sizeY / 2), imgui.Cond.FirstUseEver, imgui.ImVec2(0.5, 0.5))
-			imgui.Begin(fa.HOSPITAL.." Arizona Helper " .. fa.HOSPITAL .. "##ant", MODULE.Antibiotik.Window, imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoResize + imgui.WindowFlags.NoScrollbar + imgui.WindowFlags.AlwaysAutoResize)
+			imgui.Begin(fa.HOSPITAL.." Arizona Helper " .. fa.HOSPITAL .. "##ant", _, imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoResize + imgui.WindowFlags.NoScrollbar + imgui.WindowFlags.AlwaysAutoResize)
 			change_dpi()
 			imgui.CenterText(u8'Количество антибиотиков для выдачи:')
 			imgui.PushItemWidth(250 * settings.general.custom_dpi)
 			imgui.SliderInt('', MODULE.Antibiotik.ants, 1, 20)
 			imgui.Separator()
-			if imgui.Button(fa.CAPSULES..u8" Выдать антибиотики" , imgui.ImVec2(imgui.GetMiddleButtonX(1), 0)) then
-				local command_find = false
-				for _, command in ipairs(modules.commands.data.commands.my) do
-					if command.enable and command.text:find('/antibiotik') then
-						command_find = true
-						local modifiedText = command.text
-						local wait_tag = false
-						local arg_id = player_id
-						modifiedText = modifiedText:gsub('%{get_nick%(%{arg_id%}%)%}', sampGetPlayerNickname(arg_id) or "")
-						modifiedText = modifiedText:gsub('%{get_rp_nick%(%{arg_id%}%)%}', sampGetPlayerNickname(arg_id):gsub('_',' ') or "")
-						modifiedText = modifiedText:gsub('%{get_ru_nick%(%{arg_id%}%)%}', TranslateNick(sampGetPlayerNickname(arg_id)) or "")
-						modifiedText = modifiedText:gsub('%{arg_id%}', arg_id or "")
-						lua_thread.create(function()
-							MODULE.Binder.state.isActive = true
-							MODULE.Binder.state.isPause = false
-							if modifiedText:find('&.+&') then
-								info_stop_command()
-							end
-							local lines = {}
-							for line in string.gmatch(modifiedText, "[^&]+") do
-								table.insert(lines, line)
-							end
-							for line_index, line in ipairs(lines) do 
-								if MODULE.Binder.state.isStop then 
-									MODULE.Binder.state.isStop = false 
-									MODULE.Binder.state.isActive = false
-									if IS_MOBILE and settings.general.mobile_stop_button then
-										MODULE.CommandStop.Window[0] = false
-									end
-									sampAddChatMessage('[Arizona Helper] {ffffff}Отыгровка команды /' .. command.cmd .. " успешно остановлена!", message_color) 
-									return 
-								end
-								if wait_tag then
-									for tag, replacement in pairs(MODULE.Binder.tags) do
-										if line:find("{" .. tag .. "}") then
-											local success, result = pcall(string.gsub, line, "{" .. tag .. "}", replacement())
-											if success then
-												line = result
-											end
-										end
-									end
-									if line == "{pause}" then
-										sampAddChatMessage('[Arizona Helper] {ffffff}Команда /' .. command.cmd .. ' поставлена на паузу!', message_color)
-										MODULE.Binder.state.isPause = true
-										MODULE.CommandPause.Window[0] = true
-										while MODULE.Binder.state.isPause do
-											wait(0)
-										end
-										if not MODULE.Binder.state.isStop then
-											sampAddChatMessage('[Arizona Helper] {ffffff}Продолжаю отыгровку команды /' .. command.cmd, message_color)	
-										end					
-									else
-										sampSendChat(line)
-										if MODULE.DEBUG then sampAddChatMessage('[DEBUG] SEND: ' .. line, message_color) end	
-										wait(command.waiting * 1000)
-									end
-								end
-								if not wait_tag then
-									if line == '{show_ant_menu}' then
-										wait_tag = true
-									end
-								end
-							end
-							MODULE.Binder.state.isActive = false
-							if IS_MOBILE and settings.general.mobile_stop_button then
-								MODULE.CommandStop.Window[0] = false
-							end
-						end)
-					end
-				end
-				if not command_find then
-					sampAddChatMessage('[Arizona Helper] {ffffff}Бинд для выдачи антибиотиков отсутствует либо отключён!', message_color)
-					sampAddChatMessage('[Arizona Helper] {ffffff}Попробуйте сбросить настройки хелпера!', message_color)
-				end
+			local label = ' Выдать ' .. ((hotkey_no_errors and settings.general.bind_action) and ('[' .. getNameKeysFrom(settings.general.bind_action) .. ']') or 'антибиотики')
+			if imgui.Button(fa.CAPSULES .. u8(label), imgui.ImVec2(imgui.GetMiddleButtonX(1), 0)) then
 				MODULE.Antibiotik.Window[0] = false
 			end
 			imgui.End()
@@ -10213,7 +10268,7 @@ if isMode('hospital') then
 			imgui.Begin(fa.HOSPITAL.." Arizona Helper " .. fa.HOSPITAL .. "##fast_heal", MODULE.HealChat.Window, imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoResize + imgui.WindowFlags.NoScrollbar + imgui.WindowFlags.NoTitleBar +  imgui.WindowFlags.AlwaysAutoResize )
 			change_dpi()
 			if imgui.Button(fa.KIT_MEDICAL..u8' Вылечить '.. u8(sampGetPlayerNickname(MODULE.HealChat.player_id))) then
-				find_and_use_command("/heal {arg_id}", MODULE.HealChat.player_id)
+				find_and_use_command("/heal {id}", MODULE.HealChat.player_id)
 				MODULE.HealChat.bool = false
 				MODULE.HealChat.player_id = nil
 				MODULE.HealChat.Window[0] = false
@@ -10227,36 +10282,56 @@ if isMode('smi') then
 		function() return MODULE.SmiEdit.Window[0] end,
 		function(player)
 			imgui.SetNextWindowPos(imgui.ImVec2(sizeX / 2, sizeY / 2), imgui.Cond.FirstUseEver, imgui.ImVec2(0.5, 0.5))
-			local size_window_y = settings.smi.use_ads_buttons and 302 or 140
-			imgui.SetNextWindowSize(imgui.ImVec2(600 * settings.general.custom_dpi, size_window_y * settings.general.custom_dpi), imgui.Cond.FirstUseEver)
+			imgui.SetNextWindowSize(imgui.ImVec2(600 * settings.general.custom_dpi, 301.5 * settings.general.custom_dpi), imgui.Cond.FirstUseEver)
 			imgui.Begin(getHelperIcon() .. u8" Arizona Helper " .. getHelperIcon() .. '##MODULE.SmiEdit.Window', MODULE.SmiEdit.Window, imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoResize + imgui.WindowFlags.NoScrollbar )
 			change_dpi()
-			imgui.Text(fa.CIRCLE_INFO .. u8" Объявление подал игрок: " .. u8(MODULE.SmiEdit.ad_from) .. '[' .. (sampGetPlayerIdByNickname(MODULE.SmiEdit.ad_from) and sampGetPlayerIdByNickname(MODULE.SmiEdit.ad_from) or 'OFF') .. ']')
+			imgui.Text(fa.CIRCLE_INFO .. u8" Объявление подал игрок: " .. u8(MODULE.SmiEdit.ad_from) .. '[' .. sampGetPlayerIdByNickname(MODULE.SmiEdit.ad_from) .. ']')
 			imgui.Text(fa.CIRCLE_INFO .. u8" Текст: " .. (u8(MODULE.SmiEdit.ad_message)))
 			imgui.SameLine()
 			if imgui.SmallButton(fa.CIRCLE_ARROW_RIGHT) then
 				imgui.StrCopy(MODULE.SmiEdit.input_edit_text, u8(MODULE.SmiEdit.ad_message))
 			end
+			if imgui.IsItemHovered() then
+				imgui.SetTooltip(u8'Перенести текст в поле для редакта')
+			end
 			imgui.Separator()
 			local window_size = imgui.GetWindowSize()
-			local size_item_width = settings.smi.ads_history and 100 or 70
+			local size_item_width = (settings.smi.ads_history and 105 or 75) + (settings.smi.ai_generate and 30 or 0)
 			imgui.PushItemWidth(window_size.x - size_item_width * settings.general.custom_dpi)
-			imgui.InputTextWithHint('##smi_edit_ad', u8'Отредактируйте объявление либо введите причину для отклонения', MODULE.SmiEdit.input_edit_text, 512)
+			imgui.InputTextWithHint(
+				"##smi_edit_ad",
+				u8"Отредактируйте объявление либо введите причину для отклонения",
+				MODULE.SmiEdit.input_edit_text,
+				256,
+				imgui.InputTextFlags.CallbackAlways + imgui.InputTextFlags.CallbackCompletion, 
+				TextEditCallback
+			)
 			imgui.SameLine()
 			if imgui.Button(fa.DELETE_LEFT, imgui.ImVec2(27 * settings.general.custom_dpi, 25 * settings.general.custom_dpi)) then
 				local text = u8:decode(ffi.string(MODULE.SmiEdit.input_edit_text))
-				if #text > 0 then
-					imgui.StrCopy(MODULE.SmiEdit.input_edit_text, u8(text:sub(1, -2)))
-				end
+				if #text > 0 then imgui.StrCopy(MODULE.SmiEdit.input_edit_text, u8(text:sub(1, -2))) end
 			end
 			imgui.SameLine()
 			if imgui.Button(fa.TRASH_CAN, imgui.ImVec2(25 * settings.general.custom_dpi, 25 * settings.general.custom_dpi)) then
-				imgui.StrCopy(MODULE.SmiEdit.input_edit_text, "")
+				imgui.StrCopy(MODULE.SmiEdit.input_edit_text, '')
+			end
+			if settings.smi.ai_generate then
+				imgui.SameLine()
+				if imgui.Button(fa.ROBOT, imgui.ImVec2(26 * settings.general.custom_dpi, 25 * settings.general.custom_dpi)) then
+					-- imgui.StrCopy(MODULE.SmiEdit.input_edit_text, u8"Подключение к AI для генерации текста, ожидайте...")
+					sampAddChatMessage('БУДЕТ КОГДА-ТО ПОЗЖЕ, ЩАС НЕДОСТУПНО', -1)
+				end
+				if imgui.IsItemHovered() then
+					imgui.SetTooltip(u8'AI генерация')
+				end
 			end
 			if settings.smi.ads_history then
 				imgui.SameLine()
 				if imgui.Button(fa.CLOCK_ROTATE_LEFT, imgui.ImVec2(25 * settings.general.custom_dpi, 25 * settings.general.custom_dpi)) then
 					imgui.OpenPopup(fa.CLOCK_ROTATE_LEFT .. u8' История обьявлений')	
+				end
+				if imgui.IsItemHovered() then
+					imgui.SetTooltip(u8'История обьявлений')
 				end
 				imgui.SetNextWindowPos(imgui.ImVec2(sizeX / 2, sizeY / 2), imgui.Cond.Always, imgui.ImVec2(0.5, 0.5))
 				if imgui.BeginPopupModal(fa.CLOCK_ROTATE_LEFT .. u8' История обьявлений', _, imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoResize) then
@@ -10268,16 +10343,21 @@ if isMode('smi') then
 								imgui.CenterText(u8('История обьявлений пуста'))
 								imgui.CenterText(u8('Отредактированные обьявления будут отображаться здесь'))
 							else
-								imgui.PushItemWidth(570 * settings.general.custom_dpi)
-								imgui.InputTextWithHint(u8'##input_ads_search', u8'Поиск обьявлений по нужной фразе, начинайте вводить её сюда...', MODULE.SmiEdit.input_ads_search, 128)
+								imgui.PushItemWidth(579 * settings.general.custom_dpi)
+								imgui.InputTextWithHint(u8'##input_ads_search', u8'Поиск обьявлений по нужной фразе, начинайте вводить её сюда...', MODULE.SmiEdit.input_search, 128)
 								imgui.Separator()
-								local input_ads_decoded = u8:decode(ffi.string(MODULE.SmiEdit.input_ads_search))
+								local input_ads_decoded = u8:decode(ffi.string(MODULE.SmiEdit.input_search))
+								local shown = {}
 								for id, ad in ipairs(modules.ads_history.data) do
-									if (ad and ad.text and ad.my_text) then
-										if ((input_ads_decoded == '') or (ad.my_text:rupper():find(input_ads_decoded:rupper(), 1, true))) then
-											if imgui.Button(u8(ad.my_text .. '##' .. id), imgui.ImVec2(imgui.GetMiddleButtonX(1), 25 * settings.general.custom_dpi)) then
-												imgui.StrCopy(MODULE.SmiEdit.input_edit_text, u8(ad.my_text))
-												imgui.CloseCurrentPopup()
+									if ad and ad.text and ad.my_text then
+										local text = ad.my_text
+										if not shown[text] then
+											if input_ads_decoded == '' or (text:rupper():find(input_ads_decoded:rupper(), 1, true)) then
+												if imgui.Button(u8(text .. '##' .. id), imgui.ImVec2(imgui.GetMiddleButtonX(1), 25 * settings.general.custom_dpi)) then
+													imgui.StrCopy(MODULE.SmiEdit.input_edit_text, u8(text))
+													imgui.CloseCurrentPopup()
+												end
+												shown[text] = true
 											end
 										end
 									end
@@ -10300,237 +10380,241 @@ if isMode('smi') then
 				end
 			end
 			imgui.Separator()
-			if settings.smi.use_ads_buttons then
-				if imgui.BeginChild('##1', imgui.ImVec2(125 * settings.general.custom_dpi, 155 * settings.general.custom_dpi), true) then	
-					if imgui.Button(u8('Куплю'), imgui.ImVec2(imgui.GetMiddleButtonX(1), 25 * settings.general.custom_dpi)) then
-						local text = u8:decode(ffi.string(MODULE.SmiEdit.input_edit_text)) .. 'Куплю '
-						imgui.StrCopy(MODULE.SmiEdit.input_edit_text, u8(text))
+			local smi_groups = {
+				{
+					id = "##1",
+					width = 105,
+					per_row = 1,
+					items = {
+						"Куплю",
+						"Продам",
+						"Обменяю",
+						"Сдам в аренду",
+						"Арендую",
+					}
+				},
+				{
+					id = "##2",
+					width = 150,
+					per_row = 4,
+					items = {
+						-- Аксессуары, скины
+						"а/с", "о/п", "и/т", "р/с", 
+						-- Транспорт
+						"а/м", "м/ц", "г/ф", "в/т",
+						"с/м", "в/с", "л/д", "н/з",
+						-- Прочее
+						"б/з", "п/м", "л/о", "д/т", 
+						"п/т", "м/ф", "ч/д", "в/о", 
+					}
+				},
+				{
+					id = "##3",
+					width = 70,
+					per_row = 1,
+					items = {
+						"Жильё",
+						"Локации",
+						"Марки",
+						"Бизнесы",
+						"Наборы",
+					}
+				},
+				{
+					id = "##4",
+					width = 90,
+					per_row = 1,
+					items = {
+						"Цена:",
+						"Цена за шт:",
+						"Договорная",
+						"Бюджет:",
+						"Свободный",
+					}
+				},
+				{
+					id = "##5",
+					width = 100,
+					per_row = 3,
+					items = {
+						"1","2","3",
+						"4","5","6",
+						"7","8","9",
+						".","0", ',',
+						"с гравировкой +"
+					}
+				},
+				{
+					id = "##6",
+					width = 50,
+					per_row = 1,
+					items = {"$", '"', "тыс.", "млн", "млрд"}
+				}
+			}
+			for gi, group in ipairs(smi_groups) do
+				if imgui.BeginChild(group.id, imgui.ImVec2(group.width * settings.general.custom_dpi, 155 * settings.general.custom_dpi), true) then
+					imgui.SetNextWindowPos(imgui.ImVec2(sizeX / 2, sizeY / 2), imgui.Cond.Always, imgui.ImVec2(0.5, 0.5))
+					if imgui.BeginPopupModal(fa.CAR .. u8" Марки транспорта " .. fa.CAR, nil, imgui.WindowFlags.NoResize + imgui.WindowFlags.NoScrollbar + imgui.WindowFlags.NoMove) then
+						imgui.PushItemWidth(200 * settings.general.custom_dpi)
+						imgui.InputTextWithHint(u8(''), u8('Ищите нужную вам модель...'), MODULE.SmiEdit.input_search, 64)
+						imgui.Separator()
+						local input_decoded = u8:decode(ffi.string(MODULE.SmiEdit.input_search)):rlower()
+						if imgui.BeginChild("veh_list", imgui.ImVec2(200 * settings.general.custom_dpi, 150 * settings.general.custom_dpi), true) then
+							for id, name in pairs(modules.arz_veh.byId or {}) do
+								if input_decoded == "" or name:rlower():find(input_decoded) then
+									if imgui.Selectable(u8(name)) then
+										insert_to_cursor('"' .. u8(name) .. '" ', MODULE.SmiEdit.input_edit_text)
+										imgui.CloseCurrentPopup()
+									end
+								end
+							end
+							imgui.EndChild()
+						end
+						if imgui.Button(fa.CIRCLE_XMARK .. u8(" Закрыть"), imgui.ImVec2(imgui.GetMiddleButtonX(1), 25 * settings.general.custom_dpi)) then
+							imgui.CloseCurrentPopup()
+						end
+						imgui.EndPopup()
 					end
-					if imgui.Button(u8('Продам'), imgui.ImVec2(imgui.GetMiddleButtonX(1), 25 * settings.general.custom_dpi)) then
-						local text = u8:decode(ffi.string(MODULE.SmiEdit.input_edit_text)) .. 'Продам '
-						imgui.StrCopy(MODULE.SmiEdit.input_edit_text, u8(text))
+					imgui.SetNextWindowPos(imgui.ImVec2(sizeX / 2, sizeY / 2), imgui.Cond.Always, imgui.ImVec2(0.5, 0.5))
+					if imgui.BeginPopupModal(fa.BUILDING .. u8" Наборы в организации/семьи " .. fa.BUILDING, nil, imgui.WindowFlags.NoResize + imgui.WindowFlags.NoScrollbar + imgui.WindowFlags.NoMove) then
+						local orgs = {
+							'Проходит собеседование в организацию "". Ждём в холле',
+							'Идёт набор в футбольный клуб "". Ждём на территории клуба',
+							'Проходит собеседование в корпорацию "". Просьба связаться',
+							'Ищу своих дальних родственников. Просьба связаться',
+							'Развитая семья "" ищет дальних родственников. Просьба связаться',
+							'Семья "" ищет дальних родственников. Просьба связаться',
+						}
+						for id, text in pairs(orgs) do
+							if imgui.Selectable(u8(text)) then
+								imgui.StrCopy(MODULE.SmiEdit.input_edit_text, u8(text))
+								imgui.CloseCurrentPopup()
+							end
+						end
+						imgui.Separator()
+						if imgui.Button(fa.CIRCLE_XMARK .. u8(" Закрыть"), imgui.ImVec2(imgui.GetMiddleButtonX(1), 25 * settings.general.custom_dpi)) then
+							imgui.CloseCurrentPopup()
+						end
+						imgui.EndPopup()
 					end
-					if imgui.Button(u8('Обменяю'), imgui.ImVec2(imgui.GetMiddleButtonX(1), 25 * settings.general.custom_dpi)) then
-						local text = u8:decode(ffi.string(MODULE.SmiEdit.input_edit_text)) .. 'Обменяю '
-						imgui.StrCopy(MODULE.SmiEdit.input_edit_text, u8(text))
+					imgui.SetNextWindowPos(imgui.ImVec2(sizeX / 2, sizeY / 2), imgui.Cond.Always, imgui.ImVec2(0.5, 0.5))
+					if imgui.BeginPopupModal(fa.HOUSE .. u8" Жильё " .. fa.HOUSE, nil, imgui.WindowFlags.NoResize + imgui.WindowFlags.NoScrollbar + imgui.WindowFlags.NoMove) then
+						local houses = {
+							'дом в',
+							'дом с подвалом в',
+							'дом с гаражом в',
+							'дом с гаражом и подвалом в',
+							'дом на колёсах',
+							'квартиру в'
+						}
+						for id, text in pairs(houses) do
+							if imgui.Selectable(u8(text)) then
+								insert_to_cursor(u8(text) .. ' ', MODULE.SmiEdit.input_edit_text)
+								imgui.CloseCurrentPopup()
+							end
+						end
+						imgui.Separator()
+						if imgui.Button(fa.CIRCLE_XMARK .. u8(" Закрыть"), imgui.ImVec2(imgui.GetMiddleButtonX(1), 25 * settings.general.custom_dpi)) then
+							imgui.CloseCurrentPopup()
+						end
+						imgui.EndPopup()
 					end
-					if imgui.Button(u8('Сдам в аренду'), imgui.ImVec2(imgui.GetMiddleButtonX(1), 25 * settings.general.custom_dpi)) then
-						local text = u8:decode(ffi.string(MODULE.SmiEdit.input_edit_text)) .. 'Сдам в аренду '
-						imgui.StrCopy(MODULE.SmiEdit.input_edit_text, u8(text))
+					imgui.SetNextWindowPos(imgui.ImVec2(sizeX / 2, sizeY / 2), imgui.Cond.Always, imgui.ImVec2(0.5, 0.5))
+					if imgui.BeginPopupModal(fa.SHOP .. u8" Бизнесы " .. fa.SHOP, nil, imgui.WindowFlags.NoResize + imgui.WindowFlags.NoScrollbar + imgui.WindowFlags.NoMove) then
+						local business = {
+							'АЗС', 'Водная АЗС', 'Бар', 'Отель', 'Закусочная', 'Ларек с уличной едой', 'Магазин 24 на 7', 'Амуниция', 'Автомастерская', 'СТО', 
+							'Магазин тюнинга', 'Аренда транспорта', 'Магазин аксессуаров', 'Магазин одежды', 'Ферма', 'Авторынок', 'Автомойка', 'Салон трейлеров',
+							'Телефонная компания', 'Рекламные баннеры', 'Телефонные будки', 'Школа танцев', 'Спортзал', 'Магазин рыбалки', 'Ломбард', 'Шахта', 
+							'Наземная нефтевышка', 'Водная нефтевышка', 'Элексир Мастер', 'Секонд Хенд', 'Мастерская одежды', 'Магазин видеокарт'
+						}
+						imgui.PushItemWidth(200 * settings.general.custom_dpi)
+						imgui.InputTextWithHint(u8(''), u8('Ищите нужный вам бизнес...'), MODULE.SmiEdit.input_search, 64)
+						imgui.Separator()
+						local input_decoded = u8:decode(ffi.string(MODULE.SmiEdit.input_search)):rlower()
+						if imgui.BeginChild("bizlist", imgui.ImVec2(200 * settings.general.custom_dpi, 150 * settings.general.custom_dpi), true) then
+							for id, name in pairs(business) do
+								if input_decoded == "" or name:rlower():find(input_decoded) then
+									if imgui.Selectable(u8(name)) then
+										insert_to_cursor('"' .. u8(name) .. '" ', MODULE.SmiEdit.input_edit_text)
+										imgui.CloseCurrentPopup()
+									end
+								end
+							end
+							imgui.EndChild()
+						end
+						imgui.Separator()
+						if imgui.Button(fa.CIRCLE_XMARK .. u8(" Закрыть"), imgui.ImVec2(imgui.GetMiddleButtonX(1), 25 * settings.general.custom_dpi)) then
+							imgui.CloseCurrentPopup()
+						end
+						imgui.EndPopup()
 					end
-					if imgui.Button(u8('Арендую'), imgui.ImVec2(imgui.GetMiddleButtonX(1), 25 * settings.general.custom_dpi)) then
-						local text = u8:decode(ffi.string(MODULE.SmiEdit.input_edit_text)) .. 'Арендую '
-						imgui.StrCopy(MODULE.SmiEdit.input_edit_text, u8(text))
+					imgui.SetNextWindowPos(imgui.ImVec2(sizeX / 2, sizeY / 2), imgui.Cond.Always, imgui.ImVec2(0.5, 0.5))
+					if imgui.BeginPopupModal(fa.MAP_LOCATION_DOT .. u8" Локации " .. fa.MAP_LOCATION_DOT, nil, imgui.WindowFlags.NoResize + imgui.WindowFlags.NoScrollbar + imgui.WindowFlags.NoMove) then
+						local locations = {
+							'г. Лос-Сантос', 'г. Сан-Фиерро', 'г. Лас-Вентурас', 'г. Арзамас', 'г. Эдово', 
+							'любой точке штата', 'любой точке округа', 'опасном районе',
+							'д. Паломино Крик', 'д. Ред Каунтри', 'д. Монтгомери', 'д. Лас Баранкас', 'д. Ангел Пейн', 
+							'д. Эль Кебрадос', 'д. Лас Пайсадас', 'д. Тьерра Робада', 'д. БлуБерри', 'п. Батырево',
+							'Полиция ЛС', 'Полиция ЛВ', 'Полиция СФ', 'Полиция ВС', 'Областная полиция', 'Полиция округа', 'Городская полиция',
+							'ФБР', 'ФСБ', "КТЦ", 'Армия ЛС', 'Армия СФ', 'Армия', 'Тюрьма строгого режима',
+							'TV студия', 'TV студия ЛС', 'TV студия ЛВ', 'TV студия СФ', 'TV студия ВС', 'Новостное агентство',
+							'Больница ЛС', 'Больница ЛВ', 'Больница СФ', 'Больница ВС', 'Больница Джефферсон', 'Больница округа', 'Городская больница',
+							'Правительство', 'Суд', 'Центр лицензирования', 'Пожарный департамент', 'Страховая компания',
+							'Русская мафия', 'Yakuza', 'La Cosa Nostra', 'Warlock MC', 'Tierra Robada Bikers', 'Украинская мафия', 'Кавказская мафия',
+							'Grove Street', 'Los Santos Vagos', 'East Side Ballas', 'Varrios Los Aztecas', 'The Rifa', 'Night Wolves'
+						}
+						imgui.PushItemWidth(200 * settings.general.custom_dpi)
+						imgui.InputTextWithHint(u8(''), u8('Ищите нужную вам локацию...'), MODULE.SmiEdit.input_search, 64)
+						imgui.Separator()
+						local input_decoded = u8:decode(ffi.string(MODULE.SmiEdit.input_search)):rlower()
+						if imgui.BeginChild("locateslist", imgui.ImVec2(200 * settings.general.custom_dpi, 150 * settings.general.custom_dpi), true) then
+							for id, name in pairs(locations) do
+								if input_decoded == "" or name:rlower():find(input_decoded) then
+									if imgui.Selectable(u8(name)) then
+										insert_to_cursor(u8(name) .. ' ', MODULE.SmiEdit.input_edit_text)
+										imgui.CloseCurrentPopup()
+									end
+								end
+							end
+							imgui.EndChild()
+						end
+						imgui.Separator()
+						if imgui.Button(fa.CIRCLE_XMARK .. u8(" Закрыть"), imgui.ImVec2(imgui.GetMiddleButtonX(1), 25 * settings.general.custom_dpi)) then
+							imgui.CloseCurrentPopup()
+						end
+						imgui.EndPopup()
 					end
-					imgui.EndChild()
-				end	
-				imgui.SameLine()
-				if imgui.BeginChild('##2', imgui.ImVec2(200 * settings.general.custom_dpi, 155 * settings.general.custom_dpi), true) then	
-					if imgui.Button(u8('а/м'), imgui.ImVec2(imgui.GetMiddleButtonX(4), 25 * settings.general.custom_dpi)) then
-						local text = u8:decode(ffi.string(MODULE.SmiEdit.input_edit_text)) .. 'а/м '
-						imgui.StrCopy(MODULE.SmiEdit.input_edit_text, u8(text))
+					for i, label in ipairs(group.items) do
+						local btns = (label == 'с гравировкой +') and 1 or group.per_row
+						if imgui.Button(u8(label), imgui.ImVec2(imgui.GetMiddleButtonX(btns), 25 * settings.general.custom_dpi)) then
+							if label == "Жильё" then
+								imgui.OpenPopup(fa.HOUSE .. u8" Жильё " .. fa.HOUSE)
+							elseif label == "Марки" then
+								imgui.OpenPopup(fa.CAR .. u8" Марки транспорта " .. fa.CAR)
+							elseif label == "Локации" then
+								imgui.OpenPopup(fa.MAP_LOCATION_DOT .. u8" Локации " .. fa.MAP_LOCATION_DOT)
+							elseif label == "Бизнесы" then
+								imgui.OpenPopup(fa.SHOP .. u8" Бизнесы " .. fa.SHOP)
+							elseif label == "Наборы" then
+								imgui.OpenPopup(fa.BUILDING .. u8" Наборы в организации/семьи " .. fa.BUILDING)
+							else
+								local text_to_insert = ''
+								if group.id:find('1') or group.id:find('2') or (group.id:find('4') and label ~= 'Договорная' and label ~= 'Свободный') then
+									text_to_insert = label .. ' '
+								else
+									text_to_insert = label
+								end
+								insert_to_cursor(u8(text_to_insert), MODULE.SmiEdit.input_edit_text)
+							end
+						end
+						if group.per_row > 1 and (i % group.per_row ~= 0) then imgui.SameLine() end
 					end
-					imgui.SameLine()
-					if imgui.Button(u8('т/с'), imgui.ImVec2(imgui.GetMiddleButtonX(4), 25 * settings.general.custom_dpi)) then
-						local text = u8:decode(ffi.string(MODULE.SmiEdit.input_edit_text)) .. 'т/с '
-						imgui.StrCopy(MODULE.SmiEdit.input_edit_text, u8(text))
-					end
-					imgui.SameLine()
-					if imgui.Button(u8('л/д'), imgui.ImVec2(imgui.GetMiddleButtonX(4), 25 * settings.general.custom_dpi)) then
-						local text = u8:decode(ffi.string(MODULE.SmiEdit.input_edit_text)) .. 'л/д '
-						imgui.StrCopy(MODULE.SmiEdit.input_edit_text, u8(text))
-					end
-					imgui.SameLine()
-					if imgui.Button(u8('г/ф'), imgui.ImVec2(imgui.GetMiddleButtonX(4), 25 * settings.general.custom_dpi)) then
-						local text = u8:decode(ffi.string(MODULE.SmiEdit.input_edit_text)) .. 'г/ф '
-						imgui.StrCopy(MODULE.SmiEdit.input_edit_text, u8(text))
-					end
-
-					if imgui.Button(u8('в/т'), imgui.ImVec2(imgui.GetMiddleButtonX(4), 25 * settings.general.custom_dpi)) then
-						local text = u8:decode(ffi.string(MODULE.SmiEdit.input_edit_text)) .. 'в/т '
-						imgui.StrCopy(MODULE.SmiEdit.input_edit_text, u8(text))
-					end
-					imgui.SameLine()
-					if imgui.Button(u8('м/т'), imgui.ImVec2(imgui.GetMiddleButtonX(4), 25 * settings.general.custom_dpi)) then
-						local text = u8:decode(ffi.string(MODULE.SmiEdit.input_edit_text)) .. 'м/т '
-						imgui.StrCopy(MODULE.SmiEdit.input_edit_text, u8(text))
-					end
-					imgui.SameLine()
-					if imgui.Button(u8('с/м'), imgui.ImVec2(imgui.GetMiddleButtonX(4), 25 * settings.general.custom_dpi)) then
-						local text = u8:decode(ffi.string(MODULE.SmiEdit.input_edit_text)) .. 'с/м '
-						imgui.StrCopy(MODULE.SmiEdit.input_edit_text, u8(text))
-					end
-					imgui.SameLine()
-					if imgui.Button(u8('в/с'), imgui.ImVec2(imgui.GetMiddleButtonX(4), 25 * settings.general.custom_dpi)) then
-						local text = u8:decode(ffi.string(MODULE.SmiEdit.input_edit_text)) .. 'в/с '
-						imgui.StrCopy(MODULE.SmiEdit.input_edit_text, u8(text))
-					end
-
-					if imgui.Button(u8('д/т'), imgui.ImVec2(imgui.GetMiddleButtonX(4), 25 * settings.general.custom_dpi)) then
-						local text = u8:decode(ffi.string(MODULE.SmiEdit.input_edit_text)) .. 'д/т '
-						imgui.StrCopy(MODULE.SmiEdit.input_edit_text, u8(text))
-					end
-					imgui.SameLine()
-					if imgui.Button(u8('р/с'), imgui.ImVec2(imgui.GetMiddleButtonX(4), 25 * settings.general.custom_dpi)) then
-						local text = u8:decode(ffi.string(MODULE.SmiEdit.input_edit_text)) .. 'р/с '
-						imgui.StrCopy(MODULE.SmiEdit.input_edit_text, u8(text))
-					end
-					imgui.SameLine()
-					if imgui.Button(u8('о/п'), imgui.ImVec2(imgui.GetMiddleButtonX(4), 25 * settings.general.custom_dpi)) then
-						local text = u8:decode(ffi.string(MODULE.SmiEdit.input_edit_text)) .. 'о/п '
-						imgui.StrCopy(MODULE.SmiEdit.input_edit_text, u8(text))
-					end
-					imgui.SameLine()
-					if imgui.Button(u8('п/м'), imgui.ImVec2(imgui.GetMiddleButtonX(4), 25 * settings.general.custom_dpi)) then
-						local text = u8:decode(ffi.string(MODULE.SmiEdit.input_edit_text)) .. 'п/м '
-						imgui.StrCopy(MODULE.SmiEdit.input_edit_text, u8(text))
-					end
-
-					if imgui.Button(u8('а/с'), imgui.ImVec2(imgui.GetMiddleButtonX(4), 25 * settings.general.custom_dpi)) then
-						local text = u8:decode(ffi.string(MODULE.SmiEdit.input_edit_text)) .. 'а/с '
-						imgui.StrCopy(MODULE.SmiEdit.input_edit_text, u8(text))
-					end
-					imgui.SameLine()
-					if imgui.Button(u8('п/т'), imgui.ImVec2(imgui.GetMiddleButtonX(4), 25 * settings.general.custom_dpi)) then
-						local text = u8:decode(ffi.string(MODULE.SmiEdit.input_edit_text)) .. 'п/т '
-						imgui.StrCopy(MODULE.SmiEdit.input_edit_text, u8(text))
-					end
-					imgui.SameLine()
-					if imgui.Button(u8('б/з'), imgui.ImVec2(imgui.GetMiddleButtonX(4), 25 * settings.general.custom_dpi)) then
-						local text = u8:decode(ffi.string(MODULE.SmiEdit.input_edit_text)) .. 'б/з '
-						imgui.StrCopy(MODULE.SmiEdit.input_edit_text, u8(text))
-					end
-					imgui.SameLine()
-					if imgui.Button(u8('н/з'), imgui.ImVec2(imgui.GetMiddleButtonX(4), 25 * settings.general.custom_dpi)) then
-						local text = u8:decode(ffi.string(MODULE.SmiEdit.input_edit_text)) .. 'н/з '
-						imgui.StrCopy(MODULE.SmiEdit.input_edit_text, u8(text))
-					end
-
-					if imgui.Button(u8('л/о'), imgui.ImVec2(imgui.GetMiddleButtonX(4), 25 * settings.general.custom_dpi)) then
-						local text = u8:decode(ffi.string(MODULE.SmiEdit.input_edit_text)) .. 'л/о '
-						imgui.StrCopy(MODULE.SmiEdit.input_edit_text, u8(text))
-					end
-					imgui.SameLine()
-					if imgui.Button(u8('м/ф'), imgui.ImVec2(imgui.GetMiddleButtonX(4), 25 * settings.general.custom_dpi)) then
-						local text = u8:decode(ffi.string(MODULE.SmiEdit.input_edit_text)) .. 'м/ф '
-						imgui.StrCopy(MODULE.SmiEdit.input_edit_text, u8(text))
-					end
-					imgui.SameLine()
-					if imgui.Button(u8('ч/д'), imgui.ImVec2(imgui.GetMiddleButtonX(4), 25 * settings.general.custom_dpi)) then
-						local text = u8:decode(ffi.string(MODULE.SmiEdit.input_edit_text)) .. 'ч/д '
-						imgui.StrCopy(MODULE.SmiEdit.input_edit_text, u8(text))
-					end
-					imgui.SameLine()
-					if imgui.Button(u8('в/о'), imgui.ImVec2(imgui.GetMiddleButtonX(4), 25 * settings.general.custom_dpi)) then
-						local text = u8:decode(ffi.string(MODULE.SmiEdit.input_edit_text)) .. 'в/о '
-						imgui.StrCopy(MODULE.SmiEdit.input_edit_text, u8(text))
-					end
-					imgui.EndChild()
-				end	
-				imgui.SameLine()
-				if imgui.BeginChild('##3', imgui.ImVec2(100 * settings.general.custom_dpi, 155 * settings.general.custom_dpi), true) then	
-					if imgui.Button(u8('Цена:'), imgui.ImVec2(imgui.GetMiddleButtonX(1), 25 * settings.general.custom_dpi)) then
-						local text = u8:decode(ffi.string(MODULE.SmiEdit.input_edit_text)) .. ' Цена: '
-						imgui.StrCopy(MODULE.SmiEdit.input_edit_text, u8(text))
-					end
-					if imgui.Button(u8('Цена за шт:'), imgui.ImVec2(imgui.GetMiddleButtonX(1), 25 * settings.general.custom_dpi)) then
-						local text = u8:decode(ffi.string(MODULE.SmiEdit.input_edit_text)) .. ' Цена за шт: '
-						imgui.StrCopy(MODULE.SmiEdit.input_edit_text, u8(text))
-					end
-					if imgui.Button(u8('Договорная'), imgui.ImVec2(imgui.GetMiddleButtonX(1), 25 * settings.general.custom_dpi)) then
-						local text = u8:decode(ffi.string(MODULE.SmiEdit.input_edit_text)) .. 'Договорная'
-						imgui.StrCopy(MODULE.SmiEdit.input_edit_text, u8(text))
-					end
-					if imgui.Button(u8('Бюджет:'), imgui.ImVec2(imgui.GetMiddleButtonX(1), 25 * settings.general.custom_dpi)) then
-						local text = u8:decode(ffi.string(MODULE.SmiEdit.input_edit_text)) .. ' Бюджет: '
-						imgui.StrCopy(MODULE.SmiEdit.input_edit_text, u8(text))
-					end
-					if imgui.Button(u8('Свободный'), imgui.ImVec2(imgui.GetMiddleButtonX(1), 25 * settings.general.custom_dpi)) then
-						local text = u8:decode(ffi.string(MODULE.SmiEdit.input_edit_text)) .. 'Свободный'
-						imgui.StrCopy(MODULE.SmiEdit.input_edit_text, u8(text))
-					end
-					imgui.EndChild()
-				end	
-				imgui.SameLine()
-				if imgui.BeginChild('##4', imgui.ImVec2(150 * settings.general.custom_dpi, 155 * settings.general.custom_dpi), true) then
-
-					if imgui.Button(u8('1'), imgui.ImVec2(imgui.GetMiddleButtonX(3), 25 * settings.general.custom_dpi)) then
-						local text = u8:decode(ffi.string(MODULE.SmiEdit.input_edit_text)) .. '1'
-						imgui.StrCopy(MODULE.SmiEdit.input_edit_text, u8(text))
-					end
-					imgui.SameLine()
-				
-					if imgui.Button(u8('2'), imgui.ImVec2(imgui.GetMiddleButtonX(3), 25 * settings.general.custom_dpi)) then
-						local text = u8:decode(ffi.string(MODULE.SmiEdit.input_edit_text)) .. '2'
-						imgui.StrCopy(MODULE.SmiEdit.input_edit_text, u8(text))
-					end
-					imgui.SameLine()
-				
-					if imgui.Button(u8('3'), imgui.ImVec2(imgui.GetMiddleButtonX(3), 25 * settings.general.custom_dpi)) then
-						local text = u8:decode(ffi.string(MODULE.SmiEdit.input_edit_text)) .. '3'
-						imgui.StrCopy(MODULE.SmiEdit.input_edit_text, u8(text))
-					end
-				
-					if imgui.Button(u8('4'), imgui.ImVec2(imgui.GetMiddleButtonX(3), 25 * settings.general.custom_dpi)) then
-						local text = u8:decode(ffi.string(MODULE.SmiEdit.input_edit_text)) .. '4'
-						imgui.StrCopy(MODULE.SmiEdit.input_edit_text, u8(text))
-					end
-					imgui.SameLine()
-				
-					if imgui.Button(u8('5'), imgui.ImVec2(imgui.GetMiddleButtonX(3), 25 * settings.general.custom_dpi)) then
-						local text = u8:decode(ffi.string(MODULE.SmiEdit.input_edit_text)) .. '5'
-						imgui.StrCopy(MODULE.SmiEdit.input_edit_text, u8(text))
-					end
-					imgui.SameLine()
-				
-					if imgui.Button(u8('6'), imgui.ImVec2(imgui.GetMiddleButtonX(3), 25 * settings.general.custom_dpi)) then
-						local text = u8:decode(ffi.string(MODULE.SmiEdit.input_edit_text)) .. '6'
-						imgui.StrCopy(MODULE.SmiEdit.input_edit_text, u8(text))
-					end
-				
-					if imgui.Button(u8('7'), imgui.ImVec2(imgui.GetMiddleButtonX(3), 25 * settings.general.custom_dpi)) then
-						local text = u8:decode(ffi.string(MODULE.SmiEdit.input_edit_text)) .. '7'
-						imgui.StrCopy(MODULE.SmiEdit.input_edit_text, u8(text))
-					end
-					imgui.SameLine()
-				
-					if imgui.Button(u8('8'), imgui.ImVec2(imgui.GetMiddleButtonX(3), 25 * settings.general.custom_dpi)) then
-						local text = u8:decode(ffi.string(MODULE.SmiEdit.input_edit_text)) .. '8'
-						imgui.StrCopy(MODULE.SmiEdit.input_edit_text, u8(text))
-					end
-					imgui.SameLine()
-				
-					if imgui.Button(u8('9'), imgui.ImVec2(imgui.GetMiddleButtonX(3), 25 * settings.general.custom_dpi)) then
-						local text = u8:decode(ffi.string(MODULE.SmiEdit.input_edit_text)) .. '9'
-						imgui.StrCopy(MODULE.SmiEdit.input_edit_text, u8(text))
-					end
-				
-					if imgui.Button(u8('.'), imgui.ImVec2(imgui.GetMiddleButtonX(3), 25 * settings.general.custom_dpi)) then
-						local text = u8:decode(ffi.string(MODULE.SmiEdit.input_edit_text)) .. '.'
-						imgui.StrCopy(MODULE.SmiEdit.input_edit_text, u8(text))
-					end
-					imgui.SameLine()
-				
-					if imgui.Button(u8('0'), imgui.ImVec2(imgui.GetMiddleButtonX(3), 25 * settings.general.custom_dpi)) then
-						local text = u8:decode(ffi.string(MODULE.SmiEdit.input_edit_text)) .. '0'
-						imgui.StrCopy(MODULE.SmiEdit.input_edit_text, u8(text))
-					end
-					imgui.SameLine()
-				
-					if imgui.Button(u8('$'), imgui.ImVec2(imgui.GetMiddleButtonX(3), 25 * settings.general.custom_dpi)) then
-						local text = u8:decode(ffi.string(MODULE.SmiEdit.input_edit_text)) .. '$'
-						imgui.StrCopy(MODULE.SmiEdit.input_edit_text, u8(text))
-					end
-				
-					if imgui.Button(u8(' с гравировкой +'), imgui.ImVec2(imgui.GetMiddleButtonX(1), 25 * settings.general.custom_dpi)) then
-						local text = u8:decode(ffi.string(MODULE.SmiEdit.input_edit_text)) .. ' с гравировкой +'
-						imgui.StrCopy(MODULE.SmiEdit.input_edit_text, u8(text))
-					end
-
 					imgui.EndChild()
 				end
-				imgui.Separator()
+				if gi < #smi_groups then imgui.SameLine() end
 			end
+
+			imgui.Separator()
 			if imgui.Button(fa.CIRCLE_ARROW_RIGHT .. u8" Опубликовать", imgui.ImVec2(imgui.GetMiddleButtonX(3), 25 * settings.general.custom_dpi)) then
 				send_ad()
 			end
@@ -10581,7 +10665,7 @@ if isMode('gov') then
 			else
 				if imgui.Button(u8'Обновить список заключённых', imgui.ImVec2(450 * settings.general.custom_dpi, 25 * settings.general.custom_dpi)) then
 					MODULE.Zeks.Window[0] = false
-					sampAddChatMessage('[Arizona Helper] {ffffff}Вы можете включить авто-обновление списка /zeks в /helper - Функции ' .. settings.player_info.fraction_tag .. '!', message_color)
+					sampAddChatMessage('[Arizona Helper] {ffffff}Вы можете включить авто-обновление списка /zeks в /helper - Функции ' .. modules.player.data.fraction_tag .. '!', message_color)
 					sampProcessChatInput('/zeks')
 				end
 				imgui.Separator()
@@ -10628,27 +10712,6 @@ if isMode('gov') then
 		end
 	)
 end
-if (settings.player_info.fraction_rank_number >= 9) then
-	imgui.OnFrame(
-		function() return MODULE.GiveRank.Window[0] end,
-		function(player)
-			imgui.SetNextWindowPos(imgui.ImVec2(sizeX / 2, sizeY / 2), imgui.Cond.Always, imgui.ImVec2(0.5, 0.5))
-			imgui.Begin(getHelperIcon().." Arizona Helper " .. getHelperIcon() .. "##rank", MODULE.GiveRank.Window, imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoResize + imgui.WindowFlags.NoScrollbar + imgui.WindowFlags.AlwaysAutoResize)
-			change_dpi()
-			imgui.CenterText(u8'Выберите ранг для '.. u8(sampGetPlayerNickname(player_id)) .. ':')
-			imgui.PushItemWidth(250 * settings.general.custom_dpi)
-			imgui.SliderInt('', MODULE.GiveRank.number, 1, (settings.player_info.fraction_rank_number == 9) and 8 or 9) -- зам не может дать 9 ранг
-			imgui.Separator()
-			local label = ' Выдать ранг' .. ((hotkey_no_errors and settings.general.bind_action) and ('[' .. getNameKeysFrom(settings.general.bind_action) .. ']') or '')
-			if imgui.Button(fa.USER .. u8(label), imgui.ImVec2(imgui.GetMiddleButtonX(1), 0)) then
-				give_rank()
-				MODULE.GiveRank.Window[0] = false
-			end
-			imgui.End()
-		end
-	)
-
-end
 ----------------------------------------- FAST MENU GUI -------------------------------------------
 imgui.OnFrame(
     function() return MODULE.FastMenu.Window[0] end,
@@ -10658,7 +10721,7 @@ imgui.OnFrame(
 		change_dpi()
 		local check = false
 		for _, command in ipairs(modules.commands.data.commands.my) do
-			if command.enable and command.arg == '{arg_id}' and command.in_fastmenu then
+			if command.enable and command.arg == '{id}' and command.in_fastmenu then
 				if imgui.Button(u8(command.description), imgui.ImVec2(290 * settings.general.custom_dpi, 30 * settings.general.custom_dpi)) then
 					sampProcessChatInput("/" .. command.cmd .. " " .. player_id)
 					MODULE.FastMenu.Window[0] = false
@@ -10667,7 +10730,7 @@ imgui.OnFrame(
 			end
 		end
 		if not check then
-			sampAddChatMessage('[Arizona Helper] {ffffff}Настройте FastMenu в /helper - Команды и RP отыгровки - FastMenu', message_color)
+			sampAddChatMessage('[Arizona Helper] {ffffff}Настройте FastMenu в /helper - Команды и RP отыгровки - Фаст Меню - FastMenu', message_color)
 			MODULE.FastMenu.Window[0] = false
 		end
 		imgui.End()
@@ -10679,7 +10742,7 @@ imgui.OnFrame(
 		imgui.SetNextWindowPos(imgui.ImVec2(settings.windows_pos.mobile_fastmenu_button.x, settings.windows_pos.mobile_fastmenu_button.y), imgui.Cond.FirstUseEver)
 		imgui.Begin(fa.BUILDING_SHIELD .." Arizona Helper##fast_menu_button", MODULE.FastMenuButton.Window, imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoResize + imgui.WindowFlags.NoTitleBar + imgui.WindowFlags.NoBackground + imgui.WindowFlags.NoScrollbar)
 		change_dpi()
-		if imgui.Button(fa.IMAGE_PORTRAIT..u8' Взаимодействие ') then
+		if imgui.Button(fa.IMAGE_PORTRAIT .. u8' Взаимодействие ') then
 			local players = get_players()
 			if #players == 1 then
 				show_fast_menu(players[1])
@@ -10727,7 +10790,7 @@ imgui.OnFrame(
 		change_dpi()
 		local check = false
 		for _, command in ipairs(modules.commands.data.commands_manage.my) do
-			if command.enable and command.arg == '{arg_id}' and command.in_fastmenu then
+			if command.enable and command.arg == '{id}' and command.in_fastmenu then
 				if imgui.Button(u8(command.description), imgui.ImVec2(290 * settings.general.custom_dpi, 30 * settings.general.custom_dpi)) then
 					sampProcessChatInput("/" .. command.cmd .. " " .. player_id)
 					MODULE.LeaderFastMenu.Window[0] = false
@@ -10736,7 +10799,7 @@ imgui.OnFrame(
 			end
 		end
 		if IS_MOBILE and not check then
-			sampAddChatMessage('[Arizona Helper] {ffffff}Настройте Leader FastMenu в /helper - Команды и RP отыгровки - FastMenu', message_color)
+			sampAddChatMessage('[Arizona Helper] {ffffff}Настройте Leader FastMenu в /helper - Команды и RP отыгровки - Фаст Меню - Leader FastMenu', message_color)
 			MODULE.FastMenu.Window[0] = false
 		elseif not IS_MOBILE then
 			if imgui.Button(u8"Выдать выговор",imgui.ImVec2(290 * settings.general.custom_dpi, 30 * settings.general.custom_dpi)) then
@@ -10754,17 +10817,17 @@ imgui.OnFrame(
     end
 )
 ----------------------------------------- PIEMENU GUI -------------------------------------------
-function pieTextFormat(item)
+function iconTextFormat(item)
     if item.icon and item.icon ~= '' and fa[item.icon] then
         return fa[item.icon] .. ' ' .. u8(item.name)
     end
     return u8(item.name)
 end
 function drawPieSub(v)
-    if pie.BeginPieMenu(pieTextFormat(v)) then
+    if pie.BeginPieMenu(iconTextFormat(v)) then
         for _, item in ipairs(v.next) do
             if item.next == nil then
-                if pie.PieMenuItem(pieTextFormat(item)) then
+                if pie.PieMenuItem(iconTextFormat(item)) then
                     sampProcessChatInput(item.action)
                 end
             elseif type(item.next) == 'table' then
@@ -10793,12 +10856,12 @@ imgui.OnFrame(
 		end
 		if pie.BeginPiePopup('PieMenu', 2) then
 			if not IS_MOBILE then player.HideCursor = false end
-			if #modules.piemenu.data.my == 0 then
-				sampAddChatMessage('[Arizona Helper] {ffffff}Настройте или отключите PieMenu в /helper - Команды и RP отыгровки - FastMenu', message_color)
+			if #modules.piemenu.data == 0 then
+				sampAddChatMessage('[Arizona Helper] {ffffff}Настройте или отключите PieMenu в /helper - Команды и RP отыгровки - Фаст Меню - PieMenu', message_color)
 			end
-			for _, item in ipairs(modules.piemenu.data.my) do
+			for _, item in ipairs(modules.piemenu.data) do
 				if item.next == nil then
-					if pie.PieMenuItem(pieTextFormat(item)) then
+					if pie.PieMenuItem(iconTextFormat(item)) then
 						sampProcessChatInput(item.action)
 					end
 				else
@@ -10820,7 +10883,7 @@ imgui.OnFrame(
     function() return MODULE.Update.Window[0] end,
     function(player)
 		imgui.SetNextWindowPos(imgui.ImVec2(sizeX / 2, sizeY / 2), imgui.Cond.Always, imgui.ImVec2(0.5, 0.5))
-		imgui.Begin(fa.CIRCLE_INFO .. u8" Доступно обновление хелпера ".. fa.CIRCLE_INFO .. "##update_window", _, imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoResize + imgui.WindowFlags.AlwaysAutoResize )
+		imgui.Begin(fa.CIRCLE_INFO .. u8" Доступно обновление хелпера ".. fa.CIRCLE_INFO .. "##update_window", _, imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoScrollbar + imgui.WindowFlags.NoResize + imgui.WindowFlags.AlwaysAutoResize )
 		if not IS_MOBILE then change_dpi() end
 		imgui.CenterText(u8("Список изменений в новой версии:"))
 		imgui.Text(u8(MODULE.Update.info))
@@ -10969,7 +11032,7 @@ imgui.OnFrame(
 		imgui.Begin(getHelperIcon() .. " Arizona Helper " .. getHelperIcon() .. "##MODULE.CommandStop.Window", _, imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoResize + imgui.WindowFlags.NoScrollbar + imgui.WindowFlags.AlwaysAutoResize)
 		change_dpi()
 		if IS_MOBILE and MODULE.Binder.state.isActive then
-			if imgui.Button(fa.CIRCLE_STOP..u8' Остановить отыгровку ') then
+			if imgui.Button(fa.CIRCLE_STOP..u8' Остановить отыгровку') then
 				MODULE.Binder.state.isStop = true 
 				MODULE.CommandStop.Window[0] = false
 			end
@@ -11005,57 +11068,6 @@ imgui.OnFrame(
     end
 )
 ---------------------------------- GUI ITEMS -----------------------------
-function imgui.ToggleButton(str_id, bool)
-    local rBool = false
-
-    if LastActiveTime == nil then
-        LastActiveTime = {}
-    end
-    if LastActive == nil then
-        LastActive = {}
-    end
-
-    local function ImSaturate(f)
-        return f < 0.0 and 0.0 or (f > 1.0 and 1.0 or f)
-    end
-
-    local p = imgui.GetCursorScreenPos()
-    local dl = imgui.GetWindowDrawList()
-
-    local height = imgui.GetTextLineHeightWithSpacing()
-    local width = height * 1.75
-    local radius = height * 0.50
-    local ANIM_SPEED = 0.25
-    local butPos = imgui.GetCursorPos()
-
-    if imgui.InvisibleButton(str_id, imgui.ImVec2(width, height)) then
-        bool[0] = not bool[0]
-        rBool = true
-        LastActiveTime[tostring(str_id)] = os.clock()
-        LastActive[tostring(str_id)] = true
-    end
-
-    imgui.SetCursorPos(imgui.ImVec2(butPos.x + width + 8, butPos.y + 2.5))
-    imgui.Text( str_id:gsub('##.+', '') )
-
-    local t = bool[0] and 1.0 or 0.0
-
-    if LastActive[tostring(str_id)] then
-        local time = os.clock() - LastActiveTime[tostring(str_id)]
-        if time <= ANIM_SPEED then
-            local t_anim = ImSaturate(time / ANIM_SPEED)
-            t = bool[0] and t_anim or 1.0 - t_anim
-        else
-            LastActive[tostring(str_id)] = false
-        end
-    end
-
-	local toggle_bg = (settings.general.helper_theme ~= 2) and imgui.GetStyle().Colors[imgui.Col.FrameBg] or imgui.ImVec4(0.85, 0.85, 0.85, 1.0)
-    local col_circle = bool[0] and imgui.ColorConvertFloat4ToU32(imgui.ImVec4(imgui.GetStyle().Colors[imgui.Col.ButtonActive])) or imgui.ColorConvertFloat4ToU32(imgui.ImVec4(imgui.GetStyle().Colors[imgui.Col.TextDisabled]))
-	dl:AddRectFilled(p, imgui.ImVec2(p.x + width, p.y + height), imgui.ColorConvertFloat4ToU32(toggle_bg), height * 0.6)
-    dl:AddCircleFilled(imgui.ImVec2(p.x + radius + t * (width - radius * 2.0), p.y + radius), radius - 1.5, col_circle)
-    return rBool
-end
 function imgui.TextQuestion(text)
     imgui.SameLine()
     imgui.TextDisabled('(?)')
@@ -11198,7 +11210,7 @@ function imgui.GetMiddleButtonX(count)
     return count == 1 and width or width/count - ((space * (count-1)) / count)
 end
 function safery_disable_cursor(gui)
-	if not IS_MOBILE and not sampIsChatInputActive() and isSampAvailable() and not sampIsCursorActive() and not sampIsDialogActive() and not isSampfuncsConsoleActive() then gui.HideCursor = true else gui.HideCursor = false end
+	if not IS_MOBILE and not sampIsCursorActive() then gui.HideCursor = true else gui.HideCursor = false end
 end
 function apply_dark_theme()
 	imgui.SwitchContext()
@@ -11518,6 +11530,28 @@ function getUserIcon()
 	}
 	return USER_ICONS[settings.general.fraction_mode] or fa.USER
 end
+function insert_to_cursor(insert_text, buffer)
+    local current = ffi.string(buffer)
+    local start
+    local finish
+    if MODULE.INPUT.USER_MOVED_CURSOR then
+        start = MODULE.INPUT.SELECTION_START
+        finish = MODULE.INPUT.SELECTION_END
+		sampAddChatMessage('[Arizona Helper] {ffffff}Курсор для вставки установлен в конец строчки!', message_color)
+    else
+        start = #current
+        finish = #current
+    end
+    local before = current:sub(1, start)
+    local after = current:sub(finish + 1)
+    local new_text = before .. insert_text .. after
+    imgui.StrCopy(buffer, new_text)
+    local new_cursor = start + #insert_text
+    MODULE.INPUT.CURSOR_POS = new_cursor
+    MODULE.INPUT.SELECTION_START = new_cursor
+    MODULE.INPUT.SELECTION_END = new_cursor
+    MODULE.INPUT.USER_MOVED_CURSOR = false
+end
 -------------------------------------------- Terminate ------------------------------------------
 function onScriptTerminate(script, game_quit)
     if script == thisScript() and not game_quit and not reload_script then
@@ -11526,8 +11560,6 @@ function onScriptTerminate(script, game_quit)
 		sampAddChatMessage('[Arizona Helper] {ffffff}Произошла неизвестная ошибка, хелпер приостановил свою работу!', message_color)
 		if not IS_MOBILE then 
 			sampAddChatMessage('[Arizona Helper] {ffffff}Используйте ' .. message_color_hex .. 'CTRL {ffffff}+ ' .. message_color_hex .. 'R {ffffff}чтобы перезапустить хелпер.', message_color)
-
-
 		end
     end
 end

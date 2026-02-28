@@ -3,6 +3,6 @@
   "update_url": "https://github.com/MTGMODS/arizona-helper/raw/refs/heads/main/Arizona%20Helper.lua",
   "update_info": "- Предрелизное обновление, добавлено все что было в спойлерах",
 
-  "vip_current_version": "BETA 12.9.9.9 VIP",
-  "vip_update_info": "- Система биндера изменена, рекомендую сделать сброс настроек!\n- Многие фиксы багов, разные оптимизации, и новые баги :)"
+  "vip_current_version": "1.0 VIP",
+  "vip_update_info": "- Ну вроде релиз стабильной версии"
 }

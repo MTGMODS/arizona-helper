@@ -1189,7 +1189,7 @@ MODULE.Binder.tags = {
         category = "Игрок",
 		mode = 'all',
         func = function()
-            return modules.player.data.nick
+            return modules.player.data.nick:gsub('%[%d+%]', '')
         end
     },
 	{
@@ -5145,8 +5145,11 @@ function sampev.onServerMessage(color, text)
 			end
 		end
 		if settings.mj.auto_time then
-			if text:find("^ " .. MODULE.Binder.tag.my_nick() .. ' обыскивает (.+)') or text:find("^" .. MODULE.Binder.tag.my_nick() .. ' проверяет документы у (.+)') or text:find("^%[Розыск%] (.+) Обвинитель%: " .. MODULE.Binder.tag.my_nick()) then
-				lua_thread.create(function() wait(500) sampSendChat('/time') end)
+			local nick = MODULE.Binder.tag.my_nick():gsub('%[.+%]', '')
+			if text:find("^ " .. nick .. ' обыскивает (.+)') 
+			or text:find("^" .. nick .. ' проверяет документы у (.+)') 
+			or text:find("^%[Розыск%] (.+) Обвинитель%: " .. nick) then
+				sampSendChat('/time')
 			end
 		end
 	end

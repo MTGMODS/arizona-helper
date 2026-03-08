@@ -3,6 +3,6 @@
   "update_url": "https://github.com/MTGMODS/arizona-helper/raw/refs/heads/main/Arizona%20Helper.lua",
   "update_info": "- Ну вроде релиз стабильной версии",
 
-  "vip_current_version": "1.1 VIP",
-  "vip_update_info": "- Ну вроде релиз стабильной версии"
+  "vip_current_version": "1.3 VIP",
+  "vip_update_info": "- Ну вроде релиз стабильной версии\n- Улучшения для СМИ\n- Добавлен доклад патруля в МО/ТСР\n- Биндер автоматом подставляет теги если вы не указали"
 }

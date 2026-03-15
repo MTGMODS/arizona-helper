@@ -9798,7 +9798,7 @@ if isMode('prison') then
 						if imgui.CollapsingHeader(u8(chapter.name)) then
 							for index, item in ipairs(chapter.item) do
 								if item.text and item.text:rupper():find(input_sum_decoded:rupper(), 1, true) or input_sum_decoded == '' then
-									local popup_id = fa.TRIANGLE_EXCLAMATION .. u8' Перепроверьте данные перед повышением срока ' .. fa.TRIANGLE_EXCLAMATION .. '##' .. index
+									local popup_id = fa.TRIANGLE_EXCLAMATION .. u8' Перепроверьте данные перед повышением срока ' .. fa.TRIANGLE_EXCLAMATION .. '##' .. chapter.name .. '_' .. index
 									imgui.GetStyle().ButtonTextAlign = imgui.ImVec2(0.0, 0.5)
 									imgui.PushStyleColor(imgui.Col.ButtonHovered, imgui.ImVec4(1.00, 0.00, 0.00, 0.65))
 									if imgui.Button(u8(split_text_into_lines(item.text, 85))..'##' .. index, imgui.ImVec2(imgui.GetMiddleButtonX(1), (25 * count_lines_in_text(item.text, 85)) * settings.general.custom_dpi)) then
@@ -10050,7 +10050,7 @@ if isMode('police') or isMode('fbi') then
 						if imgui.CollapsingHeader(u8(chapter.name)) then
 							for index, item in ipairs(chapter.item) do
 								if item.text and item.text:rupper():find(input_sum_decoded:rupper(), 1, true) or input_sum_decoded == '' then
-									local popup_id = fa.TRIANGLE_EXCLAMATION .. u8' Перепроверьте данные перед выдачей розыска ' .. fa.TRIANGLE_EXCLAMATION .. '##' .. index
+									local popup_id = fa.TRIANGLE_EXCLAMATION .. u8' Перепроверьте данные перед выдачей розыска ' .. fa.TRIANGLE_EXCLAMATION .. '##' .. chapter.name .. '_' .. index
 									imgui.GetStyle().ButtonTextAlign = imgui.ImVec2(0.0, 0.5)
 									imgui.PushStyleColor(imgui.Col.ButtonHovered, imgui.ImVec4(1.00, 0.00, 0.00, 0.65))
 									if imgui.Button("> " .. u8(split_text_into_lines(item.text, 85))..'##' .. index, imgui.ImVec2(imgui.GetMiddleButtonX(1), (25 * count_lines_in_text(item.text, 85)) * settings.general.custom_dpi)) then
@@ -10120,7 +10120,7 @@ if isMode('police') or isMode('fbi') then
 						if imgui.CollapsingHeader(u8(chapter.name)) then
 							for index, item in ipairs(chapter.item) do
 								if item.text and item.text:rupper():find(input_tsm_decoded:rupper(), 1, true) or input_tsm_decoded == '' then
-									local popup_id = fa.TRIANGLE_EXCLAMATION .. u8' Перепроверьте данные перед выдачей штрафа ' .. fa.TRIANGLE_EXCLAMATION .. '##' .. index
+									local popup_id = fa.TRIANGLE_EXCLAMATION .. u8' Перепроверьте данные перед выдачей штрафа ' .. fa.TRIANGLE_EXCLAMATION .. '##' .. chapter.name .. '_' .. index
 									imgui.GetStyle().ButtonTextAlign = imgui.ImVec2(0.0, 0.5)
 									imgui.PushStyleColor(imgui.Col.ButtonHovered, imgui.ImVec4(1.00, 0.00, 0.00, 0.65))
 									if imgui.Button(u8(split_text_into_lines(item.text,85))..'##' .. index, imgui.ImVec2( imgui.GetMiddleButtonX(1), (25 * count_lines_in_text(item.text, 85)) * settings.general.custom_dpi)) then

@@ -10394,7 +10394,7 @@ if isMode('smi') then
 			end
 			imgui.Separator()
 			local window_size = imgui.GetWindowSize()
-			local size_item_width = (settings.smi.ads_history and 105 or 75) + (settings.smi.ai_generate.enable and 30 or 0)
+			local size_item_width = (settings.smi.ads_history and 105 or 75) + ((settings.smi.ai_generate and settings.smi.ai_generate.enable) and 30 or 0)
 			imgui.PushItemWidth(window_size.x - size_item_width * settings.general.custom_dpi)
 			imgui.InputTextWithHint(
 				"##smi_edit_ad",

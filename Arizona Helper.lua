@@ -10413,21 +10413,6 @@ if isMode('smi') then
 			if imgui.Button(fa.TRASH_CAN, imgui.ImVec2(25 * settings.general.custom_dpi, 25 * settings.general.custom_dpi)) then
 				imgui.StrCopy(MODULE.SmiEdit.input_edit_text, '')
 			end
-			if settings.smi.ai_generate.enable then
-				imgui.SameLine()
-				if imgui.Button(fa.ROBOT, imgui.ImVec2(26 * settings.general.custom_dpi, 25 * settings.general.custom_dpi)) then
-					if not MODULE.SmiEdit.is_generate_ad then
-						lua_thread.create(function()
-							pcall(AiEdit, MODULE.SmiEdit.ad_message)
-						end)
-					else
-						sampAddChatMessage('[Arizona Helper] {ffffff}Генерация уже запущена, дождитесь завершения!', message_color)
-					end
-				end
-				if imgui.IsItemHovered() then
-					imgui.SetTooltip(u8'AI генерация')
-				end
-			end
 			if settings.smi.ads_history then
 				imgui.SameLine()
 				if imgui.Button(fa.CLOCK_ROTATE_LEFT, imgui.ImVec2(25 * settings.general.custom_dpi, 25 * settings.general.custom_dpi)) then

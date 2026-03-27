@@ -7913,7 +7913,7 @@ imgui.OnFrame(
 							else
 								settings.general.custom_dpi = new_dpi
 								save_settings()
-								sampAddChatMessage('[Arizona Helper] {ffffff}Если интерфейс будет слишком ' .. text .. ', то используйте команду ' .. message_color_hex .. '/fixsize', message_color)
+								sampAddChatMessage('[Arizona Helper] {ffffff}Если интерфейс будет слишком ' .. tsize_text .. ', то используйте команду ' .. message_color_hex .. '/fixsize', message_color)
 								sampAddChatMessage('[Arizona Helper] {ffffff}Перезагрузка скрипта для изменения размера интерфейса...', message_color)
 								reload_script = true
 								thisScript():reload()

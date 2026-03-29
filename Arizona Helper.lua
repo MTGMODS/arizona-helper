@@ -5870,21 +5870,21 @@ function sampev.onShowDialog(dialogid, style, title, button1, button2, text)
 				sampSendDialogResponse(dialogid, 1, 0, 0)
 				sampAddChatMessage('[Arizona Helper] {ffffff}На данный момент нету обьявлений для редактирования!', message_color)
 				return false
-			else
-				local index = -1
-				local finded = false
-				for line in text:gmatch('[^\n]+') do
-					if line:find('%[%d+%]') and not line:find('В редакции') then
-						sampSendDialogResponse(dialogid, 1, index, 0)
-						finded = true
-						break
-					else
-						index = index + 1
-					end
-				end
-				if finded then
-					return false
-				end
+			-- else
+			-- 	local index = -1
+			-- 	local finded = false
+			-- 	for line in text:gmatch('[^\n]+') do
+			-- 		if line:find('%[%d+%]') and not line:find('В редакции') then
+			-- 			sampSendDialogResponse(dialogid, 1, index, 0)
+			-- 			finded = true
+			-- 			break
+			-- 		else
+			-- 			index = index + 1
+			-- 		end
+			-- 	end
+			-- 	if finded then
+			-- 		return false
+			-- 	end
 			end
 		end 
 		if title:find('Операции с об.явлением') and button1:find('Изменить') then -- rodina
@@ -6740,12 +6740,12 @@ imgui.OnFrame(
 							change_dpi()
 							imgui.CenterText(u8'Свяжитесь с MTG MODS:')
 							if imgui.Button(u8('Telegram'), imgui.ImVec2(100 * settings.general.custom_dpi, 25 * settings.general.custom_dpi)) then
-								openLink('https://t.me/MTGMODS')
+								openLink('https://t.me/mtgmods/60')
 								imgui.CloseCurrentPopup()
 							end
 							imgui.SameLine()
 							if imgui.Button(u8('Discord'), imgui.ImVec2(100 * settings.general.custom_dpi, 25 * settings.general.custom_dpi)) then
-								openLink('https://discordapp.com/users/514135796685602827')
+								openLink('https://discord.gg/qBPEYjfNhv')
 								imgui.CloseCurrentPopup()
 							end
 							imgui.End()
@@ -7772,7 +7772,7 @@ imgui.OnFrame(
 					imgui.Text('/')
 					imgui.SameLine()
 					if imgui.SmallButton(u8'Telegram') then
-						openLink('https://t.me/mtgmods')
+						openLink('https://t.me/mtgmods/60')
 					end
 					if imgui.IsItemHovered() then
 						imgui.SetTooltip(u8'Перейти в Telegram канал MTG MODS')

@@ -3,7 +3,7 @@
 script_name("Arizona&Rodina Helper")
 script_description('Универсальный хелпер для игроков Arizona Online и Rodina Online')
 script_author("MTG MODS")
-script_version("1.5 Free")
+script_version("1.6 Free")
 ----------------------------------------------- INIT ---------------------------------------------
 local worked_dir = getWorkingDirectory():gsub('\\','/')
 local IS_MOBILE = MONET_VERSION ~= nil
@@ -12,19 +12,21 @@ print('Версия: ' .. thisScript().version)
 print('Платформа: ' .. (IS_MOBILE and 'MOBILE' or 'PC'))
 print('Рабочая папка: ' .. worked_dir)
 ------------------------------------------ INIT CRASH INFO ---------------------------------------
-if not doesFileExist(worked_dir .. '/.Arizona Helper Error Handler.lua') then
+if not doesFileExist(worked_dir .. '/.Arizona Helper Errors Handler.lua') then
 	local helper_prefix = '/.Arizona Helper '
-	local file_path = worked_dir .. helper_prefix .. 'Error Handler.lua'
+	local file_path = worked_dir .. helper_prefix .. 'Errors Handler.lua'
 	local content = [[
+-- DONT SEND ME THIS FILE, THIS IS NOT AN ERROR, BUT A SCRIPT TO DISPLAY THE ERROR IN DIALOG
+-- НЕ ОТПРАВЛЯЙТЕ МНЕ ЭТОТ ФАЙЛ, ЭТО НЕ ОШИБКА, ЭТО СКРИПТ ДЛЯ ПОКАЗА ОШИБКИ ВАМ В ДИАЛОГЕ
 function onSystemMessage(msg, type, script)
 	if script and script.name == 'Arizona&Rodina Helper' and msg and ((msg:find('stack traceback')) or (type == 3 and not msg:find('Script died due to an error'))) then
 		local errorMessage = ('{ffffff}Произошла непредусмотренная ошибка в работе скрипта, из-за чего он был отключён!\n\n' ..
-		'Отправьте скриншот и log в {ff9900}тех.поддержку MTG MODS (Telegram/Discord/BlastHack){ffffff}.\n\n' ..
+		'Отправьте скриншот в {ff9900}тех.поддержку MTG MODS (Telegram/Discord/BlastHack){ffffff}.\n\n' ..
 		'Детали возникшей ошибки:\n{ff6666}' .. msg)
-		sampShowDialog(123123, '{009EFF}Arizona&Rodina Helper [' .. script.version .. ']', errorMessage, '{009EFF}Закрыть', '', 0)
+		sampShowDialog(123123, '{009EFF}Arizona&Rodina Helper [' .. script.version .. ']', errorMessage, 'Закрыть диалог', '', 0)
 	end
 end
-	]]
+    ]]
 	local file, errstr = io.open(file_path, 'w')
 	if (file) then
 		file:write(content)
@@ -33,6 +35,7 @@ end
 			os.execute('attrib +h "' .. file_path .. '"')
 		end
 		os.remove(worked_dir .. helper_prefix .. 'Crash Info.lua')
+		os.remove(worked_dir .. helper_prefix .. 'Error Handler.lua')
 		os.remove(worked_dir .. helper_prefix .. 'Crash Informer.lua')
 	else
 		print('Не удалось создать файл для обработки ошибок, ошибка: ', errstr)
@@ -49,6 +52,7 @@ local fa = require('fAwesome6_solid')
 local sampev = require('samp.events')
 local dkok, dkjson = pcall(require, "dkjson")
 local vkeys_no_errors, vkeys = pcall(require, 'vkeys')
+local requests_no_errors, requests = pcall(require, 'requests')
 local monet_no_errors, moon_monet = pcall(require, 'MoonMonet')
 local hotkey_no_errors, hotkey = pcall(require, 'mimgui_hotkeys')
 local pie_no_errors, pie = pcall(require, IS_MOBILE and 'imgui_piemenu' or 'mimgui_piemenu_mod')
@@ -75,7 +79,6 @@ local default_settings = {
 		piemenu = true,
 		mobile_fastmenu_button = true,
 		mobile_stop_button = true,
-		cruise_control = true,
 		auto_uninvite = false,
 		ping = true,
 		rp_guns = true,
@@ -112,11 +115,13 @@ local default_settings = {
 			enable = true,
 			auto_heal = false
 		},
+
 	},
 	smi = {
 		ads_buttons = true,
 		ads_history = true,
 		notify_new_ads = true,
+		auto_select_first_ad = false,
 	},
 	lc = {
 		price = {
@@ -409,7 +414,7 @@ local modules = {
 					{cmd = 'pas', description = 'Запрос документов',  text = 'Здравствуйте, управление {fraction_tag}, я {fraction_rank} {my_ru_nick}&/do Cлева на груди жетон полицейского, справа именная нашивка с именем.&/me достаёт своё удостоверение из кармана&/showbadge {id}&Прошу предъявить документ, удостоверяющий вашу личность.&/n @{get_nick({id})}, введите /showpass {my_id}', arg = '{id}', enable = true, waiting = '2', bind = "{}", in_fastmenu = true},
 					{cmd = 'ts', description = 'Выписать штраф',  text = '/do Планшет находиться в кармане формы.&/writeticket {id} {arg}&/me вносит изменения в базу штрафов&/todo Оплатите штраф*убирая планшет обратно в карман', arg = '{id} {arg}', enable = true, waiting = '2', bind = "{}"},
 					{cmd = 'find', description = 'Поиск игрока',  text = '/me достал{sex} свой КПК и зайдя в базу данных {fraction_tag} открыл{sex} дело гражданина N{id}&/me нажал{sex} на кнопку GPS отслеживания местоположения гражданина&/find {id}', arg = '{id}', enable = true, waiting = '2', bind = "{}"},
-					{cmd = 'pr', description = 'Погоня за преступником',  text = '/me достал{sex} свой КПК и зайдя в базу данных {fraction_tag} открыл{sex} дело преступника N{id}&/me нажал{sex} на кнопку GPS отслеживания местоположения гражданина&/pursuit {id}', arg = '{id}', enable = true, waiting = '2', bind = "{}"},
+					{cmd = 'prs', description = 'Погоня за преступником',  text = '/me достал{sex} свой КПК и зайдя в базу данных {fraction_tag} открыл{sex} дело преступника N{id}&/me нажал{sex} на кнопку GPS отслеживания местоположения гражданина&/pursuit {id}', arg = '{id}', enable = true, waiting = '2', bind = "{}"},
 					{cmd = 'su', description = 'Выдать розыск',  text = '/me достал{sex} свой КПК и открыл{sex} базу данных преступников&/me вносит изменения в базу данных преступников&/su {id} {number} {arg}&/z {id}&/todo Отлично, преступник в розыске*убирая КПК', arg = '{id} {number} {arg}', enable = true, waiting = '2', bind = "{}"},
 					{cmd = 'fsu', description = 'Запросить выдачу розыска',  text = '/do Рация на тактическом поясе.&/me достал{sex} рацию c пояса, и связавашись с диспетчером, запросил{sex} обьявление человека в розыск&/r {my_doklad_nick} на CONTROL.&/r Прошу обьявить в розыск {number} степени дело N{id}. Причина: {arg}', arg = '{id} {number} {arg}', enable = true, waiting = '2', bind = "{}"},
 					{cmd = 'givefsu', description = 'Выдача розыска по запросу',  text = '/r 10-4, обьявляю гражданина в розыск по запросу офицера {get_rp_nick({id})}!&/me достал{sex} свой КПК и открыл{sex} базу данных преступников&/me вносит изменения в базу данных преступников&/su {get_form_su} (по запросу офицера {get_rp_nick({id})})&/todo Отлично, розыск по запросу офицера {get_rp_nick({id})} выдан*убирая КПК', arg = '{id}', enable = true, waiting = '2', bind = "{}"},
@@ -435,7 +440,7 @@ local modules = {
 					{cmd = 'unmask', description = 'Снять балаклаву с игрока',  text = '/do Задержанный в балаклаве.&/me стягивает балаклаву с головы задеражнного&/unmask {id}', arg = '{id}', enable = true, waiting = '2', bind = "{}", in_fastmenu = true},
 					{cmd = 'arr', description = 'Арестовать (в участке)',  text = '/me включает свой бортовой компютер и вводит код доступа сотрудника&/me заходит в раздел оформления протоколов задержаний и указывает данные&/do Протокол задержания заполнен.&/me вызывает по рации дежурный наряд участка и передаёт им задержанного человека&/arrest', arg = '', enable = true, waiting = '2', bind = "{}", in_fastmenu = true},
 					{cmd = 'bribe', description = 'Получение взятки от игрока',  text = '/do Гражданин сейчас ведёт запись через аудио-видео устройства?&/n @{get_nick({id})}, отвечайте на РП, например /do Нет.&{pause}&/do Телефон в кармане.&/me достал{sex} телефон, открыл{sex} заметки, и что-то туда написал{sex}&/do В заметках телефона написан такой текст: {arg}$&/todo Что скажете?*показав телефон преступнику возле себя&{pause}&/bribe {id} {arg} 1', arg = '{id} {arg}', enable = true, waiting = '2', bind = "{}"},
-					{cmd = 'drugs', description = 'Провести Drugs Test',  text = '/do На тактическом поясе прикреплён подсумок.&/me открывает подсумок и достаёт из него набор Drugs Test&/me берёт из набора пробирку с этиловым спиром&/me засыпает найденное вещество в пробирку&/me достаёт из подсумка тест Имуно-Хром-10 и добавляет его в пробирку&/do В пробирке с этиловым спиртом находится неизвестное вещество и Имуно-Хром-10.&/me аккуратными движениями взбалтывает пробирку&/do От теста Имуно-Хром-10 содержимое пробирки изменило цвет.&/todo Да, это точно наркотики*увидев что содержимое пробирки изменило цвет&/me убирает пробирку обратно в подсумок и закрывает его', arg = '', enable = true, waiting = '2', bind = "{}"},
+					{cmd = 'drugs', description = 'Провести экспертизу укропа',  text = '/do На тактическом поясе прикреплён подсумок.&/me открывает подсумок и достаёт из него набор для экспертизы укропа&/me берёт из набора пробирку с этиловым спиром&/me засыпает найденное вещество в пробирку&/me достаёт из подсумка тест Имуно-Хром-10 и добавляет его в пробирку&/do В пробирке с этиловым спиртом находится неизвестное вещество и Имуно-Хром-10.&/me аккуратными движениями взбалтывает пробирку&/do От теста Имуно-Хром-10 содержимое пробирки изменило цвет.&/todo Да, это точно укроп*увидев что содержимое пробирки изменило цвет&/me убирает пробирку обратно в подсумок и закрывает его', arg = '', enable = true, waiting = '2', bind = "{}"},
 					{cmd = 'rbomb', description = 'Деактивировать бомбу',  text = '/do На тактическом поясе прикреплён сапёрный набор.&/me снимает с пояса сапёрный набор и кладет его на землю, затем открывает его&/do Открытый сапёрный набор находится на земле.&/me достаёт из сапёрного набора пакет с жидким азотом и кладет его на землю&/me достаёт из сапёрного набора отвёртку&/do Отвертка в руках, а пакет с жидким азотом на земле.&/do На корпусе бомбы находится 2 болтика.&/me откручивает болтики с бомбы и убирает их вместе с отвёрткой в сторону&/me аккуратным движением руки вскрывает крышку бомбы&/me внимательно осматривает бомбу&/do Внутри бомбы видна детонирующая часть.&/me достаёт из сапёрного набора кусачки&/do Кусачки в руках.&/me аккуратным движением кусочок разрезает красный провод бомбы&/do Таймер остановился, тиканье со стороны бомбы не слышно.&/me берёт в руки охлаждающий пакет с жидким азотом и кладёт его детонирующую часть бомбы&/removebomb&/do Бомба обезврежена.&/me убирает кусачки и отвёртку обратно в саперный набор и закрывает его', arg = '', enable = true, waiting = '2', bind = "{}"},
 					{cmd = 'delo', description = 'Расследование убийства',  text = '/do Сотрудник прибыл на место убийства.&/todo Такс, что же здесь произошло*осматривая место убийства&/me осматривает и  изучает все улики&{pause}&/me достаёт из подсумка бланк для расследования и ручку&/me заполняет бланк расследования записывая все изученные улики&{pause}&/me записывает в бланк точную дату и время убийства&{pause}&/do Найдено орудие убийства.&/me записывает в бланк орудие убийства&{pause}&/do Бланк расследования убийства полностью заполнен.&/todo Отлично, расследование окончено*убирая бланк в карман', arg = '', enable = true, waiting = '2', bind = "{}"},
 					{cmd = 'giveplate', description = 'Выдача разрешений на номера',  text = '/do Бланк и ручка в нагрудном кармане.&/me достаёт ручку и бланк из нагрудного кармана&/me заполняет бланк для выдачу разрешения на номерной знак&/do Бланк полностью заполнен.&/todo Вот ваше разрешение, берите*убирая ручку в нагрудный карман&/giveplate {id} {arg}', arg = '{id} {arg}', enable = true, waiting = '2', bind = "{}"},
@@ -443,8 +448,8 @@ local modules = {
 				},
 				fbi = {
 					{cmd = 'doc', description = 'Запросить документы (FBI)',  text = 'Здравствуйте, я {fraction_rank} {fraction_tag}&/do Cлева на груди спец-жетон ФБР.&/me указывает пальцем на свой спец-жетон на груди&Прошу предъявить документ, удостоверяющий вашу личность.&/n @{get_nick({id})}, введите /showpass {my_id} или /showbadge {my_id}', arg = '{id}', enable = true, waiting = '2', bind = "{}"},
-					{cmd = 'priton1', description = 'Обнаружен притон',  text = '/d ФБР - МЮ: В опасном районе найден наркопритон!&/d ФБР - МЮ: Желающие присоедениться к рейду - в гараж ЛСПД&/d ФБР - МЮ: Возьмите с собой оружие, бронижелет, и обязательно маску!', arg = '', enable = true, waiting = '2', bind = "{}"},
-					{cmd = 'priton2', description = 'Прибытие на притон',  text = '/d ФБР - МЮ: Мы прибыли на територию наркопритона! Я куратор спец-операции.&/d ФБР - МЮ: Оцепляйте територию, и никого не вступайте на територию наркопритона.&/d ФБР - МЮ: Кусты срезают только агенты, остальные защищают!', arg = '', enable = true, waiting = '2', bind = "{}"},
+					{cmd = 'priton1', description = 'Обнаружен притон',  text = '/d ФБР - МЮ: В опасном районе найден притон с укропом!&/d ФБР - МЮ: Желающие присоедениться к рейду - в гараж ЛСПД&/d ФБР - МЮ: Возьмите с собой оружие, бронижелет, и обязательно маску!', arg = '', enable = true, waiting = '2', bind = "{}"},
+					{cmd = 'priton2', description = 'Прибытие на притон',  text = '/d ФБР - МЮ: Мы прибыли на територию притона с укропом! Я куратор спец-операции.&/d ФБР - МЮ: Оцепляйте територию, и никого не вступайте на територию притона с укропом.&/d ФБР - МЮ: Кусты укропа срезают только агенты, остальные защищают!', arg = '', enable = true, waiting = '2', bind = "{}"},
 					{cmd = 'priton3', description = 'Конец притона',  text = '/d ФБР - МЮ: Спец-операция "Притон" окончена!&/d ФБР - МЮ: Всем спасибо за участие, можете быть свободны!&/d ФБР - МЮ: Не забудьте убрать ограждения с территории.', arg = '', enable = true, waiting = '2', bind = "{}"},
 					{cmd = 'gwarn', description = 'Выдать спец-выговор',  text = '/do КПК находиться на поясном держателе.&/me берёт в руки свой КПК и включает его&/me открыв базу данных {fraction_tag} переходит в раздел управление сотрудниками других организаций&/me открывает дело нужного сотрудника и вносит в него изменения&/do Изменения успешно сохранены.&/gwarn {id} {arg}&/me выходит с базы данных {fraction_tag} и выключив КПК убирает его на поясной держатель', arg = '{id} {arg}', enable = true, waiting = '2', bind = "{}"},
 					{cmd = 'ungwarn', description = 'Снять спец-выговор',  text = '/do КПК находиться на поясном держателе.&/me берёт в руки свой КПК и включает его&/me открыв базу данных {fraction_tag} переходит в раздел управление сотрудниками других организаций&/me открывает дело нужного сотрудника и вносит в него изменения&/do Изменения успешно сохранены.&/ungwarn {id}&/me выходит с базы данных {fraction_tag} и выключив КПК убирает его на поясной держатель', arg = '{id} {arg}', enable = true, waiting = '2', bind = "{}"},
@@ -475,7 +480,7 @@ local modules = {
 					{cmd = 'go', description = 'Позвать игрока за собой', text = 'Хорошо {get_ru_nick({id})}, следуйте за мной.', arg = '{id}', enable = true, waiting = '2', bind = "{}", in_fastmenu = true},
 					{cmd = 'hl', description = 'Обычное лечение игрока', text = '/me достаёт из своего мед.кейса нужное лекарство и передаёт его человеку напротив&/todo Принимайте это лекарство, оно вам поможет*улыбаясь&/heal {id} {get_price_heal}', arg = '{id}', enable = true, waiting = '2', bind = "{}", in_fastmenu = true},
 					{cmd = 'hla', description = 'Лечение охранника игрока',  text = '/me достаёт из своего мед.кейса лекарство и передаёт его человеку напротив&/todo Давайте своему охраннику это лекарство, оно ему поможет*улыбаясь&/healactor {id} {get_price_actorheal}', arg = '{id}', enable = true, waiting = '2', bind = "{}", in_fastmenu = true},
-					{cmd = 'hlb', description = 'Лечение игрока от наркозависимости',  text = '/me достаёт из своего мед.кейса таблетки от наркозависимости и передаёт их пациенту напротив&/todo Принимайте эти таблетки, и в скором времени Вы излечитесь от наркозависимости*улыбаясь&/healbad {id}', arg = '{id}', enable = true, waiting = '2', bind = "{}", in_fastmenu = true},	
+					{cmd = 'hlb', description = 'Лечение игрока от зависимости укропа',  text = '/me достаёт из своего мед.кейса таблетки от зависимости укропа и передаёт их пациенту напротив&/todo Принимайте эти таблетки, и в скором времени Вы излечитесь от зависимости укропа*улыбаясь&/healbad {id}', arg = '{id}', enable = true, waiting = '2', bind = "{}", in_fastmenu = true},	
 					{cmd = 'mt', description = 'Мед.оcмотр для военного билета',  text = 'Хорошо, сейчас я проведу вам мед.осмотр для получения военного ... &... билета по стану здоровья, но шанс на успех всего 1 процент!&/mticket {id} {get_price_mticket}', arg = '{id}', enable = true, waiting = '2', bind = "{}"},
 					{cmd = 'pilot', description = 'Мед.осмотр для пилотов',  text = 'Хорошо, сейчас я проведу вам мед.осмотр для пилотов.&/medcheck {id} {get_price_medosm}&{pause}&И так...&/me достаёт из мед.кейса стерильные перчатки и надевает их на руки&/do Перчатки на руках.&/todo Начнём мед.осмотр*улыбаясь.&Сейчас я проверю ваше горло, откройте рот и высуните язык.&/me достаёт из мед.кейса фонарик и включив его осматривает горло человека напротив&Хорошо, можете закрывать рот, сейчас я проверю ваши глаза.&/me проверяет реакцию человека на свет, посветив фонарик в глаза&/do Зрачки глаз обследуемого человека сузились.&/todo Отлично*выключая фонарик и убирая его в мед.кейс&Такс, сейчас я проверю ваше сердцебиение, поэтому приподнимите верхную одежду!&/me достаёт из мед.кейса стетоскоп и приложив его к груди человека проверяет сердцебиение&/do Сердцебиение в районе 65 ударов в минуту.&/todo С сердцебиением у вас все в порядке*убирая стетоскоп обратно в мед.кейс&/me снимает со своих рук использованные перчатки и выбрасывает их&Ну что-ж я могу вам сказать, со здоровьем у вас все в порядке, вы свободны!', arg = '{id}', enable = true, waiting = '2', bind = "{}", in_fastmenu = true},
 					{cmd = 'medin', description = 'Оформление игроку мед.страховки',  text = 'Для оформления мед.страховки Вам необходимо оплатить определнную cумму.&Стоимость зависит от срока действия будущей мед.страховки.&На 1 неделю - $4ОО.ООО. На 2 недели - $8ОО.ООО. На 3 недели - $1.2ОО.ООО.&И так, скажите, на какой срок Вам оформить мед.страховку?&{pause}&/me достаёт из своего мед.кейса пустой бланк мед.страховки, ручку и печать {fraction_tag}&/me открывает бланк мед.страховки и начинает его заполнять, затем ставит печать {fraction_tag}&/me полностью заполнив бланк мед.страховки убирает ручку и печать обратно в свой мед.кейс&/givemedinsurance {id}&/todo Вот ваша мед.страховка, берите*протягивая бланк с мед.страховкой человеку напротив себя', arg = '{id}', enable = true, waiting = '2', bind = "{}", in_fastmenu = true},
@@ -1035,7 +1040,7 @@ local MODULE = {
 		ad_repeat_count = 0,
 		last_ad_text = "",
 		vip_pause = false,
-		is_active_ad = false,
+		is_active_ad = false
 	},
 	-- AS
 	LicensePrice = {
@@ -2769,21 +2774,21 @@ function main()
 	
 	initialize_commands()
 
-	if hotkey_no_errors then loadHotkeys() else render_buttons() end
+	if hotkey_no_errors then loadHotkeys() end
+
+	if IS_MOBILE then render_buttons() end
 
 	welcome_message()
 	
 	check_update()
 
-	-- небольшое отслеживание для статистики, ничего личного (версия, сервер, мобайл/пк)
+	-- Сбор аналитики (версия скрипта, номер сервера, устройство мобайл/пк)
 	lua_thread.create(function()
         pcall(
-			require('requests').request,
-			"POST",
-            "https://mtgmods.duckdns.org/api/v1/launch",
+			requests.post, "https://api.mtgmods.com/v1/usage/launch",
             {
 				headers = {["Content-Type"] = "application/json"},
-                data = encode_table({server_id = getServerNumber(), device_type = IS_MOBILE and 1 or 0, version = thisScript().version}),
+                data = encode_table({server_id = tonumber(getServerNumber()), device_type = IS_MOBILE and 1 or 0, version = thisScript().version}),
                 timeout = 3
             }
         )
@@ -2821,7 +2826,7 @@ function main()
 						MODULE.Patrool.code = newCode[1]
 					end
 				end
-			end	
+			end
 		end
 
 		if isMode('fd') then
@@ -2845,45 +2850,42 @@ function main()
 			end
         end
 		
-		if (settings.general.cruise_control) then
-			if (MODULE.CruiseControl.wait_point) then
-				local bool, x, y, z = getTargetBlipCoordinates()
-				if bool then
-					MODULE.CruiseControl.point = {x = x, y = y, z = z}
-					MODULE.CruiseControl.wait_point = false
-					sampAddChatMessage('[Arizona Helper] {ffffff}Координаты места назначения успешно получены!', message_color)
-					while isGamePaused() or isPauseMenuActive() do wait(0) end
-					lua_thread.create(function()
-						sampSendChat('/me включает в своём тс адаптивный CRUISE CONTROL и настраивает GPS навигатор')
-						wait(1500)
-						sampSendChat('/do На экране загорается надпись "GPS маршрут успешно проложен, можно ехать".')
-						MODULE.CruiseControl.active = true 
-						wait(2000)
-						sampSendChat('/do ' .. MODULE.Binder.tag.my_ru_nick() .. ' держит руки на руле, CRUISE CONTROL поддерживает скорость тс.')
-					end)
+		if (MODULE.CruiseControl.wait_point) then
+			local bool, x, y, z = getTargetBlipCoordinates()
+			if bool then
+				MODULE.CruiseControl.point = {x = x, y = y, z = z}
+				MODULE.CruiseControl.wait_point = false
+				sampAddChatMessage('[Arizona Helper] {ffffff}Координаты места назначения успешно получены!', message_color)
+				while isGamePaused() or isPauseMenuActive() do wait(0) end
+				lua_thread.create(function()
+					sampSendChat('/me включает в своём тс адаптивный CRUISE CONTROL и настраивает GPS навигатор')
+					wait(1500)
+					sampSendChat('/do На экране загорается надпись "GPS маршрут успешно проложен, можно ехать".')
+					MODULE.CruiseControl.active = true
+					wait(2000)
+					sampSendChat('/do ' .. MODULE.Binder.tag.my_ru_nick() .. ' держит руки на руле, CRUISE CONTROL поддерживает скорость тс.')
+				end)
+			end
+		end
+		if (MODULE.CruiseControl.active) then
+			local function stop()
+				MODULE.CruiseControl.active = false
+				clearCharTasks(PLAYER_PED)
+				if isCharInAnyCar(PLAYER_PED) then
+					taskWarpCharIntoCarAsDriver(PLAYER_PED, storeCarCharIsInNoSave(PLAYER_PED))
 				end
 			end
-			if (MODULE.CruiseControl.active) then
-				local function stop()
-					MODULE.CruiseControl.active = false
-					clearCharTasks(PLAYER_PED)
-					if isCharInAnyCar(PLAYER_PED) then
-						taskWarpCharIntoCarAsDriver(PLAYER_PED, storeCarCharIsInNoSave(PLAYER_PED))
-					end
-				end
-				if not isCharInAnyCar(PLAYER_PED) then
-					sampAddChatMessage('[Arizona Helper] {ffffff}Вы должны находиться в транспортном средстве!', message_color)
-					stop()
-				elseif not (isCarEngineOn(storeCarCharIsInNoSave(PLAYER_PED))) then
-					sampAddChatMessage('[Arizona Helper] {ffffff}Двигатель вашего транспортного средства заглох!', message_color)
-					stop()
-				elseif locateCharInCar2d(PLAYER_PED, MODULE.CruiseControl.point.x, MODULE.CruiseControl.point.y, 15, 15, false) then
-					sampSendChat('/me приехав к пункту назначения отключает в тс адаптивный CRUISE CONTROL')
-					stop()
-				else
-					taskCarDriveToCoord(PLAYER_PED, storeCarCharIsInNoSave(PLAYER_PED), MODULE.CruiseControl.point.x, MODULE.CruiseControl.point.y, MODULE.CruiseControl.point.z, 28, 0, 0, 2)
-				end
-				
+			if not isCharInAnyCar(PLAYER_PED) then
+				sampAddChatMessage('[Arizona Helper] {ffffff}Вы должны находиться в транспортном средстве!', message_color)
+				stop()
+			elseif not (isCarEngineOn(storeCarCharIsInNoSave(PLAYER_PED))) then
+				sampAddChatMessage('[Arizona Helper] {ffffff}Двигатель вашего транспортного средства заглох!', message_color)
+				stop()
+			elseif locateCharInCar2d(PLAYER_PED, MODULE.CruiseControl.point.x, MODULE.CruiseControl.point.y, 15, 15, false) then
+				sampSendChat('/me приехав к пункту назначения отключает в тс адаптивный CRUISE CONTROL')
+				stop()
+			else
+				taskCarDriveToCoord(PLAYER_PED, storeCarCharIsInNoSave(PLAYER_PED), MODULE.CruiseControl.point.x, MODULE.CruiseControl.point.y, MODULE.CruiseControl.point.z, 28, 0, 0, 2)
 			end
 		end
 
@@ -3213,40 +3215,35 @@ function initialize_commands()
 		local server = tonumber(getServerNumber())
 		if server == 0 or server < 200 then
 			if not MODULE.Binder.state.isActive then
-				if settings.general.cruise_control then
-					if MODULE.CruiseControl.active then
-						MODULE.CruiseControl.active = false
-						if isCharInAnyCar(PLAYER_PED) then
-							taskWarpCharIntoCarAsDriver(PLAYER_PED, storeCarCharIsInNoSave(PLAYER_PED))
-						end
-						sampAddChatMessage('[Arizona Helper] {ffffff}Режим "CRUISE CONTROL" отключен!', message_color)
-					else
-						if not isCharInAnyCar(PLAYER_PED) then
-							sampAddChatMessage('[Arizona Helper] {ffffff}Вы должны находиться в транспортном средстве!', message_color)
-							return
-						end
-						local car = storeCarCharIsInNoSave(PLAYER_PED)
-						if not (isCarEngineOn(car)) then
-							sampAddChatMessage('[Arizona Helper] {ffffff}Заведите двигатель вашего транспортного средства!', message_color)
-							return
-						end
-						local driver = getDriverOfCar(car)
-						if driver ~= PLAYER_PED then
-							sampAddChatMessage('[Arizona Helper] {ffffff}Вы должны быть водителем транспортного средства!', message_color)
-							return
-						end
-						local bool, x, y, z = getTargetBlipCoordinates()
-						if bool then
-							sampAddChatMessage('[Arizona Helper] {ffffff}Удалите свою старую метку с карты!', message_color)
-							return
-						end
-						MODULE.CruiseControl.point = {x = 0, y = 0, z = 0}
-						MODULE.CruiseControl.wait_point = true
-						sampAddChatMessage('[Arizona Helper] {ffffff}Выберите пункт назнанения (поставьте метку на карте)', message_color)
+				if MODULE.CruiseControl.active then
+					MODULE.CruiseControl.active = false
+					if isCharInAnyCar(PLAYER_PED) then
+						taskWarpCharIntoCarAsDriver(PLAYER_PED, storeCarCharIsInNoSave(PLAYER_PED))
 					end
+					sampAddChatMessage('[Arizona Helper] {ffffff}Режим "CRUISE CONTROL" отключен!', message_color)
 				else
-					sampAddChatMessage('[Arizona Helper] {ffffff}Включите работу круиз контроля транспорта в /helper - Функции ' .. MODULE.Binder.tag.fraction_tag(), message_color)
-					play_sound()
+					if not isCharInAnyCar(PLAYER_PED) then
+						sampAddChatMessage('[Arizona Helper] {ffffff}Вы должны находиться в транспортном средстве!', message_color)
+						return
+					end
+					local car = storeCarCharIsInNoSave(PLAYER_PED)
+					if not (isCarEngineOn(car)) then
+						sampAddChatMessage('[Arizona Helper] {ffffff}Заведите двигатель вашего транспортного средства!', message_color)
+						return
+					end
+					local driver = getDriverOfCar(car)
+					if driver ~= PLAYER_PED then
+						sampAddChatMessage('[Arizona Helper] {ffffff}Вы должны быть водителем транспортного средства!', message_color)
+						return
+					end
+					local bool, x, y, z = getTargetBlipCoordinates()
+					if bool then
+						sampAddChatMessage('[Arizona Helper] {ffffff}Удалите свою старую метку с карты!', message_color)
+						return
+					end
+					MODULE.CruiseControl.point = {x = 0, y = 0, z = 0}
+					MODULE.CruiseControl.wait_point = true
+					sampAddChatMessage('[Arizona Helper] {ffffff}Выберите пункт назнанения (поставьте метку на карте)', message_color)
 				end
 			else
 				sampAddChatMessage('[Arizona Helper] {ffffff}Дождитесь завершения отыгровки предыдущей команды!', message_color)
@@ -3560,7 +3557,7 @@ function string.rupper(s)
     return output
 end
 function translate(name)
-	if name:match('%a+') then
+	if name and name:match('%a+') then
 		local translit_table = {
        		['ph'] = 'ф',['Ph'] = 'Ф',['Ch'] = 'Ч',['ch'] = 'ч',['Th'] = 'Т', ['liy'] = 'лий', 
 			['th'] = 'т',['Sh'] = 'Ш',['sh'] = 'ш',['Ae'] = 'Э',['ae'] = 'э', ['ame'] = 'ейм',
@@ -4216,8 +4213,9 @@ function get_area(x, y, z)
 end
 function send_no_vip_msg()
 	for i = 1, 10, 1 do
-		sampAddChatMessage('[Arizona Helper] {ffffff}Этот функционал недоступен в FREE версии! Приобретите подписку MTGVIP!', message_color)
+		sampAddChatMessage('[Arizona Helper] {ffffff}Этот функционал недоступен/ограничен в FREE версии! Приобретите подписку MTGVIP!', message_color)
 	end
+	sampShowDialog(123123, '{009EFF}Arizona&Rodina Helper [' .. thisScript().version .. ']', '{ffffff}Этот функционал недоступен/ограничен в FREE версии!\nПриобретите подписку MTGVIP для полного доступа!', 'Закрыть диалог', '', 0)
 end
 function split_text_into_lines(text, max_length)
 	local lines = {}
@@ -4710,6 +4708,14 @@ function import_data_from_old_helpers()
 end
 function delete_old_helpers()
 	local path = worked_dir
+	local current_path = thisScript().path:gsub('\\','/')
+    local correct_path = path .. "/Arizona Helper.lua"
+	if current_path ~= correct_path then
+		sampAddChatMessage('[Arizona Helper] {ffffff}Исправляю название файла хелпера для корректной работы обновлений...', message_color)
+        if doesFileExist(correct_path) then os.remove(correct_path) end
+        os.rename(current_path, correct_path)
+    end
+
 	local helpers = {"Justice", "Hospital", "SMI", "AS", "FD", "GOV", "Government", "Mafia", "Prison"}
 	for index, name in ipairs(helpers) do
 		if doesFileExist(path .. "/" .. name .. " Helper.lua") then
@@ -4718,6 +4724,12 @@ function delete_old_helpers()
 			os.remove(path .. "/" .. name .. "_Helper.lua")
 		end
 	end
+	for _, name in ipairs(helpers) do
+        local file1 = path .. "/" .. name .. " Helper.lua"
+        local file2 = path .. "/" .. name .. "_Helper.lua"
+        if doesFileExist(file1) then os.remove(file1) end
+        if doesFileExist(file2) then os.remove(file2) end
+    end
 end
 function delete_helpers_data(checker)
 	os.remove(config_dir .. "/Settings.json")
@@ -5181,8 +5193,8 @@ function sampev.onServerMessage(color, text)
 			return false
 		end
 		if settings.mh.heal_in_chat.enable and not MODULE.HealChat.bool then	
-			if text:find('^(.+)%[(%d+)%] говорит:{B7AFAF} (.+)') then
-				local nick, id, message = text:match('^(.+)%[(%d+)%] говорит:{B7AFAF} (.+)')
+			if text:find('^(.+)%[(%d+)%] говорит:{......} (.+)') then
+				local nick, id, message = text:match('^(.+)%[(%d+)%] говорит:{......} (.+)')
 				heal_handler(nick, id, message)
 			elseif text:find('^(.+)%[(%d+)%] кричит: (.+)') then
 				local nick, id, message = text:match('^(.+)%[(%d+)%] кричит: (.+)')
@@ -5420,16 +5432,16 @@ function sampev.onShowDialog(dialogid, style, title, button1, button2, text)
 
 	if check_stats and (title:find('Основная статистика') or title:find('Статистика игрока')) then
 		if text:find("Имя") then
-			modules.player.data.nick = text:match("{FFFFFF}Имя: {B83434}%[(.-)]") or text:match("{ffffff}Имя %(en%.%):%s+{BE433D}([^\n\r]+)")
-			modules.player.data.name_surname = text:match("{ffffff}Имя %(рус%.%):%s+{BE433D}([^\n\r]+)") or translate(modules.player.data.nick)
+			modules.player.data.nick = text:match("{FFFFFF}Имя: {......}%[(.-)]") or text:match("{ffffff}Имя %(en%.%):%s+{......}([^\n\r]+)")
+			modules.player.data.name_surname = text:match("{ffffff}Имя %(рус%.%):%s+{......}([^\n\r]+)") or translate(modules.player.data.nick)
 			sampAddChatMessage('[Arizona Helper] {ffffff}Ваше имя и фамилия обнаружены: ' .. modules.player.data.name_surname, message_color)
         end
 		if text:find("Пол:") then
-			modules.player.data.sex = text:match("{FFFFFF}Пол: {B83434}%[(.-)]") or text:match("{ffffff}Пол:%s+{BE433D}([^\n\r]+)")
+			modules.player.data.sex = text:match("{FFFFFF}Пол: {......}%[(.-)]") or text:match("{ffffff}Пол:%s+{......}([^\n\r]+)")
 			sampAddChatMessage('[Arizona Helper] {ffffff}Ваш пол обнаружен: ' .. modules.player.data.sex, message_color)
 		end
 		if text:find("Организация:") then
-			modules.player.data.fraction = text:match("{FFFFFF}Организация: {B83434}%[(.-)]") or text:match("{ffffff}Организация:%s+{BE433D}([^\n\r]+)")
+			modules.player.data.fraction = text:match("{FFFFFF}Организация: {......}%[(.-)]") or text:match("{ffffff}Организация:%s+{......}([^\n\r]+)")
 			local fraction_data = {
 				['Полиция ЛС'] = {'ЛСПД', 'police'}, ['Полиция LS'] = {'ЛСПД', 'police'},
 				['Полиция ЛВ'] = {'ЛВПД', 'police'}, ['Полиция LV'] = {'ЛВПД', 'police'},
@@ -5487,9 +5499,9 @@ function sampev.onShowDialog(dialogid, style, title, button1, button2, text)
 				settings.general.fraction_mode = data[2]
 				sampAddChatMessage('[Arizona Helper] {ffffff}Вашей организации присвоен тег '..modules.player.data.fraction_tag .. ". Но вы можете изменить его.", message_color)
 				if text:find("Должность:") then
-					local rank, rank_number = text:match("{FFFFFF}Должность: {B83434}(.+)%((%d+)%)(.+)Уровень розыска")
+					local rank, rank_number = text:match("{FFFFFF}Должность: {......}(.+)%((%d+)%)(.+)Уровень розыска")
 					if not rank or not rank_number then
-						rank, rank_number = text:match("{ffffff}Должность:%s+{BE433D}([^(]+)%((%d+)%)")
+						rank, rank_number = text:match("{ffffff}Должность:%s+{......}([^(]+)%((%d+)%)")
 					end
 					modules.player.data.fraction_rank = rank
 					modules.player.data.fraction_rank_number = tonumber(rank_number)
@@ -5537,8 +5549,8 @@ function sampev.onShowDialog(dialogid, style, title, button1, button2, text)
             count = count + 1
             if not line:find('страница') and (not line:find('Ник') or not line:find('Имя')) then
 				local optional_info = ''
-				if line:find('{FFA500}%(Вы%)') then
-					line = line:gsub("{FFA500}%(Вы%)", "")
+				if line:find('{......}%(Вы%)') then
+					line = line:gsub("{......}%(Вы%)", "")
 					optional_info = '(Вы)'
 				end
 				if line:find(' %/ В деморгане') then
@@ -5552,7 +5564,7 @@ function sampev.onShowDialog(dialogid, style, title, button1, button2, text)
 				if optional_info == '' then
 					optional_info = '-'
 				end
-				if line:find('{FFA500}%(%d+.+%)') then
+				if line:find('{......}%(%d+.+%)') then
 					local color, nickname, id, rank, rank_number, color2, rank_time, warns, afk = string.match(line, "{(%x%x%x%x%x%x)}([%w_]+)%((%d+)%)%s*([^%(]+)%((%d+)%)%s*{(%x%x%x%x%x%x)}%(([^%)]+)%)%s*{FFFFFF}(%d+)%s*%[%d+%]%s*/%s*(%d+)%s*%d+ шт")
 					if color ~= nil and nickname ~= nil and id ~= nil and rank ~= nil and rank_number ~= nil and warns ~= nil and afk ~= nil then
 						local working = false
@@ -5870,21 +5882,21 @@ function sampev.onShowDialog(dialogid, style, title, button1, button2, text)
 				sampSendDialogResponse(dialogid, 1, 0, 0)
 				sampAddChatMessage('[Arizona Helper] {ffffff}На данный момент нету обьявлений для редактирования!', message_color)
 				return false
-			-- else
-			-- 	local index = -1
-			-- 	local finded = false
-			-- 	for line in text:gmatch('[^\n]+') do
-			-- 		if line:find('%[%d+%]') and not line:find('В редакции') then
-			-- 			sampSendDialogResponse(dialogid, 1, index, 0)
-			-- 			finded = true
-			-- 			break
-			-- 		else
-			-- 			index = index + 1
-			-- 		end
-			-- 	end
-			-- 	if finded then
-			-- 		return false
-			-- 	end
+			else
+				if settings.smi.auto_select_first_ad then
+					local index = -1
+					local finded = false
+					for line in text:gmatch('[^\n]+') do
+						if line:find('%[%d+%]') and not line:find('В редакции') then
+							sampSendDialogResponse(dialogid, 1, index, 0)
+							finded = true
+							break
+						else
+							index = index + 1
+						end
+					end
+					if finded then return false end
+				end
 			end
 		end 
 		if title:find('Операции с об.явлением') and button1:find('Изменить') then -- rodina
@@ -5985,7 +5997,7 @@ function sampev.onPlayerChatBubble(player_id, color, distance, duration, message
 		sampAddChatMessage('[ChatBubble] {ffffff}ID ' .. player_id .. ' | Color ' .. color .. ' | Dist ' .. distance .. ' | Duration ' .. duration .. ' | MSG ' .. message, message_color)
 		print('[ChatBubble] {ffffff}ID ' .. player_id .. ' | Color ' .. color .. ' | Dist ' .. distance .. ' | Duration ' .. duration .. ' | MSG ' .. message)
 	end
-	if (isMode('police') or isMode('fbi')) and settings.mj.anti_screpki then
+	if (isMode('police') or isMode('fbi') or isMode('prison')) and settings.mj.anti_screpki then
 		if message:find("(.+) достал скрепки для взлома наручников") then
 			local nick = message:match(' (.+) достал скрепки для взлома наручников')
 			local id = sampGetPlayerIdByNickname(nick)
@@ -6006,6 +6018,15 @@ function sampev.onPlayerChatBubble(player_id, color, distance, duration, message
 			end
 		end
 	end
+end
+function sampev.onTogglePlayerControllable(controllable)
+  	if MODULE.CruiseControl.active and not controllable then
+		MODULE.CruiseControl.active = false
+		clearCharTasks(PLAYER_PED)
+		if isCharInAnyCar(PLAYER_PED) then
+			taskWarpCharIntoCarAsDriver(PLAYER_PED, storeCarCharIsInNoSave(PLAYER_PED))
+		end
+  	end
 end
 addEventHandler('onSendPacket', function(id, bs, priority, reliability, orderingChannel)
 	if id == 220 then
@@ -6115,7 +6136,6 @@ addEventHandler('onReceivePacket', function(id, bs)
 						sampShowDialog(897124, 'Arizona Helper - Ассистент', "Правильные конверты: " .. result .. ".\nСчитать их нужно слева направо", '{009EFF}Закрыть', '', 0)
 					end
 				end
-
 			end
 		end
 	end
@@ -6789,14 +6809,12 @@ imgui.OnFrame(
 							imgui.CenterColumnText(u8"Надеть/снять инфракрасные очки")
 							imgui.Columns(1)
 							imgui.Separator()
-							if settings.general.cruise_control then
-								imgui.Columns(2)
-								imgui.CenterColumnText(u8"/cruise")
-								imgui.NextColumn()
-								imgui.CenterColumnText(u8"Адаптивный круиз-контроль")
-								imgui.Columns(1)
-								imgui.Separator()
-							end
+							imgui.Columns(2)
+							imgui.CenterColumnText(u8"/cruise")
+							imgui.NextColumn()
+							imgui.CenterColumnText(u8"Адаптивный круиз-контроль")
+							imgui.Columns(1)
+							imgui.Separator()
 							if not isMode('none') then
 								imgui.Columns(2)
 								imgui.CenterColumnText(u8"/mb")
@@ -6999,7 +7017,7 @@ imgui.OnFrame(
 						if imgui.Button(fa.CIRCLE_PLUS .. u8' Создать новую команду##new_cmd' .. (isManage and 1 or 2), imgui.ImVec2(imgui.GetMiddleButtonX(1), 0)) then
 							local my_cmds = isManage and #modules.commands.data.commands_manage.my or #modules.commands.data.commands.my
 							local max_cmds = #get_fraction_cmds(settings.general.fraction_mode, isManage) + 10
-							if my_cmds > max_cmds then
+							if my_cmds >= max_cmds then
 							 	send_no_vip_msg()
 								return
 							end
@@ -7568,7 +7586,8 @@ imgui.OnFrame(
 								imgui.EndChild()
 							end
 							if imgui.Button(fa.CIRCLE_PLUS .. u8' Добавить кнопку##add_mobile_button', imgui.ImVec2(imgui.GetMiddleButtonX(1), 0)) then
-								if #modules.buttons.data > 5 then
+								if #modules.buttons.data >= 5 then
+									send_no_vip_msg()
 									sampAddChatMessage('[Arizona Helper] {ffffff}В бесплатной версии ограничение всего 5 кнопок! Купите VIP версию для безлимитных кнопок!', message_color)
 									return
 								end
@@ -7734,7 +7753,7 @@ imgui.OnFrame(
 				end
 				imgui.EndChild()
 				if imgui.Button(fa.CIRCLE_PLUS .. u8' Создать новую заметку', imgui.ImVec2(imgui.GetMiddleButtonX(1), 0)) then
-					if #modules.notes.data > 5 then
+					if #modules.notes.data >= 5 then
 						send_no_vip_msg()
 						return
 					end
@@ -8322,7 +8341,7 @@ function render_assist_item(name, description, tbl, key, isVip, func)
 	end
 	imgui.NextColumn()
 	if imgui.CenterColumnSmallButton((((tbl and tbl[key]) and fa.TOGGLE_ON or fa.TOGGLE_OFF) .. '##' .. name .. key)) then
-		if isVip then 
+		if isVip then
 			send_no_vip_msg() 
 		else
 			tbl[key] = not tbl[key]
@@ -8384,12 +8403,6 @@ function firs_render_assist_gui()
 		"Звуковое оповещение на пинг вашего никнейма в игровых чатах",
 		settings.general,
 		"ping"
-	)
-	render_assist_item(
-		"Круиз контроль транспорта",
-		"Система поддержки движения по маршруту с ограничением скорости.\n\nКомандой /cruise можно активировать или отключить CRUISE CONTROL.\nПосле выбора пункта назначения, ваш т/с будет двигаться со скоростю 80 км/ч.\nВсе ваши действия будут происходить с RP отыгровками как в жизни",
-		settings.general,
-		"cruise_control"
 	)
 	render_assist_item(
 		"Автофлип домкратом",
@@ -8639,6 +8652,12 @@ function render_fractions_functions()
 						"ads_history"
 					)
 					render_assist_item(
+						"Взятие свободных обьявлений",
+						"В списке обьяв автоматически будет выбираться первое свободное обьявление.\nТаким образом, вам не нужно будет вручную выбирать обьявления в том списке.",
+						settings.smi,
+						"auto_select_first_ad"
+					)
+					render_assist_item(
 						"Копирование чужих редактов",
 						"Сохрание в историю обьявлений, которые отредактировали ваши коллеги.\nТаким образом, у вас будет возможность быстрой отправки такого обьявления.\n\nЕсли 2+ обьявы одновременно, то функция может дать сбой и сохранит неверно!",
 						settings.smi,
@@ -8803,7 +8822,7 @@ function render_fractions_functions()
 							{label = '  Лечение охранника (VC $)',           			key = 'healactor_vc'},
 							{label = '  Проведение мед. осмотра для пилотов', 			key = 'medosm'},
 							{label = '  Проведение мед. осмотра для военного билета', 	key = 'mticket'},
-							{label = '  Проведение сеанса лечения наркозависимости', 	key = 'healbad'},
+							{label = '  Проведение лечения зависимости от укропа', 	key = 'healbad'},
 							{label = '  Выдача рецепта',                     			key = 'recept'},
 							{label = '  Выдача антибиотика',                 			key = 'ant'},
 							{label = '  Выдача мед.карты на 7 дней',         			key = 'med7', same_line = true},
@@ -9241,8 +9260,8 @@ if not (isMode('ghetto') or isMode('mafia')) then
 					if imgui.Selectable(u8"Законопослушность") then
 						otkaz("У вас плохая законопослушность.")
 					end
-					if imgui.Selectable(u8"Наркозависимость") then
-						otkaz("Вам необходимо вылечиться в любой больнице, в отделе наркологии!")
+					if imgui.Selectable(u8"Укропозависимость") then
+						otkaz("Вам необходимо вылечить зависимость от укропа в любой больнице!")
 					end
 					if imgui.Selectable(u8"Активная повестка") then
 						otkaz("У вас повестка, отслужите либо пройдите обследования в больнице.")
@@ -10394,7 +10413,7 @@ if isMode('smi') then
 			end
 			imgui.Separator()
 			local window_size = imgui.GetWindowSize()
-			local size_item_width = (settings.smi.ads_history and 105 or 75) + ((settings.smi.ai_generate and settings.smi.ai_generate.enable) and 30 or 0)
+			local size_item_width = (settings.smi.ads_history and 105 or 75) + (settings.smi.ai_generate.enable and 30 or 0)
 			imgui.PushItemWidth(window_size.x - size_item_width * settings.general.custom_dpi)
 			imgui.InputTextWithHint(
 				"##smi_edit_ad",

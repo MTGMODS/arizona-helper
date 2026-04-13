@@ -2,36 +2,24 @@
 ![photo_2025-12-21_22-00-07](https://github.com/user-attachments/assets/8a6201aa-9816-43a6-9c61-0fc36e754e8e)
 
 
-ℹ️ Универсальный хелпер для игроков Arizona Online & Rodina Online, который подходит для ЛЮБОЙ фракции!
+## ℹ️ Универсальный хелпер для игроков Arizona Online & Rodina Online!
 - Автоматически адаптируется под вашу фракцию, предоставляя различные функции и команды, так-же имеет в себе биндер, заметки, удобную кастомизацию и различные фракционные функции
 
-ℹ️ Данный хелпер работает на:
--📱 ARIZONA MOBILE & RODINA MOBILE
--💻 ARIZONA GAMES LAUNCHER (ПК)
+## ℹ️ Данный хелпер работает на:
+- 📱 ARIZONA MOBILE & RODINA MOBILE
+- 💻 ARIZONA GAMES LAUNCHER (ПК)
 
-ℹ️ Текущая FREE версия хелпера: BETA 12.9.1
-
-ℹ️ Текущая VIP версия хелпера: BETA 11.9.2 VIP
-
--
-📜 Инструкция по использованию и команды:
+## 📜 Инструкция по использованию и команды:
 - Открыть меню хелпера: /helper или F2
-- https://youtube.com/watch?v=dvTe0A61Hjw
 
--
-🤖 Автоустановка на ARZ MOBILE:
-- Установить лаунчер MonetLoader (https://t.me/mtgmods/1359)
+## 🤖 Авто-установка Arizona&Rodina Helper на ARZ MOBILE:
+- Установить [лаунчер MonetLoader](https://t.me/mtgmods/1359)
 - В игре ввести /mtg и выбрать Arizona Helper
 
-📥 Скачать (ручная установка):
-- Lua файл хелпера (https://github.com/MTGMODS/arizona-helper/raw/refs/heads/main/Arizona%20Helper.lua)
-- Инструкция по установке (https://t.me/mtgmods/48) 
+## 📥 Скачать Arizona&Rodina Helper для ручной установки:
+- [Lua файл хелпера](https://github.com/MTGMODS/arizona-helper/releases/latest)
+- [Гайд по установке](https://t.me/mtgmods/48) 
 
-ℹ️ Если у вас мобайл cleoarizona:
-- Скачайте ещё и эти файлики (https://t.me/c/2171969751/361130)!
-
--
-
-Гайд по ручной установке конфигов с облака (на случай ошибки):
-https://youtu.be/9aW6spWsDUE
+## 📝 Гайд по ручной установке конфигов с облака (на случай ошибки):
+- https://youtu.be/9aW6spWsDUE
 

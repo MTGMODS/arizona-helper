@@ -1,8 +1,8 @@
 {
-  "current_version": "1.6 Free",
+  "current_version": "1.6.1 Free",
   "update_url": "https://github.com/MTGMODS/arizona-helper/raw/refs/heads/main/Arizona%20Helper.lua",
-  "update_info": "- Фикс получения инфы с диалогов после обновы на арз\n- Прочие мелкие улучшения",
+  "update_info": "- Фикс получения информации из /stats\n- Фикс /fires в пожарке\n- Фикс краша при редакте в СМИ\n- Прочие мелкие улучшения",
 
-  "vip_current_version": "1.6 VIP",
-  "vip_update_info": "- Фикс получения инфы с диалогов после обновы на арз\n- Прочие мелкие улучшения"
+  "vip_current_version": "1.6.1 VIP",
+  "vip_update_info": "- Фикс получения информации из /stats\n- Фикс /fires в пожарке\n- Фикс краша при редакте в СМИ\n- Прочие мелкие улучшения"
 }

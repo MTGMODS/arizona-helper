@@ -5949,13 +5949,12 @@ function sampev.onShowDialog(dialogid, style, title, button1, button2, text)
 				sampAddChatMessage('[Arizona Helper] {ffffff}В данный момент пожаров нету, можете отдыхать', message_color)
 				sampSendDialogResponse(dialogid, 1, 0, 0)
 				return false
-			-- else
+			else
 			-- 	MODULE.Fires.dialogId = dialogid
 			-- 	MODULE.Fires.isDialog = true
-			-- 	MODULE.Fires.locations = text:match('Осталось времени\n(.+)') .. '\n'
+				MODULE.Fires.locations = text:match('Осталось времени\n(.+)') .. '\n'
 			-- 	sampShowDialog(999, title, text, button1, button2, style)
 			end
-			-- return false
 		end
 	end
 

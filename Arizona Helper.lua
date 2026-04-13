@@ -3,7 +3,7 @@
 script_name("Arizona&Rodina Helper")
 script_description('Универсальный хелпер для игроков Arizona Online и Rodina Online')
 script_author("MTG MODS")
-script_version("1.6 Free")
+script_version("1.6.1 Free")
 ----------------------------------------------- INIT ---------------------------------------------
 local worked_dir = getWorkingDirectory():gsub('\\','/')
 local IS_MOBILE = MONET_VERSION ~= nil
@@ -2829,17 +2829,17 @@ function main()
 			end
 		end
 
-		if isMode('fd') then
-			if MODULE.Fires.isDialog and MODULE.Fires.dialogId ~= -1 then
-				local result, button, list, input = sampHasDialogRespond(999)
-				if result and button ~= -1 and list ~= -1 then
-					sampSendDialogResponse(MODULE.Fires.dialogId, button, list, item)
-					MODULE.Fires.dialogId = -1
-					MODULE.Fires.isDialog = false
-					if button ~= 0 then getFireLocation(tonumber(list)) end
-				end
-			end
-		end
+		-- if isMode('fd') then
+		-- 	if MODULE.Fires.isDialog and MODULE.Fires.dialogId ~= -1 then
+		-- 		local result, button, list, input = sampHasDialogRespond(999)
+		-- 		if result and button ~= -1 and list ~= -1 then
+		-- 			sampSendDialogResponse(MODULE.Fires.dialogId, button, list, item)
+		-- 			MODULE.Fires.dialogId = -1
+		-- 			MODULE.Fires.isDialog = false
+		-- 			if button ~= 0 then getFireLocation(tonumber(list)) end
+		-- 		end
+		-- 	end
+		-- end
 
 		if settings.general.rp_guns then
 			local current = getCurrentCharWeapon(PLAYER_PED)
@@ -5948,13 +5948,14 @@ function sampev.onShowDialog(dialogid, style, title, button1, button2, text)
 			if text:find('В данный момент все спокойно') then
 				sampAddChatMessage('[Arizona Helper] {ffffff}В данный момент пожаров нету, можете отдыхать', message_color)
 				sampSendDialogResponse(dialogid, 1, 0, 0)
-			else
-				MODULE.Fires.dialogId = dialogid
-				MODULE.Fires.isDialog = true
-				MODULE.Fires.locations = text:match('Осталось времени\n(.+)') .. '\n'
-				sampShowDialog(999, title, text, button1, button2, style)
+				return false
+			-- else
+			-- 	MODULE.Fires.dialogId = dialogid
+			-- 	MODULE.Fires.isDialog = true
+			-- 	MODULE.Fires.locations = text:match('Осталось времени\n(.+)') .. '\n'
+			-- 	sampShowDialog(999, title, text, button1, button2, style)
 			end
-			return false
+			-- return false
 		end
 	end
 

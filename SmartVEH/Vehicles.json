@@ -4538,5 +4538,35 @@
         "model_id": 15514,
         "name": "BMW M5 G90 2k26",
         "server_id": 1307
+    },
+    {
+        "model_id": 12501,
+        "name": "12CILINDRI",
+        "server_id": 1308
+    },
+    {
+        "model_id": 15255,
+        "name": "Tourbillon",
+        "server_id": 1309
+    },
+    {
+        "model_id": 15257,
+        "name": "720s TopCar",
+        "server_id": 1310
+    },
+    {
+        "model_id": 15258,
+        "name": "Roma Spider",
+        "server_id": 1311
+    },
+    {
+        "model_id": 12526,
+        "name": "Portofino",
+        "server_id": 1312
+    },
+    {
+        "model_id": 11773,
+        "name": "Hallbruck IP",
+        "server_id": 1313
     }
 ]

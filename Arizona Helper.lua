@@ -8355,7 +8355,12 @@ function render_assist_item(name, description, tbl, key, isVip, func)
 	end
 	imgui.NextColumn()
 	if imgui.CenterColumnSmallButton((((tbl and tbl[key]) and fa.TOGGLE_ON or fa.TOGGLE_OFF) .. '##' .. name .. key)) then
-		send_no_vip_msg() 
+		if isVip then 
+			send_no_vip_msg() 
+		else
+			tbl[key] = not tbl[key]
+			save_settings()
+		end
 	end
 	if imgui.IsItemHovered() then
 		local label = (tbl and tbl[key]) and ('Отключить') or ('Включить')

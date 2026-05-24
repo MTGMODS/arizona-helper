@@ -11733,9 +11733,12 @@ end
 -------------------------------------------- Networking ----------------------------------------
 function asyncHttpRequest(method, url, args, resolve, reject)
     local thread_code = [[
-        return function (method, url, args)
+        return function (method, url, args, is_mobile)
             local requests = require 'requests'
-			if MONET_VERSION ~= nil then args = effil.dump(args) end 
+			if is_mobile then
+				local effil = require 'effil'
+				if type(args) == "userdata" then args = effil.dump(args) end
+			end
             local result, response = pcall(requests.request, method, url, args)
             if result then
                 response.json, response.xml = nil, nil
@@ -11745,8 +11748,8 @@ function asyncHttpRequest(method, url, args, resolve, reject)
             end
         end
     ]]
-    local clean_thread_func = assert(loadstring(thread_code))()
-    local request_thread = effil.thread(clean_thread_func)(method, url, args)
+    local thread_func = assert(loadstring(thread_code))()
+    local request_thread = effil.thread(thread_func)(method, url, args, IS_MOBILE)
     resolve = resolve or function(...) end
 	reject = reject or function(...) end
     lua_thread.create(function()

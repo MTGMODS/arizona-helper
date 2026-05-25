@@ -5924,16 +5924,7 @@ function sampev.onShowDialog(dialogid, style, title, button1, button2, text)
 			end
 			return false
 		end
-		if title:find('Выбор срока лицензий') and MODULE.GiveLic.bool then
-			if not text:find('месяца') then
-				sampSendDialogResponse(dialogid, 1, 0, 0)
-			else
-				sampSendDialogResponse(dialogid, 1, MODULE.GiveLic.time - 1, 0)
-			end
-			MODULE.GiveLic.bool = false
-			MODULE.Binder.state.isActive = false
-			return false
-		end
+		
 	end
 	
 	if isMode('fd') then

@@ -5430,7 +5430,7 @@ function sampev.onShowDialog(dialogid, style, title, button1, button2, text)
 
 	if check_stats and (title:find('Основная статистика') or title:find('Статистика игрока')) then
 		if text:find("Имя") then
-			modules.player.data.nick = text:match("{FFFFFF}Имя: {......}%[(.+)%] \n{FFFFFF}Пол") or text:match("{ffffff}Имя %(en%.%):%s+{......}([^\n\r]+)")
+			modules.player.data.nick = text:match("{FFFFFF}Имя: {......}(.+) %[%№%d+%] \n{FFFFFF}Пол") or text:match("{ffffff}Имя %(en%.%):%s+{......}([^\n\r]+)")
 			modules.player.data.name_surname = text:match("{ffffff}Имя %(рус%.%):%s+{......}([^\n\r]+)") or translate(modules.player.data.nick)
 			sampAddChatMessage('[Arizona Helper] {ffffff}Ваше имя и фамилия обнаружены: ' .. modules.player.data.name_surname, message_color)
         end

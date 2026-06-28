@@ -5812,9 +5812,6 @@ function sampev.onShowDialog(dialogid, style, title, button1, button2, text)
             sampSendDialogResponse(dialogid, 0, 0, 0)
 			MODULE.Members.all = MODULE.Members.new
 			MODULE.Members.info.check = false
-			if not settings.vip.auto_update_members then
-				sampAddChatMessage('[Arizona Helper] {ffffff}Вы можете включить авто-обновление списка /mb /helper - Функции ' .. modules.player.data.fraction_tag .. '!', message_color)
-			end
 			MODULE.Members.Window[0] = true
 		else
 			sampSendDialogResponse(dialogid, 0, 0, 0)

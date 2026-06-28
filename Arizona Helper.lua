@@ -3,7 +3,7 @@
 script_name("Arizona&Rodina Helper")
 script_description('”ниверсальный хелпер дл€ игроков Arizona Online и Rodina Online')
 script_author("MTG MODS")
-script_version("1.8.6")
+script_version("1.8.6 Free")
 ----------------------------------------------- INIT ---------------------------------------------
 local worked_dir = getWorkingDirectory():gsub('\\','/')
 local IS_MOBILE = MONET_VERSION ~= nil

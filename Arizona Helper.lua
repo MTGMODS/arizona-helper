@@ -789,7 +789,7 @@ local modules = {
 		cache = {}
 	},
 	crosshair = {
-		name = 'Цветной прице',
+		name = 'Цветной прицел',
 		path = config_dir .. "/Crosshair.json",
 		data = { -- colors in r, g, b
 			standart_color = {0, 255, 255},

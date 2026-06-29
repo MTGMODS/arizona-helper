@@ -8591,7 +8591,7 @@ function render_assist_item(name, description, tbl, key, isVip, func)
 	end
 	imgui.Columns(1)
 end
-function firs_render_assist_gui()
+function first_render_assist_gui()
 	imgui.Columns(3)
 	imgui.CenterColumnText(u8("Функция Ассистента"))
 	imgui.SetColumnWidth(-1, 320 * settings.ui.dpi)
@@ -8686,7 +8686,7 @@ function firs_render_assist_gui()
 		render_assist_item(
 			"Инвайт игроков по фразе [9/10]",
 			'Автоматически инвайтит игроков, которые просят инвайт в чате.\nДля настройки выдачи ранга нажмите на шестерёнку справа от кнопки',
-			settings.vip.auto_invite,
+			settings.vip and settings.vip.auto_invite,
 			"enable",
 			true,
 			function()
@@ -8706,7 +8706,7 @@ function render_fractions_functions()
 		if imgui.BeginTabBar('FractinFunctions') then
 			if imgui.BeginTabItem(fa.ROBOT .. u8' Личный помощник "Ассистент"') then 
 				if imgui.BeginChild('##mj_assist', imgui.ImVec2(589 * settings.ui.dpi, 338 * settings.ui.dpi), true) then
-					firs_render_assist_gui()
+					first_render_assist_gui()
 					render_assist_item(
 						"Пробив /time на обыск/розыск/арест",
 						"Автоматически делает /time для скриншотов при важных действиях.",
@@ -8825,7 +8825,7 @@ function render_fractions_functions()
 		end
 	elseif isMode('army') then
 		if imgui.BeginChild('##army_assist', imgui.ImVec2(589 * settings.ui.dpi, 367 * settings.ui.dpi), true) then
-			firs_render_assist_gui()
+			first_render_assist_gui()
 			render_assist_item(
 				"Доклад CODE 0 при нападении",
 				"При получении урона отправляет доклад /r CODE 0 с указанием ника нападавшего.",
@@ -8846,7 +8846,7 @@ function render_fractions_functions()
 		if imgui.BeginTabBar('FractinFunctions') then
 			if imgui.BeginTabItem(fa.ROBOT .. u8' Личный помощник "Ассистент"') then 
 				if imgui.BeginChild('##assist', imgui.ImVec2(589 * settings.ui.dpi, 338 * settings.ui.dpi), true) then
-					firs_render_assist_gui()
+					first_render_assist_gui()
 					render_assist_item(
 						"Доклад CODE 0 при нападении",
 						"При получении урона отправляет доклад /r CODE 0 с указанием ника нападавшего.",
@@ -8886,7 +8886,7 @@ function render_fractions_functions()
 		if imgui.BeginTabBar('FractinFunctions') then
 			if imgui.BeginTabItem(fa.ROBOT .. u8' Личный помощник "Ассистент"') then 
 				if imgui.BeginChild('##smi_assist', imgui.ImVec2(589 * settings.ui.dpi, 338 * settings.ui.dpi), true) then	
-					firs_render_assist_gui()
+					first_render_assist_gui()
 					render_assist_item(
 						"Звуковое оповещение о обьявлениях",
 						"Созадёт звуковое уведомление при поступлении новых обьявлений от игроков.",
@@ -9030,7 +9030,7 @@ function render_fractions_functions()
 		if imgui.BeginTabBar('FractinFunctions') then
 			if imgui.BeginTabItem(fa.ROBOT .. u8' Личный помощник "Ассистент"') then 
 				if imgui.BeginChild('##hospital_assist', imgui.ImVec2(589 * settings.ui.dpi, 338 * settings.ui.dpi), true) then
-					firs_render_assist_gui()
+					first_render_assist_gui()
 					render_assist_item(
 						"Хил из чата",
 						"Позволяет быстро лечить пациентов которые просят чтобы их вылечили\n\nЕсть два режима работы хила из чата:\n1) По нажатию кнопки\n2) Автоматический\nДля смены режима используйте кнопочку шестерёнки справа\n\nАВТОХИЛ МОЖЕТ БЫТЬ ЗАПРЕЩЕН НА НЕКОТОРЫХ СЕРВЕРАХ! УТОЧНЯЙТЕ В /REP",
@@ -9122,7 +9122,7 @@ function render_fractions_functions()
 		if imgui.BeginTabBar('FractinFunctions') then
 			if imgui.BeginTabItem(fa.ROBOT .. u8' Личный помощник "Ассистент"') then 
 				if imgui.BeginChild('##assist', imgui.ImVec2(589 * settings.ui.dpi, 338 * settings.ui.dpi), true) then
-					firs_render_assist_gui()
+					first_render_assist_gui()
 					render_assist_item(
 						"Авто-выбор ближайшего знака",
 						"Автоматически выбирает ближайший дорожный знак для обслуживания.",
@@ -9212,7 +9212,7 @@ function render_fractions_functions()
 		end
 	elseif isMode('gov') then
 		if imgui.BeginChild('##gov_assist', imgui.ImVec2(589 * settings.ui.dpi, 367 * settings.ui.dpi), true) then
-			firs_render_assist_gui()
+			first_render_assist_gui()
 			render_assist_item(
 				"Анти Тревожная Кнопка",
 				"Убирает тревожную кнопку которая находится на 2 этаже.\nТем самым вы не будете случайно вызывать МЮ из-за этой кнопки.",
@@ -9237,7 +9237,7 @@ function render_fractions_functions()
 		end
 	elseif isMode('fd') then
 		if imgui.BeginChild('##fd_assist', imgui.ImVec2(589 * settings.ui.dpi, 367 * settings.ui.dpi), true) then
-			firs_render_assist_gui()
+			first_render_assist_gui()
 			render_assist_item(
 				"Доклад про принятие пожара",
 				"Автодоклад в рацию /r о принятии пожара из списка /fires и выезде к нему.",
@@ -9288,7 +9288,7 @@ function render_fractions_functions()
 		end
 	elseif isMode('ins') then
 		if imgui.BeginChild('##ins_assist', imgui.ImVec2(589 * settings.ui.dpi, 367 * settings.ui.dpi), true) then
-			firs_render_assist_gui()
+			first_render_assist_gui()
 			render_assist_item(
 				"Анти Тревожная Кнопка",
 				"Убирает тревожную кнопку вызова полиции с интерьера.\nТем самым вы не будете случайно вызывать МЮ из-за этой кнопки.",
@@ -9348,7 +9348,7 @@ function render_fractions_functions()
 		end
 	else
 		if imgui.BeginChild('##assist', imgui.ImVec2(589 * settings.ui.dpi, 367 * settings.ui.dpi), true) then
-			firs_render_assist_gui()
+			first_render_assist_gui()
 			imgui.Separator()
 			imgui.EndChild()
 		end

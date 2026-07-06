@@ -5112,8 +5112,8 @@ function changeCrosshairColor(color)
 	end
 end
 function isActiveCrosshairMode()
-	if IS_MOBILE then return sam.camera.aCams[0].nMode == 54 end
-	return memory.getint16(0xB6F1A8, false) == 53
+	local camMode = IS_MOBILE and sam.camera.aCams[0].nMode or memory.getint16(0xB6F1A8, false)
+	return camMode == 53
 end
 --------------------------------------------- Events ---------------------------------------------
 function emulationCEF(str)

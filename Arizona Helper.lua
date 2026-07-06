@@ -3,7 +3,7 @@
 script_name("Arizona&Rodina Helper")
 script_description('Универсальный хелпер для игроков Arizona Online и Rodina Online')
 script_author("MTG MODS")
-script_version("1.8.7 Free")
+script_version("1.8.9 Free")
 ----------------------------------------------- INIT ---------------------------------------------
 local worked_dir = getWorkingDirectory():gsub('\\','/')
 local IS_MOBILE = MONET_VERSION ~= nil
@@ -77,9 +77,12 @@ local effil = require('effil')
 local imgui = require('mimgui')
 local fa = require('fAwesome6_solid')
 local sampev = require('samp.events')
+
 local vkeys_ok, vkeys = pcall(require, 'vkeys')
 local dkjson_ok, dkjson = pcall(require, "dkjson")
 local memory_ok, memory = pcall(require, "memory")
+local sam_ok, sam = pcall(require, "SAMemory")
+local widgets_ok, widgets = pcall(require, 'widgets')
 local monet_ok, moon_monet = pcall(require, 'MoonMonet')
 local hotkey_ok, hotkey = pcall(require, 'mimgui_hotkeys')
 local pie_ok, pie = pcall(require, IS_MOBILE and 'imgui_piemenu' or 'mimgui_piemenu_mod')
@@ -96,11 +99,12 @@ local default_settings = {
 		ping = true,
 		rp_chat = true,
 		rp_weapon = true,
-		accent_enable = true,
+		accent_enable = false,
 		auto_accept_docs = true,
 		auto_uninvite = false,
 		piemenu = true,
-		crosshair = false,
+		crosshair = true,
+		scoreboard = true,
 		mobile_fastmenu_button = true,
 		mobile_stop_button = true,
 	},
@@ -110,6 +114,8 @@ local default_settings = {
 		leader_fastmenu = '[71]',
 		action = '[13]',
 		command_stop = '[123]'
+	},
+	vip = {
 	},
 	ui = {
 		auto_dpi = false,
@@ -124,13 +130,13 @@ local default_settings = {
 		anti_screpki = true,
 		auto_doklad_damage = true,
 		auto_change_code_siren = true,
-		show_grp_info = true,
+		show_grp_info = false
     },
 	md = {
 		auto_doklad_damage = true,
 	},
 	mh = {
-		show_grp_info = true,
+		show_grp_info = false,
 		price = {
 			ant = 50000,
 			recept = 100000,
@@ -152,7 +158,7 @@ local default_settings = {
 		},
 	},
 	smi = {
-		show_grp_info = true,
+		show_grp_info = false,
 		ads_buttons = true,
 		notify_new_ads = true,
 		auto_select_first_ad = false,
@@ -799,6 +805,17 @@ local modules = {
 			is_legendary_stripe = false,
 		}
 	},
+	scoreboard = {
+		name = 'Mimgui ScoreBoard',
+		path = config_dir .. "/Scoreboard.json",
+		data = {
+			show_actions_menu = true,
+			colored_id = true,
+			colored_nickname = true,
+			colored_score = true,
+			colored_ping = true
+		}
+	},
     smart_uk = {
 		name = 'Умный Розыск',
 		path = config_dir .. "/SmartUK.json",
@@ -899,6 +916,9 @@ local MODULE = {
 			mobile_stop_button = imgui.new.bool(settings.general.mobile_stop_button or false),
 			mobile_fastmenu_button = imgui.new.bool(settings.general.mobile_fastmenu_button or false),
 			mobile_piemenu_button = imgui.new.bool(settings.general.piemenu or false),
+		},
+		selector = {
+
 		},
 		slider = {
 			transparent = imgui.new.int(tonumber(settings.ui.transparent)),
@@ -1101,7 +1121,7 @@ local MODULE = {
 		ad_repeat_count = 0,
 		last_ad_text = "",
 		vip_pause = false,
-		is_active_ad = false
+		is_active_ad = false,
 	},
 	-- AS
 	LicensePrice = {
@@ -1242,6 +1262,17 @@ local MODULE = {
 		distance = nil,
 		currentWeaponRange = nil,
 	},
+	Scoreboard = {
+		Window = imgui.new.bool(),
+		inputField = imgui.new.char[256](),
+		show_actions_menu = imgui.new.bool(modules.scoreboard.data.show_actions_menu),
+		colored_id = imgui.new.bool(modules.scoreboard.data.colored_id),
+		colored_nickname = imgui.new.bool(modules.scoreboard.data.colored_nickname),
+		colored_score = imgui.new.bool(modules.scoreboard.data.colored_score),
+		colored_ping = imgui.new.bool(modules.scoreboard.data.colored_ping),
+		call_checker = false
+	},
+	mtgAccounts = {["08"] = "Mtg_Mods", ["20"] = "Bogdan_Martelli", ["32"] = "Bogdan_Martelli"},
 	InfraredVision = false,
 	NightVision = false,
 	INPUT = {
@@ -2874,6 +2905,12 @@ function main()
 		repeat wait(0) until sampIsLocalPlayerSpawned()
 	end
 
+	if jit.arch == 'arm' and memory_ok then
+		-- monetloader x32 fpsunlock by @bymaga0
+		memory.setint8(MONET_GTASA_BASE + 0x5E49EE, 0x00, true)
+		memory.setint8(MONET_GTASA_BASE + 0x5E49EE + 1, 0xBF, true)
+	end
+
 	sampAddChatMessage('[Arizona Helper] {ffffff}Загрузка хелпера успешно завершена!', message_color)
 	show_notify('info', 'Arizona Helper', "Загрузка хелпера успешно завершена!", 3000)
 	print('Полная загрузка хелпера успешно завершена!')
@@ -2944,6 +2981,8 @@ function main()
             end
 		end
 
+		if not IS_MOBILE and settings.general.scoreboard and sampIsScoreboardOpen() then sampToggleScoreboard(false) end
+
 		if isMode('police') or isMode('fbi') then
 			if MODULE.Patrool.active then
 				MODULE.Patrool.time = os.difftime(os.time(), MODULE.Patrool.start_time)
@@ -2993,7 +3032,7 @@ function main()
 				processWeaponChange(modules.weapon.data.oldGun, current)
 			end
         end
-
+		
 		if MODULE.CruiseControl.wait_point then
 			local bool, x, y, z = getTargetBlipCoordinates()
 			if bool then
@@ -3331,6 +3370,9 @@ function initialize_commands()
 			sampAddChatMessage('[Arizona Helper] {ffffff}Данная функция поддерживается только на карте GTA San Andreas. Карты CRMP и Vice City не поддерживаются.', message_color)
 			play_sound()
 		end
+	end)
+	sampRegisterChatCommand('tab', function() 
+		MODULE.Scoreboard.Window[0] = not MODULE.Scoreboard.Window[0] 
 	end)
 	sampRegisterChatCommand("activate", function()
 		sampAddChatMessage('[Arizona Helper] {ffffff}К сожалению нельзя прямо из игры перейти на VIP версию!', message_color) 
@@ -4811,6 +4853,8 @@ function delete_helper_data(checker)
 	os.remove(config_dir .. "/Weapon.json")
 	os.remove(config_dir .. "/Ads.json")
 	os.remove(config_dir .. "/Update.json")
+	os.remove(config_dir .. "/Crosshair.json")
+	os.remove(config_dir .. "/Scoreboard.json")
 	os.remove(config_dir .. "/SmartUK.json")
 	os.remove(config_dir .. "/SmartPDD.json")
 	os.remove(config_dir .. "/SmartRPTP.json")
@@ -5011,7 +5055,7 @@ if isMode('police') or isMode('fbi') or isMode('smi') or isMode('hospital') then
 					MODULE.GrpInfo.zavals = MODULE.GrpInfo.zavals + 1
 					MODULE.GrpInfo.checker = true
 				end
-				if text:find('вакуатор') or text:find('стоянку') then
+				if text:find('Транспорт для эвакуации') then
 					MODULE.GrpInfo.cars = MODULE.GrpInfo.cars + 1
 					MODULE.GrpInfo.checker = true
 				end
@@ -5022,7 +5066,7 @@ if isMode('police') or isMode('fbi') or isMode('smi') or isMode('hospital') then
 end
 ------------------------------------------ Crosshair -------------------------------------------
 local CROSSHAIR_OFFSETS = {
-	pc = {
+	x86 = {
 		r = { 0x58E301, 0x58E3DA, 0x58E433, 0x58E47C },
 		g = { 0x58E2F6, 0x58E3D1, 0x58E42A, 0x58E473 },
 		b = { 0x58E2F1, 0x58E3C8, 0x58E425, 0x58E466 },
@@ -5052,37 +5096,24 @@ function changeCrosshairColor(color)
 	if color ~= MODULE.Crosshair.last_sight_color then
 		MODULE.Crosshair.last_sight_color = color
 		local r, g, b, a = color[1], color[2], color[3], 255
-		if IS_MOBILE then
-			local base = MONET_GTASA_BASE
-			local offsets = CROSSHAIR_OFFSETS[jit.arch]
-			if jit.arch == 'arm64' then
-				writeArm64(offsets.r, base, r, 1)
-				writeArm64(offsets.g, base, g, 2)
-				writeArm64(offsets.b, base, b, 3)
-				writeArm64(offsets.a, base, a, 4)
-			else
-				writeUint8(offsets.r, base, r)
-				writeUint8(offsets.g, base, g)
-				writeUint8(offsets.b, base, b)
-				writeUint8(offsets.a, base, a)
-			end
+		local offsets = CROSSHAIR_OFFSETS[jit.arch]
+		local base = MONET_GTASA_BASE or 0
+		if jit.arch == 'arm64' then
+			writeArm64(offsets.r, base, r, 1)
+			writeArm64(offsets.g, base, g, 2)
+			writeArm64(offsets.b, base, b, 3)
+			writeArm64(offsets.a, base, a, 4)
 		else
-			local offsets = CROSSHAIR_OFFSETS.pc
-			writeUint8(offsets.r, 0, r)
-			writeUint8(offsets.g, 0, g)
-			writeUint8(offsets.b, 0, b)
-			writeUint8(offsets.a, 0, a)
+			writeUint8(offsets.r, base, r)
+			writeUint8(offsets.g, base, g)
+			writeUint8(offsets.b, base, b)
+			writeUint8(offsets.a, base, a)
 		end
 	end
 end
 function isActiveCrosshairMode()
-	if IS_MOBILE then
-		return true -- заглушка, не знаю какой адрес нужно проверять(
-	else
-		local camMode = memory.getint16(0xB6F1A8, false)
-		if camMode == 0x35 or camMode == 0x37 or camMode == 0x7 or camMode == 0x8 or camMode == 0x33 then return true end
-	end
-	return false
+	if IS_MOBILE then return sam.camera.aCams[0].nMode == 54 end
+	return memory.getint16(0xB6F1A8, false) == 53
 end
 --------------------------------------------- Events ---------------------------------------------
 function emulationCEF(str)
@@ -5220,12 +5251,6 @@ function sampev.onSendGiveDamage(playerId, damage, weapon, bodypart)
 		sampAddChatMessage('[GiveDamage] {ffffff}ID ' .. playerId .. " | Damage " .. damage .. " | Weapon " .. weapon .. " | Body " .. bodypart, message_color)
 		print('[GiveDamage] ID ' .. playerId .. " | Damage " .. damage .. " | Weapon " .. weapon .. " | Body " .. bodypart)
 	end
-	if playerId ~= 65535 then
-		if (sampGetPlayerNickname(playerId) == 'Bogdan_Martelli' and getServerNumber() == '20') or sampGetPlayerNickname(playerId):find('%[20%]Bogdan_Martelli') then
-			sampAddChatMessage('[Arizona Helper] {ffffff}Не нужно наносить урон разработчику хелпера!', message_color)
-			play_sound()
-		end
-	end
 end
 function sampev.onServerMessage(color, text)
 	if MODULE.DEBUG then
@@ -5242,6 +5267,13 @@ function sampev.onServerMessage(color, text)
 			CHECK_ID = true
 			sampSendChat('/id ' .. modules.player.data.nick)
 		end
+	end
+
+	if MODULE.Scoreboard.call_checker and text:find("{FFFFFF}(.+)%[(%d+)%]:    {33CCFF}(%d+)") then
+		local number = string.match(text, '{33CCFF}(%d+)')
+		sampSendChat("/call "..number)
+		MODULE.Scoreboard.call_checker = false
+		return false
 	end
 
 	if settings.general.ping and MODULE.Binder.tag.my_nick() ~= '' and text:find('@' .. MODULE.Binder.tag.my_nick(), 1, true) then
@@ -5311,7 +5343,7 @@ function sampev.onServerMessage(color, text)
 			sampAddChatMessage('[Arizona Helper] {ffffff}Это обьявление уже редактирует игрок ' .. message_color_hex  .. nick, message_color)
 			return false
 		end
-		if text:find('^{FCAA4D}%[VIP%] Объявление%:') then
+		if text:find('^{FCAA4D}%[VIP%] Объявление%:') or text:find('^:uf23c: ') then
 			lua_thread.create(function()
 				MODULE.SmiEdit.vip_pause = true
 				wait(10000)
@@ -5562,22 +5594,21 @@ function sampev.onServerMessage(color, text)
 		return false
 	end
 
-	if (text:find('Bogdan_Martelli') and getServerNumber() == '20') or text:find('%[20%]Bogdan_Martelli') then
-		local lastColor = text:match("(.+){%x+}$")
-		if text:find('%[VIP ADV%]') or text:find('%[FOREVER%]') then lastColor = "{FFFFFF}" end
-   		if not lastColor then lastColor = "{" .. rgba_to_hex(color) .. "}" end
-		if text:find('%[20%]Bogdan_Martelli%[%d+%]') then
-			local id = text:match('%[20%]Bogdan_Martelli%[(%d+)%]') or ''
-			text = string.gsub(text, '%[20%]Bogdan_Martelli%[%d+%]', message_color_hex .. '[20]MTGMODS[' .. id .. ']' .. lastColor)
-		elseif text:find('%[20%]Bogdan_Martelli') then
-			text = string.gsub(text, '%[20%]Bogdan_Martelli', message_color_hex .. '[20]MTGMODS' .. lastColor)
-		elseif text:find('Bogdan_Martelli%[%d+%]') then
-			local id = text:match('Bogdan_Martelli%[(%d+)%]') or ''
-			text = string.gsub(text, 'Bogdan_Martelli%[%d+%]', message_color_hex .. 'MTGMODS[' .. id .. ']' .. lastColor)
-		elseif text:find('Bogdan_Martelli') then
-			text = string.gsub(text, 'Bogdan_Martelli', message_color_hex .. 'MTGMODS' .. lastColor)
+	if text:find('Bogdan_Martelli') or text:find('Mtg_Mods') then
+		local server = getServerNumber()
+		local lastColor = text:match("({%x+})[^{]*$") -- text:match("(.+){%x+}$")
+		if text:find('%[VIP ADV%]') or text:find('%[FOREVER%]') or text:find('%:uf23%d%:') then lastColor = "{FFFFFF}" end
+		if not lastColor then lastColor = "{" .. rgba_to_hex(color) .. "}" end
+		for srv, nick in pairs(MODULE.mtgAccounts) do
+			local srvPattern = '%[' .. srv .. '%]%s*'
+			text = text:gsub(srvPattern .. nick .. '%[(%d+)%]', message_color_hex .. 'MTGMODS[%1]' .. lastColor)
+			text = text:gsub(srvPattern .. nick, message_color_hex .. 'MTGMODS' .. lastColor)
+			if server == srv and not text:find('%[%d+%]' .. nick) then
+				text = text:gsub(nick .. '%[(%d+)%]', message_color_hex .. 'MTGMODS[%1]' .. lastColor)
+				text = text:gsub(nick, message_color_hex .. 'MTGMODS' .. lastColor)
+			end
 		end
-		return {color,text}
+		return {color, text}
 	end
 end
 function sampev.onSendChat(text)
@@ -5618,7 +5649,7 @@ function sampev.onSendCommand(text)
 		return false
 	end
 	if settings.general.rp_chat then
-		local chats =  {'/vr', '/fam', '/al', '/s', '/b', '/n', '/r', '/rb', '/f', '/fb', '/j', '/jb', '/m', '/do', '/gd'}
+		local chats =  {'/g', '/vr', '/fam', '/al', '/s', '/b', '/n', '/r', '/rb', '/f', '/fb', '/j', '/jb', '/m', '/do', '/gd'}
 		for _, cmd in ipairs(chats) do
 			if text:find('^'.. cmd .. ' ') then
 				local cmd_text = text:match('^'.. cmd .. ' (.+)')
@@ -5812,6 +5843,9 @@ function sampev.onShowDialog(dialogid, style, title, button1, button2, text)
             sampSendDialogResponse(dialogid, 0, 0, 0)
 			MODULE.Members.all = MODULE.Members.new
 			MODULE.Members.info.check = false
+			if not settings.vip.auto_update_members then
+				sampAddChatMessage('[Arizona Helper] {ffffff}Вы можете включить авто-обновление списка /mb /helper - Функции ' .. modules.player.data.fraction_tag .. '!', message_color)
+			end
 			MODULE.Members.Window[0] = true
 		else
 			sampSendDialogResponse(dialogid, 0, 0, 0)
@@ -6243,6 +6277,10 @@ addEventHandler('onSendPacket', function(id, bs, priority, reliability, ordering
 					end
 					print('[SendPacket] 220 ' .. packettype .. ' ' .. subtype .. ' | Unread bits ' .. unr .. ' : ' .. table.concat(unrs, ' '))
 					sampAddChatMessage('[SendPacket] 220 ' .. packettype .. ' ' .. subtype .. ' | Unread bits ' .. unr .. ' : ' .. table.concat(unrs, ' '), message_color)
+				end
+				if settings.general.scoreboard and packettype == 66 and subtype == 56 then
+					MODULE.Scoreboard.Window[0] = not MODULE.Scoreboard.Window[0]
+					return false
 				end
 			end
 		else
@@ -7127,17 +7165,17 @@ imgui.OnFrame(
 							imgui.Separator()
 							if isManage then
 								imgui.Columns(3)
-								imgui.CenterColumnText(u8"/spcar")
+								imgui.CenterColumnText(u8"/fcleaner [кол-во дней]")
 								imgui.NextColumn()
-								imgui.CenterColumnText(u8"Заспавнить транспорт организации")
+								imgui.CenterColumnText(u8"Уволить неактивных членов организации")
 								imgui.NextColumn()
 								imgui.CenterColumnText(u8"Недоступно")
 								imgui.Columns(1)
 								imgui.Separator()
 								imgui.Columns(3)
-								imgui.CenterColumnText(u8"/fcleaner")
+								imgui.CenterColumnText(u8"/spcar")
 								imgui.NextColumn()
-								imgui.CenterColumnText(u8"Уволить неактивных членов организации")
+								imgui.CenterColumnText(u8"Заспавнить транспорт организации")
 								imgui.NextColumn()
 								imgui.CenterColumnText(u8"Недоступно")
 								imgui.Columns(1)
@@ -7536,7 +7574,7 @@ imgui.OnFrame(
 									if imgui.ItemSelector(u8'', { u8'Один пункт', u8'Подменю для пунктов' }, MODULE.PieMenu.editor.selector, 200 * settings.ui.dpi) then
 										local bool = (MODULE.PieMenu.editor.selector[0] ~= 2)
 										local number = #MODULE.PieMenu.editor.current
-										if number < 5 then
+										if number < (thisScript().version:find('VIP') and 8 or 5) then
 											number = number + 1
 											if bool then
 												table.insert(MODULE.PieMenu.editor.current, {name = 'Item ' .. number, icon = '', action = 'Item ' .. number})
@@ -8617,8 +8655,14 @@ function first_render_assist_gui()
 		)
 	end
 	render_assist_item(
+		"Кастомный ScoreBoard",
+		"Замнеяет оригинальный аризоновий ScoreBoard (TAB) на Mimgui версию.\nАктивация на ПК через TAB, на мобайле дабл клик по иконка оружия.",
+		settings.general,
+		"scoreboard"
+	)
+	render_assist_item(
 		"RP общение в чатах",
-		"Ваши сообщения в чат будут отправляться с заглавной буквы и точкой в конце.\nТак-же работает и в чатах: /b /n /s /m /do /f /fb /r /rb /j /jb /fam /al /gd",
+		"Ваши сообщения в чат будут отправляться с заглавной буквы и точкой в конце.\nТак-же работает и в чатах: /g /b /n /s /m /do /f /fb /r /rb /j /jb /fam /al /gd",
 		settings.general,
 		"rp_chat"
 	)
@@ -8760,8 +8804,8 @@ function render_fractions_functions()
 						true
 					)
 					render_assist_item(
-						"Информация про действия на ГРП",
-						"Показывает информацию о действиях которые нужно сделать для завершения Случайной Ситуации.",
+						"Действия для завершения ГРП [-FPS]",
+						"Показывает информацию о действиях которые нужно сделать для завершения Случайной Ситуации.\nВНИМАНИЕ! Функция влияет на FPS, включайте только во время ГРП!",
 						settings.mj,
 						"show_grp_info"
 					)
@@ -8919,8 +8963,8 @@ function render_fractions_functions()
 						true
 					)
 					render_assist_item(
-						"Информация про действия на ГРП",
-						"Показывает информацию о действиях которые нужно сделать для завершения Случайной Ситуации.",
+						"Действия для завершения ГРП [-FPS]",
+						"Показывает информацию о действиях которые нужно сделать для завершения Случайной Ситуации.\nВНИМАНИЕ! Функция влияет на FPS, включайте только во время ГРП!",
 						settings.smi,
 						"show_grp_info"
 					)
@@ -8952,7 +8996,7 @@ function render_fractions_functions()
 				end
 				imgui.EndTabItem()
 			end
-			if imgui.BeginTabItem(fa.CLOCK_ROTATE_LEFT .. u8' Управление историей обьявявлений') then
+			if imgui.BeginTabItem(fa.CLOCK_ROTATE_LEFT .. u8' Управление историей обьявлений') then
 				if imgui.BeginChild('##ads_history_menu', imgui.ImVec2(589 * settings.ui.dpi, 338 * settings.ui.dpi), true) then
 					if modules.ads_history.data then 
 						if #modules.ads_history.data == 0 then
@@ -9040,8 +9084,8 @@ function render_fractions_functions()
 						function() imgui.OpenPopup(fa.KIT_MEDICAL .. u8' Режим лечения игроков ' .. fa.KIT_MEDICAL) end
 					)
 					render_assist_item(
-						"Информация про действия на ГРП",
-						"Показывает информацию о действиях которые нужно сделать для завершения Случайной Ситуации.",
+						"Действия для завершения ГРП [-FPS]",
+						"Показывает информацию о действиях которые нужно сделать для завершения Случайной Ситуации.\nВНИМАНИЕ! Функция влияет на FPS, включайте только во время ГРП!",
 						settings.mh,
 						"show_grp_info"
 					)
@@ -11254,6 +11298,183 @@ imgui.OnFrame(
 		imgui.End()
 	end
 )
+---------------------------------------- SCOREBOARD GUI -----------------------------------------
+imgui.OnFrame(
+    function() return MODULE.Scoreboard.Window[0] end,
+    function(player)
+		imgui.SetNextWindowPos(imgui.ImVec2(sizeX / 2, sizeY / 2), imgui.Cond.Always, imgui.ImVec2(0.5, 0.5))
+		imgui.SetNextWindowSize(imgui.ImVec2(600 * settings.ui.dpi, 430	* settings.ui.dpi), imgui.Cond.Always)
+		imgui.Begin("##Begin", MODULE.Scoreboard.Window , imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoResize + imgui.WindowFlags.NoTitleBar + imgui.WindowFlags.NoMove + imgui.WindowFlags.NoScrollbar)
+		change_dpi()
+		imgui.Button(sampGetPlayerCount(false) .. u8' Online')
+		imgui.SameLine()
+		if imgui.CenterButton(' ' .. u8(sampGetCurrentServerName()) .. ' ') then
+			imgui.OpenPopup(fa.GLOBE .. u8' Информация о сервере')
+		end
+		if imgui.BeginPopupModal(fa.GLOBE .. u8' Информация о сервере', _, imgui.WindowFlags.NoResize + imgui.WindowFlags.NoMove + imgui.WindowFlags.NoScrollbar) then
+			change_dpi()
+			imgui.Text(u8'Название: ' .. u8(sampGetCurrentServerName()))
+			imgui.SameLine()
+			imgui.PushItemWidth(10 * settings.ui.dpi)
+			if imgui.Button(fa.COPY .. '##copy_name') then setClipboardText(u8(sampGetCurrentServerName())) end
+			local ip, port = sampGetCurrentServerAddress()
+			imgui.Text(u8'Адресс: ' .. ip .. ':' .. port)
+			imgui.SameLine()
+			imgui.PushItemWidth(10 * settings.ui.dpi)
+			if imgui.Button(fa.COPY .. '##copy_ip') then setClipboardText(ip .. ':' .. port) end
+			imgui.Separator()
+			if imgui.Button(fa.CIRCLE_XMARK .. u8' Закрыть', imgui.ImVec2(250 * settings.ui.dpi, 25 * settings.ui.dpi)) then
+				imgui.CloseCurrentPopup()
+			end
+			imgui.End()
+		end
+		imgui.SameLine()
+		imgui.SetCursorPosX(imgui.GetWindowWidth() - 146 * settings.ui.dpi)
+		imgui.PushItemWidth(114 * settings.ui.dpi)
+		imgui.InputTextWithHint(u8'', u8'Поиск ID/Nickame', MODULE.Scoreboard.inputField, 256)
+		imgui.SameLine()
+		imgui.SetCursorPosX( imgui.GetWindowWidth() - 30 * settings.ui.dpi)
+		if imgui.Button(fa.CIRCLE_XMARK) then MODULE.Scoreboard.Window[0] = false end
+		imgui.Separator()
+		if imgui.BeginChild('##binder_edit', imgui.ImVec2(592 * settings.ui.dpi, 396 * settings.ui.dpi), false) then
+			if modules.scoreboard.data.show_actions_menu then
+				imgui.Columns(5)
+				imgui.SetColumnWidth(-1, 45 * settings.ui.dpi) imgui.CenterColumnText('ID') imgui.NextColumn()
+				imgui.SetColumnWidth(-1, 370 * settings.ui.dpi) imgui.CenterColumnText('Nickname') imgui.NextColumn()
+				imgui.SetColumnWidth(-1, 55 * settings.ui.dpi) imgui.CenterColumnText('Score') imgui.NextColumn()
+				imgui.SetColumnWidth(-1, 55 * settings.ui.dpi) imgui.CenterColumnText('Ping') imgui.NextColumn()
+				imgui.SetColumnWidth(-1, 60 * settings.ui.dpi) imgui.CenterColumnText('Action') imgui.NextColumn()
+			else
+				imgui.Columns(4)
+				imgui.SetColumnWidth(-1, 45 * settings.ui.dpi) imgui.CenterColumnText('ID') imgui.NextColumn()
+				imgui.SetColumnWidth(-1, 430 * settings.ui.dpi) imgui.CenterColumnText('Nickname') imgui.NextColumn()
+				imgui.SetColumnWidth(-1, 55 * settings.ui.dpi) imgui.CenterColumnText('Score') imgui.NextColumn()
+				imgui.SetColumnWidth(-1, 60 * settings.ui.dpi) imgui.CenterColumnText('Ping') imgui.NextColumn()
+			end
+			local input_decoded = u8:decode(ffi.string(MODULE.Scoreboard.inputField)):gsub("[%(%)%.%%%+%-%*%?%[%]%^%$]", "%%%1"):rlower()
+			local my_id = MODULE.Binder.tag.my_id()
+			if input_decoded == "" then
+				imgui.Separator()
+				drawScoreboardPlayer(my_id)
+				for id = 0, sampGetMaxPlayerId() do
+					if my_id ~= id and sampIsPlayerConnected(id) then
+						imgui.Separator()
+						drawScoreboardPlayer(id)
+					end
+				end
+			else
+				for idd = 0, sampGetMaxPlayerId() do
+					if sampIsPlayerConnected(idd) or idd == my_id then
+						if tostring(idd):find(input_decoded) or sampGetPlayerNickname(idd):rlower():find(input_decoded) or id == my_id then
+							imgui.Separator()
+							drawScoreboardPlayer(idd)
+						end
+					end
+				end
+			end
+			imgui.NextColumn()
+			imgui.Columns(1)
+			imgui.Separator()
+			imgui.EndChild()
+		end
+		imgui.End()
+    end
+)
+local mobileColors = {
+	[4261215253] = 368966908,
+	[4294967168] = 368966908,
+	[4294967040] = 368966908,
+	[1717460481] = 23486046,
+	[4286480000] = 2164227710,
+	[2570282624] = 2157523814,
+	[2573611904] = 2157536819,
+	[4284887936] = 2164221491,
+	[9643929] = 2566951719,
+	[3484370560] = 2161094470,
+	[4286578816] = 2164228096,
+	[139422719] = 2150852249,
+	[2516714112] = 2157314562,
+	[5177216] = 2147503871,
+	[4849536] = 2147503871,
+	[3126074752] = 2159694877,
+	[3439263872] = 2160918272,
+	[3183328640] = 2159918525,
+	[3422604441] = 2580283596,
+	[1718026137] = 2573625087,
+	[4294967295] = 2580667164,
+	[3520797849] = 2580667164,
+	[2826467456] = 2158524536,
+	[16769689] = 2566979554
+}
+function drawScoreboardPlayer(id)
+	local nickname = u8(sampGetPlayerNickname(id))
+	local score = sampGetPlayerScore(id)
+	local ping = sampGetPlayerPing(id)
+	local color = sampGetPlayerColor(id)
+	if IS_MOBILE then if mobileColors[color] then color = mobileColors[color] end end
+	local rgbNormalized = argbToRgbNormalized(color)
+	local imgui_RGBA = imgui.ImVec4(rgbNormalized[1], rgbNormalized[2], rgbNormalized[3], 1)
+	imgui.SetCursorPosX((imgui.GetColumnOffset() + (imgui.GetColumnWidth() / 2)) - imgui.CalcTextSize(tostring(id)).x / 2)
+	if modules.scoreboard.data.colored_id then 
+		if score == 0 then
+			imgui.Text(tostring(id))
+		else
+			imgui.TextColored(imgui_RGBA, tostring(id))
+		end
+	else
+		imgui.Text(tostring(id))
+	end
+	imgui.NextColumn()
+	if modules.scoreboard.data.colored_nickname then 
+		if score == 0  then
+			imgui.Text(" "..tostring(nickname)) imgui.SameLine() imgui.Text(u8"[Connecting...]")
+		else
+			imgui.TextColored(imgui_RGBA, ' ' .. nickname)
+		end
+	else
+		if score == 0 then
+			imgui.Text(" " .. tostring(nickname)) imgui.SameLine() imgui.Text(u8"[Connecting...]")
+		else
+			imgui.Text(' ' .. nickname)
+		end
+	end
+	imgui.NextColumn()	
+	imgui.SetCursorPosX((imgui.GetColumnOffset() + (imgui.GetColumnWidth() / 2)) - imgui.CalcTextSize(tostring(score)).x / 2)
+	if modules.scoreboard.data.colored_score then 
+		if score == 0 then
+			imgui.Text(tostring(score))
+		else
+			imgui.TextColored(imgui_RGBA, tostring(score))
+		end
+	else
+		imgui.Text(tostring(score))
+	end
+	imgui.NextColumn()
+	if modules.scoreboard.data.colored_ping then 
+		if score == 0 then
+			imgui.SetCursorPosX((imgui.GetColumnOffset() + (imgui.GetColumnWidth() / 2)) - imgui.CalcTextSize(tostring(0)).x / 2)
+			imgui.Text("0")
+		else
+			imgui.SetCursorPosX((imgui.GetColumnOffset() + (imgui.GetColumnWidth() / 2)) - imgui.CalcTextSize(tostring(ping)).x / 2)
+			imgui.TextColored(imgui_RGBA, tostring(ping))
+		end
+	else
+		imgui.SetCursorPosX((imgui.GetColumnOffset() + (imgui.GetColumnWidth() / 2)) - imgui.CalcTextSize(tostring(ping)).x / 2)
+		imgui.Text(tostring(ping))
+	end
+	imgui.NextColumn()
+	if modules.scoreboard.data.show_actions_menu then
+		if imgui.Button(fa.COPY .. "##" .. id, imgui.ImVec2(21 * settings.ui.dpi, 22 * settings.ui.dpi)) then
+			setClipboardText(tostring(nickname))
+		end
+		imgui.SameLine()
+		if imgui.Button(fa.PHONE .. "##" .. id, imgui.ImVec2(21 * settings.ui.dpi, 22 * settings.ui.dpi)) then
+			MODULE.Scoreboard.call_checker = true
+			sampSendChat("/number " .. id)
+		end
+		imgui.NextColumn()
+	end
+end
 ------------------------------------------ UPDATE GUI -------------------------------------------
 imgui.OnFrame(
     function() return MODULE.Update.Window[0] end,
@@ -12097,7 +12318,7 @@ function sendAnalytics()
             data = safe_encode_json({
                 version = thisScript().version,
                 hwid = getHWID(),
-                server_id = tonumber(getServerNumber()),
+                server = tonumber(getServerNumber()),
 				mode = settings.general.fraction_mode,
                 device = IS_MOBILE and "MOBILE" or "PC"
             }),
@@ -12108,10 +12329,20 @@ end
 ------------------------------------------ PC KEY ACTIONS --------------------------------------
 if not IS_MOBILE then
 	function onWindowMessage(msg, wparam, lparam)
+		if msg == 0x100 and settings.general.scoreboard then
+			if wparam == VK_TAB and not isKeyDown(VK_TAB) then
+				MODULE.Scoreboard.Window[0] = not MODULE.Scoreboard.Window[0]
+				consumeWindowMessage(true, false)
+			end
+		end
 		if msg == 0x101 then
 			if wparam == VK_ESCAPE and MODULE.Main.Window[0] then
 				consumeWindowMessage(true, false)
 				MODULE.Main.Window[0] = false
+			end
+			if wparam == VK_ESCAPE and MODULE.Scoreboard.Window[0] then
+				consumeWindowMessage(true, false)
+				MODULE.Scoreboard.Window[0] = false
 			end
 			if wparam == 13 and MODULE.SmiEdit.Window[0] then
 				consumeWindowMessage(true, false)

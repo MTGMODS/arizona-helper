@@ -20,7 +20,7 @@
 - Открыть меню хелпера: /helper или F2
 
 ## 🤖 Авто-установка Arizona&Rodina Helper на MOBILE:
-- Установить [лаунчер MonetLoader]([https://t.me/mtgmods/1359](https://github.com/MTGMODS/arz_monetloader/releases/latest))
+- Установить [лаунчер MonetLoader](https://github.com/MTGMODS/arz_monetloader/releases/latest)
 - В игре ввести /mtg и выбрать Arizona&Rodina Helper
 
 ## 📥 Скачать Arizona&Rodina Helper для ручной установки:

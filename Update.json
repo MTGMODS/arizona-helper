@@ -1,8 +1,8 @@
 {
-  "current_version": "1.8.9 Free",
+  "current_version": "1.9 Free",
   "update_url": "https://github.com/MTGMODS/arizona-helper/raw/refs/heads/main/Arizona%20Helper.lua",
-  "update_info": "Исправлены некоторые старые баги\nПовышена стабильность хелпера",
+  "update_info": "Добавлена поддержка нового сервера Home",
 
-  "vip_current_version": "1.8.9 VIP",
-  "vip_update_info": "Исправлены некоторые старые баги\nПовышена стабильность хелпера"
+  "vip_current_version": "1.9 VIP",
+  "vip_update_info": "Добавлена поддержка нового сервера Home"
 }

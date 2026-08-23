@@ -3,7 +3,7 @@
 script_name("Arizona&Rodina Helper")
 script_description('Универсальный хелпер для игроков Arizona Online и Rodina Online')
 script_author("MTG MODS")
-script_version("1.8.9 Free")
+script_version("1.9 Free")
 ----------------------------------------------- INIT ---------------------------------------------
 local worked_dir = getWorkingDirectory():gsub('\\','/')
 local IS_MOBILE = MONET_VERSION ~= nil
@@ -3827,6 +3827,7 @@ local servers = {
 	{name = 'Love', number = '30'},
 	{name = 'Drake', number = '31'},
 	{name = 'Space', number = '32'},
+	{name = 'Home', number = '33'},
 	-- Arizona Mobile
 	{name = 'Mobile III', number = '103'},
 	{name = 'Mobile II', number = '102'},
@@ -3844,6 +3845,7 @@ local servers = {
 	-- Rodina Mobile
 	{name = 'Москва', number = '401'},
 	{name = 'Санкт Петербург', number = '402'},
+	{name = 'Екатеринбург', number = '403'}
 }
 function getServerNumber()
 	local name = sampGetCurrentServerName():gsub('%-', ' ')

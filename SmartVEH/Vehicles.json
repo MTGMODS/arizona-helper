@@ -4568,5 +4568,95 @@
         "model_id": 11773,
         "name": "Hallbruck IP",
         "server_id": 1313
+    },
+    {
+        "model_id": 12267,
+        "name": "GR86",
+        "server_id": 1314
+    },
+    {
+        "model_id": 12268,
+        "name": "BlackWING",
+        "server_id": 1315
+    },
+    {
+        "model_id": 12271,
+        "name": "TurboS 1980",
+        "server_id": 1316
+    },
+    {
+        "model_id": 15503,
+        "name": "Fiat 501",
+        "server_id": 1317
+    },
+    {
+        "model_id": 12538,
+        "name": "GG MARK ||",
+        "server_id": 1318
+    },
+    {
+        "model_id": 12285,
+        "name": "Venom Raptor",
+        "server_id": 1319
+    },
+    {
+        "model_id": 12282,
+        "name": "Devils Guard",
+        "server_id": 1320
+    },
+    {
+        "model_id": 12281,
+        "name": "SP Automotive Chaos",
+        "server_id": 1321
+    },
+    {
+        "model_id": 12280,
+        "name": "La Voiture",
+        "server_id": 1322
+    },
+    {
+        "model_id": 12279,
+        "name": "C5 ÑEO",
+        "server_id": 1323
+    },
+    {
+        "model_id": 12537,
+        "name": "Mitsubishi HSR-II",
+        "server_id": 1324
+    },
+    {
+        "model_id": 12291,
+        "name": "Jaguar XK 120",
+        "server_id": 1325
+    },
+    {
+        "model_id": 12409,
+        "name": "GMC Syclone",
+        "server_id": 1326
+    },
+    {
+        "model_id": 12410,
+        "name": "Impala 1963",
+        "server_id": 1327
+    },
+    {
+        "model_id": 12411,
+        "name": "Impala SS",
+        "server_id": 1328
+    },
+    {
+        "model_id": 12468,
+        "name": "Camaro Iroc-Z",
+        "server_id": 1329
+    },
+    {
+        "model_id": 12472,
+        "name": "Vandura 2500",
+        "server_id": 1330
+    },
+    {
+        "model_id": 12536,
+        "name": "C5 ÑEO Orange",
+        "server_id": 1331
     }
 ]

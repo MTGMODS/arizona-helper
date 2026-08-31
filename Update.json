@@ -3,6 +3,6 @@
   "update_url": "https://github.com/MTGMODS/arizona-helper/raw/refs/heads/main/Arizona%20Helper.lua",
   "update_info": "Добавлена поддержка нового сервера Home",
 
-  "vip_current_version": "1.9 VIP",
-  "vip_update_info": "Добавлена поддержка нового сервера Home"
+  "vip_current_version": "1.9.1 VIP",
+  "vip_update_info": "Переход на новую VIP систему"
 }

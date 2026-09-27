@@ -1,4 +1,4 @@
-# Arizona&Rodina Helper
+# Arizona&Rodina Helper https://mtgmods.com/helper
 ![photo_2025-12-21_22-00-07](https://github.com/user-attachments/assets/8a6201aa-9816-43a6-9c61-0fc36e754e8e)
 
 

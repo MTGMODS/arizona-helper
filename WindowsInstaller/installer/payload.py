@@ -19,14 +19,14 @@ FREE_LUA_URL = "https://github.com/MTGMODS/arizona-helper/raw/refs/heads/main/Ar
 class Product:
     name: str
     filename: str
-    urls: tuple[str, ...]
+    url: str
 
 
-def product_with_urls(urls: tuple[str, ...]) -> Product:
-    return Product(name=HELPER_NAME, filename=LUA_FILENAME, urls=urls)
+def product_with_url(url: str) -> Product:
+    return Product(name=HELPER_NAME, filename=LUA_FILENAME, url=url)
 
 
-DEFAULT_PRODUCT = product_with_urls((FREE_LUA_URL,))
+DEFAULT_PRODUCT = product_with_url(FREE_LUA_URL)
 
 
 def _xor(data: bytes) -> bytes:
@@ -55,14 +55,18 @@ def decode_overlay(cipher: bytes) -> Product | None:
         return None
     if not isinstance(payload, dict):
         return None
-    urls_raw = payload.get("urls") or payload.get("url") or ()
-    if isinstance(urls_raw, str):
-        urls = (urls_raw.strip(),)
-    else:
-        urls = tuple(str(item).strip() for item in urls_raw if str(item).strip())
-    if not urls:
+    url = ""
+    for raw in (payload.get("url"), payload.get("urls")):
+        if isinstance(raw, str) and raw.strip():
+            url = raw.strip()
+            break
+        if isinstance(raw, list):
+            url = next((str(item).strip() for item in raw if str(item).strip()), "")
+            if url:
+                break
+    if not url:
         return None
-    return product_with_urls(urls)
+    return product_with_url(url)
 
 
 def encode_overlay(product: Product) -> bytes:
@@ -70,7 +74,7 @@ def encode_overlay(product: Product) -> bytes:
         {
             "name": HELPER_NAME,
             "filename": LUA_FILENAME,
-            "urls": list(product.urls),
+            "url": product.url,
         },
         ensure_ascii=False,
         separators=(",", ":"),
@@ -79,9 +83,9 @@ def encode_overlay(product: Product) -> bytes:
     return cipher + MAGIC + struct.pack("<I", len(cipher))
 
 
-def stamp_bytes(exe_bytes: bytes, urls: tuple[str, ...]) -> bytes:
+def stamp_bytes(exe_bytes: bytes, url: str) -> bytes:
     body, _existing = _split_overlay(exe_bytes)
-    return body + encode_overlay(product_with_urls(urls))
+    return body + encode_overlay(product_with_url(url))
 
 
 def read_overlay_from_file(path: Path) -> Product | None:

@@ -126,37 +126,37 @@ def download_helper_script(game_root: Path, callback: ProgressFn | None = None) 
     destination = moonloader_dir / helper.filename
     ssl_context = ssl.create_default_context()
 
-    for url in helper.urls:
-        _progress(callback, "Скачиваем хелпер…", 0.82)
-        request = urllib.request.Request(
-            url,
-            headers={
-                "User-Agent": "ArizonaHelperInstaller/1.0 (+https://github.com/MTGMODS/arizona-helper-installer)",
-                "Accept": "*/*",
-            },
-        )
-        try:
-            with urllib.request.urlopen(request, timeout=45, context=ssl_context) as response:
-                data = response.read()
-        except (urllib.error.URLError, TimeoutError, OSError):
-            continue
+    _progress(callback, "Скачиваем хелпер…", 0.82)
+    request = urllib.request.Request(
+        helper.url,
+        headers={
+            "User-Agent": "ArizonaHelperInstaller/1.0 (+https://github.com/MTGMODS/arizona-helper-installer)",
+            "Accept": "*/*",
+        },
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=45, context=ssl_context) as response:
+            data = response.read()
+    except (urllib.error.URLError, TimeoutError, OSError) as error:
+        raise InstallError("Не удалось скачать хелпер. Проверьте интернет и попробуйте ещё раз.") from error
 
-        stripped = data.lstrip().lower()
-        if not data or stripped.startswith(b"<!doctype") or stripped.startswith(b"<html"):
-            continue
-        if len(data) < 1024:
-            continue
+    stripped = data.lstrip().lower()
+    if (
+        not data
+        or stripped.startswith(b"<!doctype")
+        or stripped.startswith(b"<html")
+        or len(data) < 1024
+    ):
+        raise InstallError("Не удалось скачать хелпер. Проверьте интернет и попробуйте ещё раз.")
 
-        try:
-            destination.write_bytes(data)
-        except OSError as error:
-            if _is_access_denied(error) and not is_admin():
-                raise NeedElevation(game_root) from error
-            raise InstallError("Не удалось сохранить хелпер в папку игры. Попробуйте ещё раз.") from error
-        _progress(callback, "Почти готово…", 0.95)
-        return destination
-
-    raise InstallError("Не удалось скачать хелпер. Проверьте интернет и попробуйте ещё раз.")
+    try:
+        destination.write_bytes(data)
+    except OSError as error:
+        if _is_access_denied(error) and not is_admin():
+            raise NeedElevation(game_root) from error
+        raise InstallError("Не удалось сохранить хелпер в папку игры. Попробуйте ещё раз.") from error
+    _progress(callback, "Почти готово…", 0.95)
+    return destination
 
 
 def install_to(game_root: Path, callback: ProgressFn | None = None) -> Path:

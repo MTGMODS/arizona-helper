@@ -137,7 +137,7 @@ def resolve_game_root(user_path: Path) -> Path:
     if find_gta_sa_exe(path):
         return path
 
-    for relative in (("bin", "arizona"), ("arizona",), ("bin",)):
+    for relative in (("bin", "arizona"), ("bin", "rodina"), ("arizona",), ("rodina",), ("bin",)):
         candidate = path.joinpath(*relative)
         if find_gta_sa_exe(candidate):
             return candidate
@@ -183,9 +183,11 @@ def known_location_candidates() -> list[Path]:
 
     relatives = (
         Path("Arizona Games Launcher") / "bin" / "arizona",
+        Path("Arizona Games Launcher") / "bin" / "rodina",
         Path("Arizona") / "bin" / "arizona",
         Path("arizona") / "bin" / "arizona",
         Path("Games") / "Arizona Games Launcher" / "bin" / "arizona",
+        Path("Games") / "Arizona Games Launcher" / "bin" / "rodina",
     )
 
     unique: list[Path] = []
@@ -267,7 +269,7 @@ def process_image_path(pid: int) -> Path | None:
 
 def _launcher_game_root(launcher_exe: Path) -> Path | None:
     parent = launcher_exe.parent
-    for relative in (("bin", "arizona"), ("arizona",)):
+    for relative in (("bin", "arizona"), ("bin", "rodina"), ("arizona",), ("rodina",)):
         candidate = parent.joinpath(*relative)
         exe = find_gta_sa_exe(candidate)
         if exe:

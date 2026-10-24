@@ -4,7 +4,7 @@ import argparse
 import sys
 from pathlib import Path
 
-from installer.payload import DEFAULT_PRODUCT, FREE_LUA_URLS, read_overlay_from_file, stamp_bytes
+from installer.payload import DEFAULT_PRODUCT, read_overlay_from_file, stamp_bytes
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -24,9 +24,7 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--url",
-        action="append",
-        dest="urls",
-        help="Ссылка на lua. Можно несколько раз — запасные адреса",
+        help="Ссылка на Lua-файл",
     )
     parser.add_argument("--show", action="store_true", help="Показать текущую ссылку и выйти")
     return parser
@@ -45,18 +43,16 @@ def main(argv: list[str] | None = None) -> int:
         sys.stdout.write(f"{source}\n")
         sys.stdout.write(f"name: {current.name}\n")
         sys.stdout.write(f"lua: {current.filename}\n")
-        for url in current.urls:
-            sys.stdout.write(f"url: {url}\n")
+        sys.stdout.write(f"url: {current.url}\n")
         return 0
 
-    urls = tuple(args.urls) if args.urls else FREE_LUA_URLS
-    stamped = stamp_bytes(exe.read_bytes(), urls)
+    url = args.url or DEFAULT_PRODUCT.url
+    stamped = stamp_bytes(exe.read_bytes(), url)
     output = (args.output or exe).resolve()
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_bytes(stamped)
     sys.stdout.write(f"Готово: {output}\n")
-    for url in urls:
-        sys.stdout.write(f"{url}\n")
+    sys.stdout.write(f"{url}\n")
     return 0
 
 

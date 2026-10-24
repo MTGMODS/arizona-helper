@@ -55,7 +55,7 @@ Inspect what is stamped:
 python -m installer.stamp "dist\vip87f9f00c.exe" --show
 ```
 
-Without `--url`, stamp uses the free GitHub file:
+Each installer copy stores one Lua URL. Without `--url`, stamp uses the free GitHub file:
 
 `https://github.com/MTGMODS/arizona-helper/raw/refs/heads/main/Arizona%20Helper.lua`
 
